@@ -112,7 +112,7 @@ export const Modal: React.FC<ModalProps> = ({
   // Portal rendering for proper z-index
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center"
+      className="fixed inset-0 z-50 flex items-end lg:items-center justify-center lg:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
@@ -128,13 +128,15 @@ export const Modal: React.FC<ModalProps> = ({
       <div
         ref={modalRef}
         className={clsx(
-          // Bottom sheet positioning and animation
-          "relative w-full max-w-lg bg-white",
-          "rounded-t-2xl shadow-xl",
+          // Bottom sheet positioning and animation for mobile
+          "relative w-full bg-white",
+          "rounded-t-2xl lg:rounded-2xl shadow-xl",
           "transform transition-transform duration-300 ease-out",
-          "animate-in slide-in-from-bottom-full",
+          "animate-in slide-in-from-bottom-full lg:slide-in-from-bottom-0",
           // Safe area for iOS devices
           "pb-safe-area-inset-bottom",
+          // Desktop max width and centering
+          "lg:max-w-4xl lg:max-h-[90vh]",
           className,
         )}
         onClick={(e) => e.stopPropagation()}
@@ -171,7 +173,9 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className="p-4 max-h-[70vh] overflow-y-auto">{children}</div>
+        <div className="p-4 lg:p-6 max-h-[70vh] lg:max-h-[calc(90vh-5rem)] overflow-y-auto">
+          {children}
+        </div>
       </div>
     </div>,
     document.body,

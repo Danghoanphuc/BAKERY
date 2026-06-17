@@ -223,51 +223,53 @@ export default async function HomePage() {
 
       {/* Main content area with proper spacing */}
       <main className="min-h-screen pt-14 pb-20 bg-neutral-50">
-        {/* SearchBar Section */}
-        <section className="px-4 pt-4 pb-6">
-          <SearchBar />
-        </section>
-
-        {/* PromoBanner Section */}
-        <section className="px-4 pb-6">
-          <PromoBanner {...promoBannerData} />
-        </section>
-
-        {/* DeliveryModeToggle Section */}
-        <section className="px-4 pb-6">
-          <DeliveryModeToggle />
-        </section>
-
-        {/* CategoryGrid Section */}
-        <section className="px-4 pb-8">
-          <CategoryGrid categories={categories} />
-        </section>
-
-        {/* ProductCollection Sections */}
-        <div className="space-y-8">
-          {/* Gợi ý cho bạn */}
-          <section>
-            <HomepageClient
-              title="Gợi ý cho bạn"
-              products={featuredProducts.suggested}
-            />
+        <div className="max-w-7xl mx-auto">
+          {/* SearchBar Section */}
+          <section className="px-4 lg:px-6 pt-4 pb-6">
+            <SearchBar />
           </section>
 
-          {/* Mới ra lò sáng nay */}
-          <section>
-            <HomepageClient
-              title="Mới ra lò sáng nay"
-              products={featuredProducts.newToday}
-            />
+          {/* PromoBanner Section */}
+          <section className="px-4 lg:px-6 pb-6">
+            <PromoBanner {...promoBannerData} />
           </section>
 
-          {/* Bán chạy nhất */}
-          <section>
-            <HomepageClient
-              title="Bán chạy nhất"
-              products={featuredProducts.bestsellers}
-            />
+          {/* DeliveryModeToggle Section */}
+          <section className="px-4 lg:px-6 pb-6">
+            <DeliveryModeToggle />
           </section>
+
+          {/* CategoryGrid Section */}
+          <section className="px-4 lg:px-6 pb-8">
+            <CategoryGrid categories={categories} />
+          </section>
+
+          {/* ProductCollection Sections */}
+          <div className="space-y-8">
+            {/* Gợi ý cho bạn */}
+            <section>
+              <HomepageClient
+                title="Gợi ý cho bạn"
+                products={featuredProducts.suggested}
+              />
+            </section>
+
+            {/* Mới ra lò sáng nay */}
+            <section>
+              <HomepageClient
+                title="Mới ra lò sáng nay"
+                products={featuredProducts.newToday}
+              />
+            </section>
+
+            {/* Bán chạy nhất */}
+            <section>
+              <HomepageClient
+                title="Bán chạy nhất"
+                products={featuredProducts.bestsellers}
+              />
+            </section>
+          </div>
         </div>
       </main>
 

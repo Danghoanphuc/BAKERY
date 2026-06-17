@@ -230,34 +230,36 @@ function CategoryPageContent({
       <Header />
 
       <main className="min-h-screen pt-14 pb-20 bg-neutral-50">
-        {/* Category Header */}
-        <section className="px-4 pt-4 pb-6 border-b border-neutral-200">
-          <h1 className="text-2xl font-bold text-neutral-900">
-            {category.name}
-          </h1>
-          <p className="text-sm text-neutral-600 mt-2">
-            {products.length} sản phẩm
-          </p>
-        </section>
+        <div className="max-w-7xl mx-auto">
+          {/* Category Header */}
+          <section className="px-4 lg:px-6 pt-4 pb-6 border-b border-neutral-200">
+            <h1 className="text-2xl lg:text-3xl font-bold text-neutral-900">
+              {category.name}
+            </h1>
+            <p className="text-sm lg:text-base text-neutral-600 mt-2">
+              {products.length} sản phẩm
+            </p>
+          </section>
 
-        {/* Products */}
-        {products.length > 0 ? (
-          <section className="p-4">
-            <ProductCollection
-              title=""
-              products={products}
-              onAddToCart={handleProductClick}
-            />
-          </section>
-        ) : (
-          <section className="p-4">
-            <div className="text-center py-12">
-              <p className="text-neutral-600">
-                Không có sản phẩm trong danh mục này
-              </p>
-            </div>
-          </section>
-        )}
+          {/* Products */}
+          {products.length > 0 ? (
+            <section className="p-4 lg:p-6">
+              <ProductCollection
+                title=""
+                products={products}
+                onAddToCart={handleProductClick}
+              />
+            </section>
+          ) : (
+            <section className="p-4 lg:p-6">
+              <div className="text-center py-12">
+                <p className="text-neutral-600">
+                  Không có sản phẩm trong danh mục này
+                </p>
+              </div>
+            </section>
+          )}
+        </div>
       </main>
 
       {/* Product Detail Modal */}

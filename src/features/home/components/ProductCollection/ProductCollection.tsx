@@ -24,16 +24,15 @@ export const ProductCollection: React.FC<ProductCollectionProps> = ({
       data-testid="product-collection"
     >
       {/* Section Title */}
-      <h2 className="text-lg font-semibold text-neutral-900 mb-4 px-4">
+      <h2 className="text-lg lg:text-xl font-semibold text-neutral-900 mb-4 px-4 lg:px-6">
         {title}
       </h2>
 
-      {/* Horizontally Scrollable Product Container */}
-      <div className="overflow-x-auto">
+      {/* Mobile: Horizontally Scrollable | Desktop: Grid */}
+      <div className="lg:hidden overflow-x-auto">
         <div
           className="flex gap-4 px-4 pb-2"
           style={{
-            /* CSS scroll snap for smooth snapping */
             scrollSnapType: "x mandatory",
           }}
         >
@@ -51,7 +50,18 @@ export const ProductCollection: React.FC<ProductCollectionProps> = ({
         </div>
       </div>
 
-      {/* Custom scrollbar hiding using Tailwind utilities */}
+      {/* Desktop: Grid Layout */}
+      <div className="hidden lg:grid lg:grid-cols-2 xl:grid-cols-4 gap-6 px-6">
+        {products.map((product) => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            onAddToCart={onAddToCart}
+          />
+        ))}
+      </div>
+
+      {/* Custom scrollbar hiding for mobile */}
       <style jsx>{`
         .overflow-x-auto {
           scrollbar-width: none; /* Firefox */

@@ -40,9 +40,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   return (
-    <div className="w-40 bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
+    <div className="w-40 lg:w-full bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden hover:shadow-md transition-shadow duration-200">
       {/* Product Image */}
-      <div className="relative w-full aspect-[5/4] bg-neutral-100 overflow-hidden">
+      <div className="relative w-full aspect-[5/4] lg:aspect-square bg-neutral-100 overflow-hidden group">
         {imageLoading && (
           <div className="absolute inset-0 flex items-center justify-center">
             <div className="w-6 h-6 border-2 border-primary-200 border-t-primary-500 rounded-full animate-spin"></div>
@@ -56,10 +56,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             width={160}
             height={128}
             className={clsx(
-              "object-cover transition-opacity duration-300 w-full h-full",
+              "object-cover transition-all duration-300 w-full h-full",
+              "group-hover:scale-105",
               imageLoading ? "opacity-0" : "opacity-100",
             )}
-            sizes="160px"
+            sizes="(max-width: 1024px) 160px, (max-width: 1280px) 25vw, 20vw"
             loading="lazy"
             quality={85}
             placeholder="blur"
@@ -87,10 +88,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       </div>
 
       {/* Product Info */}
-      <div className="p-3">
+      <div className="p-3 lg:p-4">
         {/* Product Name */}
         <h3
-          className="text-sm font-medium text-neutral-900 mb-2 min-h-[2.5rem] overflow-hidden"
+          className="text-sm lg:text-base font-medium text-neutral-900 mb-2 min-h-[2.5rem] lg:min-h-[3rem] overflow-hidden"
           style={{
             display: "-webkit-box",
             WebkitLineClamp: 2,
@@ -101,14 +102,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </h3>
 
         {/* Price and Add Button */}
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-primary-600">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2">
+          <span className="text-sm lg:text-base font-semibold text-primary-600">
             {formatPrice(product.price)}
           </span>
 
           <Button
             variant="primary"
-            className="touch-target px-3 py-1 text-xs font-medium min-w-[48px] h-8"
+            className="touch-target px-3 py-1 lg:px-4 lg:py-2 text-xs lg:text-sm font-medium min-w-[48px] lg:min-w-[80px] h-8 lg:h-10 w-full lg:w-auto"
             onClick={handleAddToCart}
             data-testid="add-to-cart-btn"
           >

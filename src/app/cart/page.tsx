@@ -20,11 +20,11 @@ export default function CartPage() {
     router.back();
   };
 
-  const handleQuantityChange = (productId: string, newQuantity: number) => {
+  const handleQuantityChange = (cartItemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
-      removeItem(productId);
+      removeItem(cartItemId);
     } else {
-      updateQuantity(productId, newQuantity);
+      updateQuantity(cartItemId, newQuantity);
     }
   };
 
@@ -83,32 +83,110 @@ export default function CartPage() {
       <div className="p-4 space-y-4">
         {items.map((item) => (
           <div
-            key={item.productId}
+            key={item.cartItemId}
             className="bg-white rounded-lg p-4 shadow-sm border border-neutral-200"
           >
-            <div className="flex items-center space-x-4">
+            <div className="flex items-start space-x-4">
               <img
-                src={item.product.imageUrl}
-                alt={item.product.name}
-                className="w-16 h-16 rounded-lg object-cover"
+                src={item.imageUrl}
+                alt={item.productName}
+                className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
               />
 
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <h3 className="font-medium text-neutral-900">
-                  {item.product.name}
+                  {item.productName}
                 </h3>
-                <p className="text-sm text-neutral-600">
+
+                {/* Customization details */}
+                {(item.selectedSize ||
+                  item.selectedFlavor ||
+                  item.customMessage ||
+                  item.candles) && (
+                  <div className="mt-1 space-y-1">
+                    {item.selectedSize && (
+                      <p className="text-xs text-neutral-600">
+                        Kích thước: {item.selectedSize}
+                      </p>
+                    )}
+                    {item.selectedFlavor && (
+                      <p className="text-xs text-neutral-600">
+                        Hương vị: {item.selectedFlavor}
+                      </p>
+                    )}
+                    {item.customMessage && (
+                      <p className="text-xs text-neutral-600">
+                        Lời chúc: {item.customMessage}
+                      </p>
+                    )}
+                    {item.candles && item.candles > 0 && (
+                      <p className="text-xs text-neutral-600">
+                        Số nến: {item.candles}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <p className="text-sm text-neutral-900 font-medium mt-2">
                   {formatPrice(item.price)}
                 </p>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-col items-end space-y-2">
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() =>
+                      handleQuantityChange(item.cartItemId, item.quantity - 1)
+                    }
+                    className="w-7 h-7 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-600 hover:bg-neutral-200"
+                    aria-label="Giảm số lượng"
+                  >
+                    <svg
+                      className="w-3 h-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M20 12H4"
+                      />
+                    </svg>
+                  </button>
+
+                  <span className="w-6 text-center font-medium text-sm">
+                    {item.quantity}
+                  </span>
+
+                  <button
+                    onClick={() =>
+                      handleQuantityChange(item.cartItemId, item.quantity + 1)
+                    }
+                    className="w-7 h-7 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-600 hover:bg-neutral-200"
+                    aria-label="Tăng số lượng"
+                  >
+                    <svg
+                      className="w-3 h-3"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                      />
+                    </svg>
+                  </button>
+                </div>
+
                 <button
-                  onClick={() =>
-                    handleQuantityChange(item.productId, item.quantity - 1)
-                  }
-                  className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-600 hover:bg-neutral-200"
-                  aria-label="Giảm số lượng"
+                  onClick={() => removeItem(item.cartItemId)}
+                  className="text-red-500 hover:text-red-700 p-1"
+                  aria-label="Xóa sản phẩm"
                 >
                   <svg
                     className="w-4 h-4"
@@ -120,57 +198,11 @@ export default function CartPage() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M20 12H4"
-                    />
-                  </svg>
-                </button>
-
-                <span className="w-8 text-center font-medium">
-                  {item.quantity}
-                </span>
-
-                <button
-                  onClick={() =>
-                    handleQuantityChange(item.productId, item.quantity + 1)
-                  }
-                  className="w-8 h-8 rounded-full bg-neutral-100 flex items-center justify-center text-neutral-600 hover:bg-neutral-200"
-                  aria-label="Tăng số lượng"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
                     />
                   </svg>
                 </button>
               </div>
-
-              <button
-                onClick={() => removeItem(item.productId)}
-                className="text-red-500 hover:text-red-700 p-1"
-                aria-label="Xóa sản phẩm"
-              >
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                  />
-                </svg>
-              </button>
             </div>
           </div>
         ))}

@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { Header } from "@/components/layout";
 import { StickyCart } from "@/components/layout/StickyCart";
 import { ProductCollection } from "@/features/home/components/ProductCollection";
+import { ProductDetailModal } from "@/features/product/components/ProductDetailModal";
 import { useToast } from "@/hooks/useToast";
 import { useCartStore } from "@/store";
 import type { Product } from "@/types/product";
@@ -32,6 +33,17 @@ const PRODUCTS_BY_CATEGORY: Record<string, Product[]> = {
       description: "Bánh Red Velvet thơm ngon với kem cheese",
       availableForDelivery: true,
       availableForPickup: true,
+      sizeOptions: [
+        { id: "16cm", label: "16cm", priceAdjustment: 0 },
+        { id: "20cm", label: "20cm", priceAdjustment: 50000 },
+        { id: "24cm", label: "24cm", priceAdjustment: 100000 },
+      ],
+      flavorOptions: [
+        { id: "original", label: "Truyền thống" },
+        { id: "cheese", label: "Cream cheese" },
+        { id: "dark", label: "Dark chocolate" },
+      ],
+      requiresMessage: true,
     },
     {
       id: "2",
@@ -42,6 +54,15 @@ const PRODUCTS_BY_CATEGORY: Record<string, Product[]> = {
       description: "Bánh chocolate đậm đà hương vị",
       availableForDelivery: true,
       availableForPickup: true,
+      sizeOptions: [
+        { id: "16cm", label: "16cm", priceAdjustment: 0 },
+        { id: "20cm", label: "20cm", priceAdjustment: 50000 },
+      ],
+      flavorOptions: [
+        { id: "milk", label: "Sô-cô-la sữa" },
+        { id: "dark", label: "Sô-cô-la đen" },
+      ],
+      requiresMessage: true,
     },
     {
       id: "3",
@@ -52,6 +73,7 @@ const PRODUCTS_BY_CATEGORY: Record<string, Product[]> = {
       description: "Bánh vanilla nhẹ nhàng thơm mát",
       availableForDelivery: true,
       availableForPickup: true,
+      requiresMessage: true,
     },
   ],
   "2": [
@@ -86,6 +108,15 @@ const PRODUCTS_BY_CATEGORY: Record<string, Product[]> = {
       description: "Bánh Tiramisu Ý nguyên bản",
       availableForDelivery: true,
       availableForPickup: true,
+      sizeOptions: [
+        { id: "small", label: "Nhỏ (4 người)", priceAdjustment: 0 },
+        { id: "medium", label: "Vừa (6-8 người)", priceAdjustment: 80000 },
+        { id: "large", label: "Lớn (10-12 người)", priceAdjustment: 150000 },
+      ],
+      flavorOptions: [
+        { id: "classic", label: "Cổ điển" },
+        { id: "mocha", label: "Mocha" },
+      ],
     },
     {
       id: "5",
@@ -139,18 +170,59 @@ function CategoryPageContent({
   category: { id: string; name: string };
   products: Product[];
 }) {
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const addToCart = useCartStore((state) => state.addItem);
   const { showToast } = useToast();
 
-  const handleAddToCart = (product: Product) => {
-    addToCart({
-      productId: product.id,
-      productName: product.name,
-      price: product.price,
-      quantity: 1,
-      imageUrl: product.imageUrl,
-    });
-    showToast(`Đã thêm ${product.name} vào giỏ hàng`, "success");
+  const handleProductClick = (product: Product) => {
+    setSelectedProduct(product);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedProduct(null);
+  };
+
+  const handleAddToCart = (customization: {
+    quantity: number;
+    selectedSize?: string;
+    selectedFlavor?: string;
+    customMessage?: string;
+    candles?: number;
+  }) => {
+    if (!selectedProduct) return;
+
+    try {
+      // Calculate final price with size adjustment
+      let finalPrice = selectedProduct.price;
+      if (customization.selectedSize && selectedProduct.sizeOptions) {
+        const sizeOption = selectedProduct.sizeOptions.find(
+          (s) => s.id === customization.selectedSize,
+        );
+        if (sizeOption) {
+          finalPrice += sizeOption.priceAdjustment;
+        }
+      }
+
+      // Add to cart with customization
+      addToCart({
+        productId: selectedProduct.id,
+        productName: selectedProduct.name,
+        quantity: customization.quantity,
+        price: finalPrice,
+        imageUrl: selectedProduct.imageUrl,
+        selectedSize: customization.selectedSize,
+        selectedFlavor: customization.selectedFlavor,
+        customMessage: customization.customMessage,
+        candles: customization.candles,
+      });
+
+      // Close modal and show success toast
+      handleCloseModal();
+      showToast(`Đã thêm ${selectedProduct.name} vào giỏ hàng`, "success");
+    } catch (error) {
+      console.error("Failed to add product to cart:", error);
+      showToast("Không thể thêm sản phẩm vào giỏ hàng", "error");
+    }
   };
 
   return (
@@ -174,7 +246,7 @@ function CategoryPageContent({
             <ProductCollection
               title=""
               products={products}
-              onAddToCart={handleAddToCart}
+              onAddToCart={handleProductClick}
             />
           </section>
         ) : (
@@ -187,6 +259,16 @@ function CategoryPageContent({
           </section>
         )}
       </main>
+
+      {/* Product Detail Modal */}
+      {selectedProduct && (
+        <ProductDetailModal
+          product={selectedProduct}
+          isOpen={!!selectedProduct}
+          onClose={handleCloseModal}
+          onAddToCart={handleAddToCart}
+        />
+      )}
 
       <StickyCart />
     </>

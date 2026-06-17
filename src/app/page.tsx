@@ -82,6 +82,17 @@ async function getFeaturedProducts(): Promise<{
       description: "Bánh Red Velvet thơm ngon với kem cheese",
       availableForDelivery: true,
       availableForPickup: true,
+      sizeOptions: [
+        { id: "16cm", label: "16cm", priceAdjustment: 0 },
+        { id: "20cm", label: "20cm", priceAdjustment: 50000 },
+        { id: "24cm", label: "24cm", priceAdjustment: 100000 },
+      ],
+      flavorOptions: [
+        { id: "original", label: "Truyền thống" },
+        { id: "cheese", label: "Cream cheese" },
+        { id: "dark", label: "Dark chocolate" },
+      ],
+      requiresMessage: true,
     },
     {
       id: "2",
@@ -92,6 +103,15 @@ async function getFeaturedProducts(): Promise<{
       description: "Bánh chocolate đậm đà hương vị",
       availableForDelivery: true,
       availableForPickup: true,
+      sizeOptions: [
+        { id: "16cm", label: "16cm", priceAdjustment: 0 },
+        { id: "20cm", label: "20cm", priceAdjustment: 50000 },
+      ],
+      flavorOptions: [
+        { id: "milk", label: "Sô-cô-la sữa" },
+        { id: "dark", label: "Sô-cô-la đen" },
+      ],
+      requiresMessage: true,
     },
     {
       id: "3",
@@ -102,6 +122,7 @@ async function getFeaturedProducts(): Promise<{
       description: "Bánh vanilla nhẹ nhàng thơm mát",
       availableForDelivery: true,
       availableForPickup: true,
+      requiresMessage: true,
     },
     {
       id: "4",
@@ -112,6 +133,15 @@ async function getFeaturedProducts(): Promise<{
       description: "Bánh Tiramisu Ý nguyên bản",
       availableForDelivery: true,
       availableForPickup: true,
+      sizeOptions: [
+        { id: "small", label: "Nhỏ (4 người)", priceAdjustment: 0 },
+        { id: "medium", label: "Vừa (6-8 người)", priceAdjustment: 80000 },
+        { id: "large", label: "Lớn (10-12 người)", priceAdjustment: 150000 },
+      ],
+      flavorOptions: [
+        { id: "classic", label: "Cổ điển" },
+        { id: "mocha", label: "Mocha" },
+      ],
     },
     {
       id: "5",

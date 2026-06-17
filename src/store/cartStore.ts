@@ -1,12 +1,12 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { CartItem, Product } from "@/types";
+import { CartItem, generateCartItemId } from "@/types";
 
 interface CartState {
   items: CartItem[];
-  addItem: (product: Product) => void;
-  removeItem: (productId: string) => void;
-  updateQuantity: (productId: string, quantity: number) => void;
+  addItem: (item: Omit<CartItem, "cartItemId">) => void;
+  removeItem: (cartItemId: string) => void;
+  updateQuantity: (cartItemId: string, quantity: number) => void;
   clearCart: () => void;
   totalQuantity: number;
   totalPrice: number;
@@ -37,8 +37,6 @@ const createSafeStorage = () => {
           console.error(
             "localStorage quota exceeded. Cart changes will not be persisted.",
           );
-          // Optionally notify user through a toast or notification system
-          // For now, we log the error and continue with in-memory state
         } else {
           console.error("Failed to save cart to localStorage:", error);
         }
@@ -71,32 +69,39 @@ export const useCartStore = create<CartState>()(
       totalQuantity: 0,
       totalPrice: 0,
 
-      addItem: (product: Product) => {
-        // Store previous state for rollback
+      addItem: (itemData: Omit<CartItem, "cartItemId">) => {
         const previousState = get();
 
         try {
-          // Optimistic update
           set((state) => {
+            // Generate unique cart item ID
+            const cartItemId = generateCartItemId(
+              itemData.productId,
+              itemData.selectedSize,
+              itemData.selectedFlavor,
+              itemData.customMessage,
+              itemData.candles,
+            );
+
             const existingItem = state.items.find(
-              (item) => item.productId === product.id,
+              (item) => item.cartItemId === cartItemId,
             );
 
             let newItems: CartItem[];
             if (existingItem) {
+              // Same product with same customizations - just increase quantity
               newItems = state.items.map((item) =>
-                item.productId === product.id
-                  ? { ...item, quantity: item.quantity + 1 }
+                item.cartItemId === cartItemId
+                  ? { ...item, quantity: item.quantity + itemData.quantity }
                   : item,
               );
             } else {
+              // New cart item (different product or different customizations)
               newItems = [
                 ...state.items,
                 {
-                  productId: product.id,
-                  quantity: 1,
-                  price: product.price,
-                  product,
+                  ...itemData,
+                  cartItemId,
                 },
               ];
             }
@@ -110,7 +115,6 @@ export const useCartStore = create<CartState>()(
           });
         } catch (error) {
           console.error("Failed to add item to cart:", error);
-          // Rollback on failure
           set({
             items: previousState.items,
             totalQuantity: previousState.totalQuantity,
@@ -120,15 +124,13 @@ export const useCartStore = create<CartState>()(
         }
       },
 
-      removeItem: (productId: string) => {
-        // Store previous state for rollback
+      removeItem: (cartItemId: string) => {
         const previousState = get();
 
         try {
-          // Optimistic update
           set((state) => {
             const newItems = state.items.filter(
-              (item) => item.productId !== productId,
+              (item) => item.cartItemId !== cartItemId,
             );
             const { totalQuantity, totalPrice } = computeTotals(newItems);
             return {
@@ -139,7 +141,6 @@ export const useCartStore = create<CartState>()(
           });
         } catch (error) {
           console.error("Failed to remove item from cart:", error);
-          // Rollback on failure
           set({
             items: previousState.items,
             totalQuantity: previousState.totalQuantity,
@@ -149,17 +150,15 @@ export const useCartStore = create<CartState>()(
         }
       },
 
-      updateQuantity: (productId: string, quantity: number) => {
+      updateQuantity: (cartItemId: string, quantity: number) => {
         if (quantity < 1) return;
 
-        // Store previous state for rollback
         const previousState = get();
 
         try {
-          // Optimistic update
           set((state) => {
             const newItems = state.items.map((item) =>
-              item.productId === productId ? { ...item, quantity } : item,
+              item.cartItemId === cartItemId ? { ...item, quantity } : item,
             );
             const { totalQuantity, totalPrice } = computeTotals(newItems);
             return {
@@ -170,7 +169,6 @@ export const useCartStore = create<CartState>()(
           });
         } catch (error) {
           console.error("Failed to update quantity:", error);
-          // Rollback on failure
           set({
             items: previousState.items,
             totalQuantity: previousState.totalQuantity,
@@ -181,7 +179,6 @@ export const useCartStore = create<CartState>()(
       },
 
       clearCart: () => {
-        // Store previous state for rollback
         const previousState = get();
 
         try {
@@ -192,7 +189,6 @@ export const useCartStore = create<CartState>()(
           });
         } catch (error) {
           console.error("Failed to clear cart:", error);
-          // Rollback on failure
           set({
             items: previousState.items,
             totalQuantity: previousState.totalQuantity,
@@ -204,7 +200,7 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: "bakery-cart-storage",
-      version: 1,
+      version: 2, // Increment version due to breaking changes
       storage: createSafeStorage(),
     },
   ),

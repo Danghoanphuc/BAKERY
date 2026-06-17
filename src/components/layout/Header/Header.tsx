@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
 import { clsx } from "clsx";
+import { Settings } from "lucide-react";
 import { useOrderConfigStore } from "@/store/orderConfigStore";
 import { OrderTimingModal } from "./OrderTimingModal";
 import { AddressModal } from "./AddressModal";
@@ -78,7 +80,7 @@ export const Header: React.FC<HeaderProps> = ({ className }) => {
           className,
         )}
       >
-        <div className="flex-1 flex items-center justify-between">
+        <div className="flex-1 flex items-center justify-between gap-2">
           {/* Order Timing Section */}
           <button
             onClick={handleTimingClick}
@@ -138,7 +140,7 @@ export const Header: React.FC<HeaderProps> = ({ className }) => {
           <button
             onClick={handleAddressClick}
             className={clsx(
-              "flex items-center space-x-2 min-h-[48px] px-3 py-2 ml-2",
+              "flex items-center space-x-2 min-h-[48px] px-3 py-2",
               "text-left rounded-lg transition-colors flex-1",
               "hover:bg-neutral-100 active:bg-neutral-200",
               "touch-target",
@@ -193,6 +195,22 @@ export const Header: React.FC<HeaderProps> = ({ className }) => {
               />
             </svg>
           </button>
+
+          {/* Admin Link - Desktop only */}
+          <Link
+            href="/admin"
+            className={clsx(
+              "hidden lg:flex items-center gap-2 min-h-[48px] px-3 py-2",
+              "rounded-lg transition-colors",
+              "bg-primary-50 text-primary-700 hover:bg-primary-100",
+              "border border-primary-200",
+              "touch-target",
+            )}
+            aria-label="Admin Dashboard"
+          >
+            <Settings className="w-4 h-4" />
+            <span className="text-sm font-medium">Admin</span>
+          </Link>
         </div>
       </header>
 

@@ -35,3 +35,18 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 node_modules
+
+/src/generated/prisma
+
+# Database
+*.db
+*.db-journal
+
+# Temporary scripts
+check-categories.ts
+reset-db.ts
+update-category-icons.ts
+
+# Environment variables
+.env
+.env.local

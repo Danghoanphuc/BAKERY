@@ -13,6 +13,10 @@ interface OrderConfigState {
 const createSafeStorage = () => {
   return createJSONStorage<OrderConfigState>(() => ({
     getItem: (name: string) => {
+      if (typeof window === "undefined") {
+        return null;
+      }
+
       try {
         const str = localStorage.getItem(name);
         return str ? JSON.parse(str) : null;
@@ -25,6 +29,10 @@ const createSafeStorage = () => {
       }
     },
     setItem: (name: string, value: string) => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
       try {
         localStorage.setItem(name, value);
       } catch (error) {
@@ -45,6 +53,10 @@ const createSafeStorage = () => {
       }
     },
     removeItem: (name: string) => {
+      if (typeof window === "undefined") {
+        return;
+      }
+
       try {
         localStorage.removeItem(name);
       } catch (error) {

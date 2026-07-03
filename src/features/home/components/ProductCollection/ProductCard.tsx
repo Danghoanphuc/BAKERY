@@ -40,12 +40,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   return (
-    <div className="w-40 lg:w-full bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden hover:shadow-md transition-shadow duration-200">
+    <div className="w-[140px] lg:w-full bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden hover:shadow-md transition-shadow duration-200">
       {/* Product Image */}
       <div className="relative w-full aspect-[5/4] lg:aspect-square bg-neutral-100 overflow-hidden group">
         {imageLoading && (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-6 h-6 border-2 border-primary-200 border-t-primary-500 rounded-full animate-spin"></div>
+            <div className="w-5 h-5 border-2 border-primary-200 border-t-primary-500 rounded-full animate-spin"></div>
           </div>
         )}
 
@@ -53,25 +53,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <Image
             src={product.imageUrl}
             alt={product.name}
-            width={160}
-            height={128}
+            width={140}
+            height={112}
             className={clsx(
               "object-cover transition-all duration-300 w-full h-full",
               "group-hover:scale-105",
               imageLoading ? "opacity-0" : "opacity-100",
             )}
-            sizes="(max-width: 1024px) 160px, (max-width: 1280px) 25vw, 20vw"
+            sizes="(max-width: 1024px) 140px, (max-width: 1280px) 25vw, 20vw"
             loading="lazy"
             quality={85}
-            placeholder="blur"
-            blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
             onLoad={handleImageLoad}
             onError={handleImageError}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-neutral-100">
             <svg
-              className="w-12 h-12 text-neutral-400"
+              className="w-10 h-10 text-neutral-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -88,10 +86,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       </div>
 
       {/* Product Info */}
-      <div className="p-3 lg:p-4">
+      <div className="p-2 lg:p-4">
         {/* Product Name */}
         <h3
-          className="text-sm lg:text-base font-medium text-neutral-900 mb-2 min-h-[2.5rem] lg:min-h-[3rem] overflow-hidden"
+          className="text-[13px] lg:text-base font-medium text-neutral-900 mb-1.5 min-h-[2.5rem] lg:min-h-[3rem] overflow-hidden"
           style={{
             display: "-webkit-box",
             WebkitLineClamp: 2,
@@ -102,14 +100,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </h3>
 
         {/* Price and Add Button */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-2">
-          <span className="text-sm lg:text-base font-semibold text-primary-600">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-1.5">
+          <span className="text-[14px] lg:text-base font-bold text-primary-600">
             {formatPrice(product.price)}
           </span>
-
           <Button
             variant="primary"
-            className="touch-target px-3 py-1 lg:px-4 lg:py-2 text-xs lg:text-sm font-medium min-w-[48px] lg:min-w-[80px] h-8 lg:h-10 w-full lg:w-auto"
+            className="touch-target px-2 py-1 lg:px-4 lg:py-2 text-[12px] lg:text-sm font-bold min-w-[48px] lg:min-w-[80px] h-8 lg:h-10 w-full lg:w-auto rounded-md"
             onClick={handleAddToCart}
             data-testid="add-to-cart-btn"
           >

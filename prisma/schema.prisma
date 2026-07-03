@@ -1,0 +1,92 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// DANH MỤC BÁNH
+// ============================================
+model Category {
+  id           String    @id @default(cuid())
+  name         String
+  iconUrl      String
+  displayOrder Int       @default(0)
+  isVisible    Boolean   @default(true)
+  products     Product[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@map("categories")
+}
+
+// ============================================
+// SẢN PHẨM
+// ============================================
+model Product {
+  id                   String          @id @default(cuid())
+  name                 String
+  price                Float
+  imageUrl             String
+  categoryId           String?
+  category             Category?        @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  description          String?
+  availableForDelivery Boolean         @default(true)
+  availableForPickup   Boolean         @default(true)
+  requiresMessage      Boolean         @default(false)
+  isFeatured           Boolean         @default(false)
+  isNew                Boolean         @default(false)
+  isBestseller         Boolean         @default(false)
+  stock                Int             @default(0)
+  isAvailable          Boolean         @default(true)
+  sizeOptions          String?         // JSON string: [{id, label, priceAdjustment}]
+  flavorOptions        String?         // JSON string: [{id, label}]
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  @@index([categoryId])
+  @@index([isFeatured])
+  @@index([isNew])
+  @@index([isBestseller])
+  @@index([isAvailable])
+  @@map("products")
+}
+
+// ============================================
+// ĐƠN HÀNG
+// ============================================
+model Order {
+  id              String      @id @default(cuid())
+  orderNumber     String      @unique
+  customerName    String
+  customerPhone   String
+  customerEmail   String?
+  totalAmount     Float
+  orderType       String      // "DELIVERY", "PICKUP", "PREORDER"
+  status          String      @default("PENDING") // "PENDING", "PROCESSING", "COMPLETED", "CANCELLED"
+  paymentStatus   String      @default("unpaid")
+  deliveryAddress String?
+  pickupTime      DateTime?
+  notes           String?
+  internalNotes   String?
+  cancelReason    String?
+  assignedTo      String?
+  deliveryFee     Float       @default(0)
+  discountAmount  Float       @default(0)
+  statusHistory   String?
+  items           String      // JSON string: cart items array
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([orderNumber])
+  @@index([status])
+  @@index([orderType])
+  @@index([createdAt])
+  @@map("orders")
+}

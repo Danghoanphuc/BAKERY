@@ -238,6 +238,7 @@ export default function CartPage() {
               <Button
                 variant="primary"
                 className="w-full py-3 lg:py-4 text-base lg:text-lg"
+                onClick={() => router.push('/checkout')}
               >
                 Đặt hàng ({totalQuantity} món)
               </Button>

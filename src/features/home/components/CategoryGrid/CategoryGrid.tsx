@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { clsx } from "clsx";
 import type { Category } from "@/types/category";
 
@@ -32,17 +31,8 @@ export function CategoryGrid({ categories, className }: CategoryGridProps) {
             )}
           >
             {/* Category Icon */}
-            <div className="w-8 h-8 lg:w-10 lg:h-10 mb-2 relative">
-              <Image
-                src={category.iconUrl}
-                alt={category.name}
-                width={40}
-                height={40}
-                className="object-contain w-full h-full"
-                sizes="(max-width: 1024px) 32px, 40px"
-                loading="lazy"
-                quality={90}
-              />
+            <div className="w-8 h-8 lg:w-10 lg:h-10 mb-2 flex items-center justify-center text-2xl lg:text-3xl">
+              {category.iconUrl}
             </div>
 
             {/* Category Label */}

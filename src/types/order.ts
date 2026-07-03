@@ -1,0 +1,43 @@
+import type { CartItem } from "./cart";
+import type { Product } from "./product";
+
+export type OrderStatus = "pending" | "confirmed" | "preparing" | "ready" | "processing" | "completed" | "delivered" | "cancelled";
+export type OrderType = "delivery" | "pickup" | "preorder";
+export type PaymentStatus = "unpaid" | "paid" | "refunded";
+
+export interface OrderStatusHistoryItem {
+  status: OrderStatus;
+  at: string;
+  note?: string;
+  actor?: string;
+}
+
+export interface Order {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  items: CartItem[];
+  totalAmount: number;
+  orderType: OrderType;
+  status: OrderStatus;
+  paymentStatus?: PaymentStatus;
+  deliveryAddress?: string;
+  pickupTime?: string;
+  notes?: string;
+  internalNotes?: string;
+  cancelReason?: string;
+  assignedTo?: string;
+  deliveryFee?: number;
+  discountAmount?: number;
+  statusHistory?: OrderStatusHistoryItem[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface InventoryProduct extends Product {
+  stock: number;
+  isAvailable: boolean;
+  category: string;
+}

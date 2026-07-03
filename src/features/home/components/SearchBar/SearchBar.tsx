@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
+import { Search } from "lucide-react";
 
 export interface SearchBarProps {
   placeholder?: string;
@@ -9,76 +10,33 @@ export interface SearchBarProps {
 }
 
 export const SearchBar = ({
-  placeholder = "Bạn muốn tìm bánh gì hôm nay?",
+  placeholder = "Bạn đang thèm gì nào??",
   className,
 }: SearchBarProps) => {
   const router = useRouter();
 
-  const handleSearchClick = () => {
-    router.push("/search");
-  };
-
   return (
     <div
       className={clsx(
-        // Base styling with minimum 48px height requirement
-        "min-h-[48px] h-12 w-full",
-        "flex items-center",
-        "bg-white rounded-lg border border-neutral-200",
-        "px-4 py-3",
-        "shadow-sm",
-        // Touch-optimized cursor and interaction
+        "h-11 w-full flex items-center bg-white rounded-xl px-3.5 py-2.5",
+        "shadow-md shadow-black/10 border border-transparent",
         "cursor-pointer touch-manipulation",
-        // Visual feedback on interaction
-        "hover:border-neutral-300 hover:shadow-md",
-        "active:scale-[0.98] active:shadow-sm",
-        "transition-all duration-150 ease-in-out",
+        "hover:border-neutral-200 active:scale-[0.98]",
+        "transition-all duration-150 ease-out",
         className,
       )}
-      onClick={handleSearchClick}
+      onClick={() => router.push("/search")}
       role="button"
       tabIndex={0}
-      aria-label={`Tìm kiếm bánh: ${placeholder}`}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          handleSearchClick();
-        }
-      }}
+      aria-label={`Tìm kiếm: ${placeholder}`}
     >
-      {/* Search Icon */}
-      <div className="flex-shrink-0 mr-3 text-neutral-400">
-        <svg
-          width="20"
-          height="20"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
-          <circle cx="11" cy="11" r="8"></circle>
-          <path d="M21 21l-4.35-4.35"></path>
-        </svg>
-      </div>
-
-      {/* Readonly Input Field */}
+      <Search className="w-5 h-5 text-neutral-600 mr-2.5 flex-shrink-0" />
       <input
         type="text"
-        className={clsx(
-          "flex-1 bg-transparent",
-          "text-neutral-700 placeholder:text-neutral-500",
-          "text-base leading-none",
-          "outline-none border-none",
-          // Prevent text selection and cursor
-          "pointer-events-none select-none",
-        )}
+        className="flex-1 bg-transparent text-sm font-medium text-neutral-800 placeholder:text-neutral-400 outline-none pointer-events-none select-none"
         placeholder={placeholder}
         readOnly
         tabIndex={-1}
-        aria-hidden="true"
       />
     </div>
   );

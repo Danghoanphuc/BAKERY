@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import clsx from "clsx";
+import { ArrowRight } from "lucide-react";
 
 export interface PromoBannerProps {
   title: string;
@@ -23,60 +24,40 @@ export const PromoBanner = ({
     <Link
       href={href}
       className={clsx(
-        // Base container styling with prominent visual design
-        "relative block w-full h-32 overflow-hidden rounded-xl",
-        "bg-gradient-to-r from-orange-400 to-red-500",
-        "shadow-lg hover:shadow-xl",
-        "transition-all duration-300 ease-in-out",
-        // Touch feedback with active state styling
-        "active:scale-[0.98] active:shadow-md",
-        "touch-manipulation",
+        "relative block w-full overflow-hidden rounded-2xl",
+        "bg-gradient-to-r from-[#008B3E] via-[#00A046] to-[#00B14F]",
+        "p-4 text-white shadow-sm hover:shadow-md active:scale-[0.98]",
+        "transition-all duration-200 ease-out touch-manipulation",
         className,
       )}
-      aria-label={`Xem chi tiết khuyến mãi: ${title}`}
+      aria-label={`Xem chi tiết ưu đãi: ${title}`}
     >
-      {/* Background Image */}
-      <div className="absolute inset-0 z-0">
+      <div className="relative z-10 max-w-[65%] flex flex-col justify-center min-h-[72px]">
+        <span className="inline-block self-start rounded bg-white/20 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white backdrop-blur-md mb-1.5">
+          Chào bạn mới
+        </span>
+        <h3 className="text-base font-bold leading-tight text-white drop-shadow-sm">
+          {title}
+        </h3>
+        <p className="mt-1 text-xs font-medium text-white/90 line-clamp-2 leading-snug">
+          {description}
+        </p>
+        <div className="mt-2.5 flex items-center gap-1 text-xs font-bold text-white">
+          <span>Dùng ngay</span>
+          <ArrowRight className="w-3.5 h-3.5" />
+        </div>
+      </div>
+
+      {/* Asset hình ảnh đẩy về sát góc phải */}
+      <div className="absolute right-0 bottom-0 top-0 w-[40%] max-w-[150px] pointer-events-none">
         <Image
           src={imageUrl}
           alt={title}
           fill
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          className="object-cover"
+          sizes="(max-width: 768px) 150px, 200px"
+          className="object-contain object-right-bottom p-2 transform hover:scale-105 transition-transform duration-300"
           priority
-          quality={90}
-          placeholder="blur"
-          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyJckliyjqTzSlT54b6bk+h0R//2Q=="
         />
-        {/* Gradient Overlay for text readability */}
-        <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-transparent" />
-      </div>
-
-      {/* Content */}
-      <div className="relative z-10 flex flex-col justify-center h-full p-4 text-white">
-        <h3 className="text-lg font-bold leading-tight mb-1 drop-shadow-sm">
-          {title}
-        </h3>
-        <p className="text-sm text-white/90 leading-snug line-clamp-2 drop-shadow-sm">
-          {description}
-        </p>
-
-        {/* Visual indicator for navigation */}
-        <div className="absolute top-3 right-3 opacity-75">
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <path d="M7 17L17 7M17 7H7M17 7V17" />
-          </svg>
-        </div>
       </div>
     </Link>
   );

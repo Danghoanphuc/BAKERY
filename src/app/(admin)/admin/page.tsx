@@ -1,43 +1,106 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { Package, ShoppingBag, TrendingUp, Users } from "lucide-react";
-
-const stats = [
-  {
-    id: "orders",
-    label: "Đơn hàng hôm nay",
-    value: "24",
-    change: "+12%",
-    changeType: "positive" as const,
-    icon: ShoppingBag,
-  },
-  {
-    id: "revenue",
-    label: "Doanh thu",
-    value: "15.2M",
-    change: "+8%",
-    changeType: "positive" as const,
-    icon: TrendingUp,
-  },
-  {
-    id: "products",
-    label: "Sản phẩm",
-    value: "48",
-    change: "+3",
-    changeType: "neutral" as const,
-    icon: Package,
-  },
-  {
-    id: "customers",
-    label: "Khách hàng",
-    value: "1,234",
-    change: "+15%",
-    changeType: "positive" as const,
-    icon: Users,
-  },
-];
+import { getAllOrders, getInventoryProducts } from "@/lib/firebase";
+import type { Order } from "@/types";
 
 export default function AdminDashboard() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [productCount, setProductCount] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadDashboardData() {
+      try {
+        const [databaseOrders, inventoryProducts] = await Promise.all([
+          getAllOrders(),
+          getInventoryProducts(),
+        ]);
+
+        if (!isMounted) return;
+
+        setOrders(databaseOrders);
+        setProductCount(inventoryProducts.length);
+      } catch (error) {
+        console.error("Failed to load admin dashboard data:", error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadDashboardData();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const formatCompactNumber = (value: number) =>
+    new Intl.NumberFormat("vi-VN", {
+      notation: "compact",
+      compactDisplay: "short",
+      maximumFractionDigits: 1,
+    }).format(value);
+
+  const stats = useMemo(() => {
+    const today = new Date().toDateString();
+    const ordersToday = orders.filter(
+      (order) => order.createdAt.toDateString() === today,
+    ).length;
+    const totalRevenue = orders.reduce(
+      (sum, order) => sum + order.totalAmount,
+      0,
+    );
+    const uniqueCustomers = new Set(
+      orders.map(
+        (order) =>
+          order.customerEmail?.trim().toLowerCase() ||
+          order.customerPhone ||
+          order.customerName,
+      ),
+    ).size;
+
+    return [
+      {
+        id: "orders",
+        label: "Đơn hàng hôm nay",
+        value: ordersToday.toString(),
+        change: `${orders.length} tổng đơn`,
+        changeType: "positive" as const,
+        icon: ShoppingBag,
+      },
+      {
+        id: "revenue",
+        label: "Doanh thu",
+        value: formatCompactNumber(totalRevenue),
+        change: "Từ dữ liệu đơn hàng",
+        changeType: "positive" as const,
+        icon: TrendingUp,
+      },
+      {
+        id: "products",
+        label: "Sản phẩm",
+        value: productCount.toString(),
+        change: "Đang đồng bộ Firebase",
+        changeType: "neutral" as const,
+        icon: Package,
+      },
+      {
+        id: "customers",
+        label: "Khách hàng",
+        value: uniqueCustomers.toString(),
+        change: "Tính theo đơn hiện có",
+        changeType: "positive" as const,
+        icon: Users,
+      },
+    ];
+  }, [orders, productCount]);
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -47,6 +110,12 @@ export default function AdminDashboard() {
           Xem nhanh tình hình kinh doanh hôm nay
         </p>
       </div>
+
+      {isLoading && (
+        <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm text-neutral-500">
+          Đang tải số liệu từ database...
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">

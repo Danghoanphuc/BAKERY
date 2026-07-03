@@ -1,9 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
+import { Header } from "@/components/layout/Header/Header";
+import FloatingBottomNav from "@/components/layout/BottomNav/FloatingBottomNav";
+
 export const metadata: Metadata = {
-  title: "Bakery - Đặt bánh online",
-  description: "Ứng dụng đặt bánh online với giao diện thân thiện trên mobile",
+  title: "App của bạn",
+  description: "Mô tả",
 };
 
 export const viewport: Viewport = {
@@ -11,17 +14,24 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#ef4444",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="vi">
-      <body className="min-h-screen antialiased">{children}</body>
+      {/* Cập nhật khoảng đệm đáy pb-28 để chừa chỗ cho thanh Nav lơ lửng */}
+      <body className="min-h-screen flex flex-col pb-28 md:pb-0 relative bg-gray-50 font-sans antialiased">
+        <Header />
+
+        <main className="flex-grow w-full">{children}</main>
+
+        {/* Gọi Component Glassmorphism Nav tại đây */}
+        <FloatingBottomNav />
+      </body>
     </html>
   );
 }

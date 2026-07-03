@@ -1,3 +1,12 @@
+/**
+ * ⚠️ FILE NÀY CHỨA MOCK DATA CŨ - CHỈ DÙNG CHO THAM KHẢO
+ *
+ * Dữ liệu thực đã được chuyển sang Firebase.
+ * Vui lòng sử dụng các functions trong src/lib/firebase/ để lấy dữ liệu.
+ *
+ * File này được giữ lại để tham khảo cấu trúc dữ liệu cho Admin panel.
+ */
+
 import type { CartItem, Product } from "@/types";
 
 export type OrderStatus = "pending" | "processing" | "completed" | "cancelled";

@@ -1,8 +1,8 @@
 "use client";
 
 import { useOrderConfigStore } from "@/store/orderConfigStore";
-import { DeliveryMode } from "@/types/orderConfig";
 import { clsx } from "clsx";
+import { Bike, Store } from "lucide-react";
 
 interface DeliveryModeToggleProps {
   className?: string;
@@ -12,58 +12,51 @@ export const DeliveryModeToggle = ({ className }: DeliveryModeToggleProps) => {
   const { config, setDeliveryMode } = useOrderConfigStore();
   const { deliveryMode } = config;
 
-  const handleOptionClick = (mode: DeliveryMode) => {
-    setDeliveryMode(mode);
-  };
-
   return (
     <div
       className={clsx(
-        "relative flex w-full rounded-lg bg-neutral-100 p-1",
-        "min-h-[48px]",
+        "relative flex w-full rounded-xl bg-neutral-100 p-1.5 min-h-[46px] border border-neutral-200/60 shadow-inner",
         className,
       )}
     >
-      {/* Sliding indicator */}
+      {/* Khối trắng trượt làm nền highlight */}
       <div
         className={clsx(
-          "absolute top-1 bottom-1 w-1/2 rounded-md bg-white shadow-sm transition-transform duration-200 ease-in-out",
+          "absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-lg bg-white shadow-sm transition-transform duration-250 ease-out",
           deliveryMode === "pickup" && "translate-x-full",
         )}
       />
 
-      {/* Delivery option */}
+      {/* Option 1: Giao hàng */}
       <button
         type="button"
-        onClick={() => handleOptionClick("delivery")}
+        onClick={() => setDeliveryMode("delivery")}
         className={clsx(
-          "relative z-10 flex-1 flex items-center justify-center rounded-md transition-colors duration-200",
-          "min-h-[40px] px-4 py-2 text-sm font-medium",
-          "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2",
+          "relative z-10 flex-1 flex items-center justify-center gap-2 rounded-lg text-xs transition-colors duration-200 select-none",
           deliveryMode === "delivery"
-            ? "text-primary-600 font-semibold"
-            : "text-neutral-600 hover:text-neutral-800",
+            ? "text-[#00B14F] font-bold"
+            : "text-neutral-500 font-medium hover:text-neutral-800",
         )}
         aria-pressed={deliveryMode === "delivery"}
       >
-        Giao tận nơi
+        <Bike className="w-4 h-4" />
+        <span>Giao tận nơi</span>
       </button>
 
-      {/* Pickup option */}
+      {/* Option 2: Đến lấy */}
       <button
         type="button"
-        onClick={() => handleOptionClick("pickup")}
+        onClick={() => setDeliveryMode("pickup")}
         className={clsx(
-          "relative z-10 flex-1 flex items-center justify-center rounded-md transition-colors duration-200",
-          "min-h-[40px] px-4 py-2 text-sm font-medium",
-          "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2",
+          "relative z-10 flex-1 flex items-center justify-center gap-2 rounded-lg text-xs transition-colors duration-200 select-none",
           deliveryMode === "pickup"
-            ? "text-primary-600 font-semibold"
-            : "text-neutral-600 hover:text-neutral-800",
+            ? "text-[#00B14F] font-bold"
+            : "text-neutral-500 font-medium hover:text-neutral-800",
         )}
         aria-pressed={deliveryMode === "pickup"}
       >
-        Đến cửa hàng lấy
+        <Store className="w-4 h-4" />
+        <span>Đến cửa hàng lấy</span>
       </button>
     </div>
   );

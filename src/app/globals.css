@@ -1,29 +1,39 @@
 @import "tailwindcss";
 
 @theme {
-  /* Custom color palette for bakery brand */
-  --color-primary-50: #fef2f2;
-  --color-primary-100: #fee2e2;
-  --color-primary-200: #fecaca;
-  --color-primary-300: #fca5a5;
-  --color-primary-400: #f87171;
-  --color-primary-500: #ef4444;
-  --color-primary-600: #dc2626;
-  --color-primary-700: #b91c1c;
-  --color-primary-800: #991b1b;
-  --color-primary-900: #7f1d1d;
+  /* Bakery Brand Color Palette */
+  /* Backgrounds (Kem) */
+  --color-bg-main: #fffdf9;
+  --color-bg-soft: #fff2e2;
+  --color-bg-card: #fdf5eb;
+  --color-bg-surface: #f9eedf;
 
-  --color-accent-50: #fff7ed;
-  --color-accent-100: #ffedd5;
-  --color-accent-200: #fed7aa;
-  --color-accent-300: #fdba74;
-  --color-accent-400: #fb923c;
-  --color-accent-500: #f59e0b;
-  --color-accent-600: #ea580c;
-  --color-accent-700: #c2410c;
-  --color-accent-800: #9a3412;
-  --color-accent-900: #7c2d12;
+  /* Typography (Nâu) */
+  --color-text-primary: #542914;
+  --color-text-secondary: #5b2b14;
+  --color-text-muted: #8a6855;
+  --color-text-light: #a88a7c;
 
+  /* Brand Colors (Cam Đất/Đỏ Gạch) */
+  --color-brand-50: #fff1f0;
+  --color-brand-100: #ffdcd9;
+  --color-brand-200: #ffb9b3;
+  --color-brand-300: #ff8f85;
+  --color-brand-400: #e86a5c;
+  --color-brand-500: #c35847;
+  --color-brand-600: #b84a39;
+  --color-brand-700: #9e3e2f;
+  --color-brand-800: #7f3227;
+  --color-brand-900: #5a221b;
+
+  /* Accents */
+  --color-accent-star: #e8a22b;
+  --color-accent-healthy: #5c7a29;
+  --color-accent-healthy-light: #789645;
+  --color-accent-pink: #d66565;
+  --color-accent-gold: #f3cf99;
+
+  /* Neutral (from original, kept for compatibility) */
   --color-neutral-50: #fafafa;
   --color-neutral-100: #f5f5f5;
   --color-neutral-200: #e5e5e5;
@@ -48,7 +58,7 @@
   }
 
   body {
-    @apply bg-neutral-50 text-neutral-900 antialiased;
+    @apply bg-bg-main text-text-primary antialiased;
   }
 }
 

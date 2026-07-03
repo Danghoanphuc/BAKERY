@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, ShoppingBag, Package, Megaphone } from "lucide-react";
+import { Home, ShoppingBag, Package, Megaphone, Users, Layers } from "lucide-react";
 import { clsx } from "clsx";
 
 const menuItems = [
@@ -17,6 +17,18 @@ const menuItems = [
     label: "Đơn hàng",
     icon: ShoppingBag,
     href: "/admin/orders",
+  },
+  {
+    id: "customers",
+    label: "Khách hàng",
+    icon: Users,
+    href: "/admin/customers",
+  },
+  {
+    id: "categories",
+    label: "Danh mục",
+    icon: Layers,
+    href: "/admin/categories",
   },
   {
     id: "inventory",

@@ -2,7 +2,7 @@
 
 import { Modal } from "@/components/common";
 import { StatusBadge } from "../StatusBadge";
-import type { Order } from "@/lib/mock-admin-data";
+import type { Order } from "@/types";
 import {
   Package,
   Phone,

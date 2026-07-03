@@ -14,12 +14,20 @@ export interface Product {
   name: string;
   price: number; // Base price in VND
   imageUrl: string;
-  categoryId: string;
+  categoryId?: string;
   description?: string;
   availableForDelivery?: boolean;
   availableForPickup?: boolean;
+  stock?: number; // Tồn kho cho admin/inventory
+  isAvailable?: boolean; // Trạng thái đang bán
   // Customization options
   sizeOptions?: SizeOption[];
   flavorOptions?: FlavorOption[];
   requiresMessage?: boolean; // Allow custom message on cake
+  // Feature flags
+  isFeatured?: boolean; // Hiển thị ở trang chủ
+  isNew?: boolean; // Sản phẩm mới
+  isBestseller?: boolean; // Bán chạy
+  createdAt?: Date; // Ngày tạo
+  updatedAt?: Date; // Ngày cập nhật
 }

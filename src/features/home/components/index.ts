@@ -14,3 +14,5 @@ export type { ProductCollectionProps } from "./ProductCollection";
 
 export { ProductCard } from "./ProductCollection";
 export type { ProductCardProps } from "./ProductCollection";
+
+export { BakeryHome } from "./BakeryHome";

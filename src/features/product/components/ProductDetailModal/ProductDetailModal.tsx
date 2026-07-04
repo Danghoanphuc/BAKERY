@@ -1,9 +1,12 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import Image from "next/image";
+import React, { useEffect, useMemo, useState } from "react";
+import { Minus, Plus, ShoppingCart } from "lucide-react";
+import { clsx } from "clsx";
+
 import { Modal } from "@/components/common";
-import { Button } from "@/components/common";
+import { ProductImage } from "@/components/common/ProductImage/ProductImage";
+import { useOrderConfigStore } from "@/store/orderConfigStore";
 import type { Product } from "@/types";
 
 interface ProductDetailModalProps {
@@ -25,7 +28,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onClose,
   onAddToCart,
 }) => {
-  // Local state for customization
+  const { config } = useOrderConfigStore();
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string | undefined>(
     product.sizeOptions?.[0]?.id,
@@ -35,22 +38,46 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   );
   const [customMessage, setCustomMessage] = useState("");
   const [candles, setCandles] = useState<number>(0);
+  const galleryImages = useMemo(
+    () =>
+      Array.from(
+        new Set([product.imageUrl, ...(product.galleryImages ?? [])].filter(Boolean)),
+      ),
+    [product.galleryImages, product.imageUrl],
+  );
+  const [selectedImage, setSelectedImage] = useState(galleryImages[0] ?? "");
 
-  // Calculate final price based on selected size
+  useEffect(() => {
+    setQuantity(1);
+    setSelectedSize(product.sizeOptions?.[0]?.id);
+    setSelectedFlavor(product.flavorOptions?.[0]?.id);
+    setCustomMessage("");
+    setCandles(0);
+    setSelectedImage(galleryImages[0] ?? "");
+  }, [galleryImages, product.id, product.sizeOptions, product.flavorOptions]);
+
   const finalPrice = useMemo(() => {
     let price = product.price;
     if (selectedSize && product.sizeOptions) {
       const sizeOption = product.sizeOptions.find((s) => s.id === selectedSize);
-      if (sizeOption) {
-        price += sizeOption.priceAdjustment;
-      }
+      price += sizeOption?.priceAdjustment ?? 0;
     }
     return price;
   }, [product.price, product.sizeOptions, selectedSize]);
 
   const totalPrice = finalPrice * quantity;
+  const isPickup = config.deliveryMode === "pickup";
+  const isUnavailableForMode = isPickup
+    ? product.availableForPickup === false
+    : product.availableForDelivery === false;
+  const modeLabel = isPickup ? "nhận tại quán" : "giao tận nơi";
+  const unavailableMessage = isPickup
+    ? "Món này hiện chỉ hỗ trợ giao tận nơi."
+    : "Món này hiện chỉ hỗ trợ nhận tại quán.";
 
   const handleAddToCart = () => {
+    if (isUnavailableForMode) return;
+
     onAddToCart({
       quantity,
       selectedSize,
@@ -58,199 +85,238 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
       customMessage: customMessage.trim() || undefined,
       candles: candles || undefined,
     });
-    // Reset state after adding
-    setQuantity(1);
-    setCustomMessage("");
-    setCandles(0);
   };
 
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("vi-VN", {
+  const formatCurrency = (price: number) =>
+    new Intl.NumberFormat("vi-VN", {
       style: "currency",
       currency: "VND",
     }).format(price);
-  };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="">
-      <div className="flex flex-col lg:flex-row lg:gap-6 h-full">
-        {/* Product Image - Left side on desktop */}
-        <div className="lg:w-1/2 flex-shrink-0">
-          <div className="relative w-full aspect-square bg-neutral-100 rounded-lg overflow-hidden mb-4 lg:mb-0 lg:sticky lg:top-0">
-            <Image
-              src={product.imageUrl}
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title=""
+      className="max-h-[88vh] overflow-hidden lg:max-w-3xl"
+    >
+      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[280px_1fr] lg:gap-5">
+        <div className="shrink-0 lg:sticky lg:top-0">
+          <div className="relative h-[180px] w-full overflow-hidden rounded-[18px] bg-[#fdf7f0] sm:h-[220px] lg:h-[280px]">
+            <ProductImage
+              src={selectedImage || product.imageUrl}
               alt={product.name}
-              fill
               className="object-cover"
-              sizes="(max-width: 768px) 100vw, 50vw"
             />
           </div>
+
+          {galleryImages.length > 1 && (
+            <div className="mt-2 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {galleryImages.map((imageUrl, index) => (
+                <button
+                  key={imageUrl}
+                  type="button"
+                  onClick={() => setSelectedImage(imageUrl)}
+                  className={clsx(
+                    "relative h-14 w-14 shrink-0 overflow-hidden rounded-xl border bg-[#fdf7f0] transition",
+                    selectedImage === imageUrl
+                      ? "border-[#d85d6c] ring-2 ring-[#d85d6c]/20"
+                      : "border-[#eadbcc]",
+                  )}
+                  aria-label={`Xem ảnh ${index + 1}`}
+                >
+                  <ProductImage
+                    src={imageUrl}
+                    alt={`${product.name} ${index + 1}`}
+                    className="object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Product Info & Customization - Right side on desktop */}
-        <div className="lg:w-1/2 flex flex-col">
-          {/* Product Info */}
+        <div className="min-w-0">
           <div className="mb-4">
-            <h2 className="text-xl lg:text-2xl font-bold text-neutral-900 mb-2">
+            <h2 className="text-[21px] font-extrabold leading-tight text-[#3d2417] lg:text-2xl">
               {product.name}
             </h2>
             {product.description && (
-              <p className="text-sm lg:text-base text-neutral-600 mb-3">
+              <p className="mt-2 text-sm leading-relaxed text-[#7b6254]">
                 {product.description}
               </p>
             )}
-            <p className="text-lg lg:text-xl font-semibold text-primary-600">
-              {formatPrice(finalPrice)}
+            <p className="mt-3 text-xl font-black text-[#d85d6c]">
+              {formatCurrency(finalPrice)}
             </p>
-          </div>
-
-          {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto space-y-6 mb-4 lg:pr-2">
-            {/* Size Options */}
-            {product.sizeOptions && product.sizeOptions.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-neutral-900 mb-2">
-                  Chọn kích thước
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {product.sizeOptions.map((size) => (
-                    <button
-                      key={size.id}
-                      type="button"
-                      onClick={() => setSelectedSize(size.id)}
-                      className={`
-                        px-4 py-2 rounded-full text-sm font-medium transition-colors
-                        ${
-                          selectedSize === size.id
-                            ? "bg-primary-600 text-white"
-                            : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
-                        }
-                      `}
-                    >
-                      {size.label}
-                      {size.priceAdjustment > 0 &&
-                        ` (+${formatPrice(size.priceAdjustment)})`}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Flavor Options */}
-            {product.flavorOptions && product.flavorOptions.length > 0 && (
-              <div>
-                <label className="block text-sm font-medium text-neutral-900 mb-2">
-                  Chọn hương vị / Cốt bánh
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {product.flavorOptions.map((flavor) => (
-                    <button
-                      key={flavor.id}
-                      type="button"
-                      onClick={() => setSelectedFlavor(flavor.id)}
-                      className={`
-                        px-4 py-2 rounded-full text-sm font-medium transition-colors
-                        ${
-                          selectedFlavor === flavor.id
-                            ? "bg-primary-600 text-white"
-                            : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"
-                        }
-                      `}
-                    >
-                      {flavor.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Custom Message */}
-            {product.requiresMessage && (
-              <div>
-                <label
-                  htmlFor="customMessage"
-                  className="block text-sm font-medium text-neutral-900 mb-2"
-                >
-                  Lời chúc ghi trên mặt bánh
-                </label>
-                <textarea
-                  id="customMessage"
-                  value={customMessage}
-                  onChange={(e) => setCustomMessage(e.target.value)}
-                  placeholder="Ví dụ: Chúc mừng sinh nhật"
-                  rows={3}
-                  maxLength={100}
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-                />
-                <p className="text-xs text-neutral-500 mt-1">
-                  {customMessage.length}/100 ký tự
-                </p>
-              </div>
-            )}
-
-            {/* Candles */}
-            {product.requiresMessage && (
-              <div>
-                <label
-                  htmlFor="candles"
-                  className="block text-sm font-medium text-neutral-900 mb-2"
-                >
-                  Tuổi / Số lượng nến
-                </label>
-                <input
-                  id="candles"
-                  type="number"
-                  min="0"
-                  max="99"
-                  value={candles || ""}
-                  onChange={(e) => setCandles(parseInt(e.target.value) || 0)}
-                  placeholder="0"
-                  className="w-full px-3 py-2 border border-neutral-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Sticky Bottom Bar */}
-          <div className="border-t border-neutral-200 pt-4 bg-white lg:mt-auto">
-            {/* Quantity Selector */}
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-sm font-medium text-neutral-900">
-                Số lượng
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span
+                className={clsx(
+                  "rounded-full px-2.5 py-1 text-[11px] font-black",
+                  isUnavailableForMode
+                    ? "bg-[#fff1f0] text-[#c94f60]"
+                    : "bg-[#eff8ea] text-[#34802f]",
+                )}
+              >
+                {isUnavailableForMode
+                  ? unavailableMessage
+                  : isPickup
+                    ? "Có thể nhận tại quán"
+                    : "Có thể giao tận nơi"}
               </span>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  disabled={quantity <= 1}
-                  className="w-8 h-8 flex items-center justify-center rounded-full border border-neutral-300 text-neutral-700 hover:bg-neutral-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  -
-                </button>
-                <span className="text-base font-semibold text-neutral-900 min-w-[2rem] text-center">
-                  {quantity}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setQuantity(quantity + 1)}
-                  className="w-8 h-8 flex items-center justify-center rounded-full border border-neutral-300 text-neutral-700 hover:bg-neutral-100 transition-colors"
-                >
-                  +
-                </button>
-              </div>
             </div>
+          </div>
 
-            {/* Add to Cart Button */}
-            <Button
-              onClick={handleAddToCart}
-              variant="primary"
-              className="w-full font-semibold py-3"
-            >
-              Thêm vào giỏ - {formatPrice(totalPrice)}
-            </Button>
+          <div className="space-y-5 pb-3">
+            {product.sizeOptions && product.sizeOptions.length > 0 && (
+              <OptionGroup title="Chọn kích thước">
+                {product.sizeOptions.map((size) => (
+                  <button
+                    key={size.id}
+                    type="button"
+                    onClick={() => setSelectedSize(size.id)}
+                    className={optionClass(selectedSize === size.id)}
+                  >
+                    {size.label}
+                    {size.priceAdjustment > 0 &&
+                      ` +${formatCurrency(size.priceAdjustment)}`}
+                  </button>
+                ))}
+              </OptionGroup>
+            )}
+
+            {product.flavorOptions && product.flavorOptions.length > 0 && (
+              <OptionGroup title="Chọn hương vị / cốt bánh">
+                {product.flavorOptions.map((flavor) => (
+                  <button
+                    key={flavor.id}
+                    type="button"
+                    onClick={() => setSelectedFlavor(flavor.id)}
+                    className={optionClass(selectedFlavor === flavor.id)}
+                  >
+                    {flavor.label}
+                  </button>
+                ))}
+              </OptionGroup>
+            )}
+
+            {product.requiresMessage && (
+              <>
+                <div>
+                  <label
+                    htmlFor="customMessage"
+                    className="mb-2 block text-sm font-bold text-[#3d2417]"
+                  >
+                    Lời chúc ghi trên mặt bánh
+                  </label>
+                  <textarea
+                    id="customMessage"
+                    value={customMessage}
+                    onChange={(event) => setCustomMessage(event.target.value)}
+                    placeholder="Ví dụ: Chúc mừng sinh nhật"
+                    rows={3}
+                    maxLength={100}
+                    className="w-full resize-none rounded-[14px] border border-[#eadbcc] bg-white px-3 py-2 text-sm text-[#3d2417] outline-none transition focus:border-[#d85d6c] focus:ring-2 focus:ring-[#d85d6c]/15"
+                  />
+                  <p className="mt-1 text-xs text-[#9b8171]">
+                    {customMessage.length}/100 ký tự
+                  </p>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="candles"
+                    className="mb-2 block text-sm font-bold text-[#3d2417]"
+                  >
+                    Tuổi / số lượng nến
+                  </label>
+                  <input
+                    id="candles"
+                    type="number"
+                    min="0"
+                    max="99"
+                    value={candles || ""}
+                    onChange={(event) =>
+                      setCandles(parseInt(event.target.value, 10) || 0)
+                    }
+                    placeholder="0"
+                    className="h-11 w-full rounded-[14px] border border-[#eadbcc] bg-white px-3 text-sm text-[#3d2417] outline-none transition focus:border-[#d85d6c] focus:ring-2 focus:ring-[#d85d6c]/15"
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
+      </div>
+
+      <div className="sticky bottom-0 -mx-4 mt-2 border-t border-[#f0e1d2] bg-white px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_22px_rgba(61,36,23,0.06)] lg:-mx-6 lg:px-6">
+        <div className="mb-3 flex items-center justify-between">
+          <span className="text-sm font-bold text-[#3d2417]">Số lượng</span>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setQuantity(Math.max(1, quantity - 1))}
+              disabled={quantity <= 1}
+              className="grid h-9 w-9 place-items-center rounded-full border border-[#eadbcc] text-[#65483a] transition hover:bg-[#fff7f2] disabled:cursor-not-allowed disabled:opacity-40"
+              aria-label="Giảm số lượng"
+            >
+              <Minus className="h-4 w-4" />
+            </button>
+            <span className="min-w-8 text-center text-base font-black text-[#3d2417]">
+              {quantity}
+            </span>
+            <button
+              type="button"
+              onClick={() => setQuantity(quantity + 1)}
+              className="grid h-9 w-9 place-items-center rounded-full border border-[#eadbcc] text-[#65483a] transition hover:bg-[#fff7f2]"
+              aria-label="Tăng số lượng"
+            >
+              <Plus className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleAddToCart}
+          disabled={isUnavailableForMode}
+          className={clsx(
+            "flex h-12 w-full items-center justify-center gap-2 rounded-full px-4 text-sm font-black text-white shadow-[0_10px_22px_rgba(216,93,108,0.25)] transition active:scale-[0.98]",
+            isUnavailableForMode
+              ? "cursor-not-allowed bg-[#d8c8bd] shadow-none"
+              : "bg-[#d85d6c] hover:bg-[#c94f60]",
+          )}
+        >
+          <ShoppingCart className="h-4 w-4" />
+          {isUnavailableForMode
+            ? `Không hỗ trợ ${modeLabel}`
+            : `Thêm vào giỏ - ${formatCurrency(totalPrice)}`}
+        </button>
       </div>
     </Modal>
   );
 };
+
+function OptionGroup({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-sm font-bold text-[#3d2417]">{title}</p>
+      <div className="flex flex-wrap gap-2">{children}</div>
+    </div>
+  );
+}
+
+function optionClass(active: boolean) {
+  return clsx(
+    "rounded-full border px-4 py-2 text-sm font-bold transition",
+    active
+      ? "border-[#d85d6c] bg-[#d85d6c] text-white shadow-sm"
+      : "border-[#eadbcc] bg-[#fffaf6] text-[#65483a] hover:border-[#d85d6c]/50",
+  );
+}

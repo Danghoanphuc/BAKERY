@@ -87,6 +87,44 @@ export function normalizeProduct(id: string, data: FirestoreDocument): Product {
       typeof data.requiresMessage === "boolean"
         ? data.requiresMessage
         : undefined,
+    tags: Array.isArray(data.tags) ? (data.tags as string[]) : undefined,
+    occasionTags: Array.isArray(data.occasionTags)
+      ? (data.occasionTags as string[])
+      : undefined,
+    dietaryTags: Array.isArray(data.dietaryTags)
+      ? (data.dietaryTags as string[])
+      : undefined,
+    allergens: Array.isArray(data.allergens)
+      ? (data.allergens as string[])
+      : undefined,
+    searchKeywords: Array.isArray(data.searchKeywords)
+      ? (data.searchKeywords as string[])
+      : undefined,
+    galleryImages: Array.isArray(data.galleryImages)
+      ? (data.galleryImages as string[])
+      : undefined,
+    pickupBranchIds: Array.isArray(data.pickupBranchIds)
+      ? (data.pickupBranchIds as string[])
+      : undefined,
+    branchStock: Array.isArray(data.branchStock)
+      ? (data.branchStock as Product["branchStock"])
+      : undefined,
+    preparationTimeMinutes:
+      typeof data.preparationTimeMinutes === "number"
+        ? data.preparationTimeMinutes
+        : undefined,
+    requiresPreorder:
+      typeof data.requiresPreorder === "boolean"
+        ? data.requiresPreorder
+        : undefined,
+    preorderMinHours:
+      typeof data.preorderMinHours === "number"
+        ? data.preorderMinHours
+        : undefined,
+    availableToday:
+      typeof data.availableToday === "boolean" ? data.availableToday : undefined,
+    sortPriority:
+      typeof data.sortPriority === "number" ? data.sortPriority : undefined,
     isFeatured:
       typeof data.isFeatured === "boolean" ? data.isFeatured : undefined,
     isNew: typeof data.isNew === "boolean" ? data.isNew : undefined,

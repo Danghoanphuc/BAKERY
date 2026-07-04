@@ -15,6 +15,14 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "**.bing.net", // Images copied from Bing image results
+      },
+      {
+        protocol: "https",
+        hostname: "**.mm.bing.net", // Bing thumbnail CDN variants
+      },
+      {
+        protocol: "https",
         hostname: "cdn.shopify.com", // E-commerce image CDN
       },
       {

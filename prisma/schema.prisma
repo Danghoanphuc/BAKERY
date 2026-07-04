@@ -47,6 +47,19 @@ model Product {
   isAvailable          Boolean         @default(true)
   sizeOptions          String?         // JSON string: [{id, label, priceAdjustment}]
   flavorOptions        String?         // JSON string: [{id, label}]
+  tags                 String?         // JSON string: search/marketing tags
+  occasionTags         String?         // JSON string: birthday, wedding, corporate...
+  dietaryTags          String?         // JSON string: keto, vegan, low-sugar...
+  allergens            String?         // JSON string: milk, egg, gluten, nuts...
+  searchKeywords       String?         // JSON string: synonyms and local terms
+  galleryImages        String?         // JSON string: extra image URLs
+  pickupBranchIds      String?         // JSON string: branch IDs that can fulfill pickup
+  branchStock          String?         // JSON string: [{branchId, stock}]
+  preparationTimeMinutes Int           @default(0)
+  requiresPreorder     Boolean         @default(false)
+  preorderMinHours     Int             @default(0)
+  availableToday       Boolean         @default(true)
+  sortPriority         Int             @default(0)
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
 
@@ -55,6 +68,8 @@ model Product {
   @@index([isNew])
   @@index([isBestseller])
   @@index([isAvailable])
+  @@index([availableToday])
+  @@index([sortPriority])
   @@map("products")
 }
 

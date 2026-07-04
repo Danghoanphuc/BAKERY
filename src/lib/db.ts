@@ -6,18 +6,39 @@ import type {
   OrderStatus,
   SizeOption,
   FlavorOption,
+  BranchStock,
 } from "@/types";
 
 // Helper to parse JSON fields
+function parseJsonArray<T>(value: string | null | undefined): T[] | undefined {
+  if (!value) return undefined;
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? (parsed as T[]) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function stringifyJsonArray<T>(value: T[] | undefined | null) {
+  if (value === undefined) return undefined;
+  if (!value || value.length === 0) return null;
+  return JSON.stringify(value);
+}
+
 function parseProduct(product: any): Product {
   return {
     ...product,
-    sizeOptions: product.sizeOptions
-      ? (JSON.parse(product.sizeOptions) as SizeOption[])
-      : undefined,
-    flavorOptions: product.flavorOptions
-      ? (JSON.parse(product.flavorOptions) as FlavorOption[])
-      : undefined,
+    sizeOptions: parseJsonArray<SizeOption>(product.sizeOptions),
+    flavorOptions: parseJsonArray<FlavorOption>(product.flavorOptions),
+    tags: parseJsonArray<string>(product.tags),
+    occasionTags: parseJsonArray<string>(product.occasionTags),
+    dietaryTags: parseJsonArray<string>(product.dietaryTags),
+    allergens: parseJsonArray<string>(product.allergens),
+    searchKeywords: parseJsonArray<string>(product.searchKeywords),
+    galleryImages: parseJsonArray<string>(product.galleryImages),
+    pickupBranchIds: parseJsonArray<string>(product.pickupBranchIds),
+    branchStock: parseJsonArray<BranchStock>(product.branchStock),
   };
 }
 
@@ -256,14 +277,33 @@ export async function createProduct(data: {
   isAvailable?: boolean;
   sizeOptions?: SizeOption[];
   flavorOptions?: FlavorOption[];
+  tags?: string[];
+  occasionTags?: string[];
+  dietaryTags?: string[];
+  allergens?: string[];
+  searchKeywords?: string[];
+  galleryImages?: string[];
+  pickupBranchIds?: string[];
+  branchStock?: BranchStock[];
+  preparationTimeMinutes?: number;
+  requiresPreorder?: boolean;
+  preorderMinHours?: number;
+  availableToday?: boolean;
+  sortPriority?: number;
 }): Promise<Product> {
   const product = await prisma.product.create({
     data: {
       ...data,
-      sizeOptions: data.sizeOptions ? JSON.stringify(data.sizeOptions) : null,
-      flavorOptions: data.flavorOptions
-        ? JSON.stringify(data.flavorOptions)
-        : null,
+      sizeOptions: stringifyJsonArray(data.sizeOptions),
+      flavorOptions: stringifyJsonArray(data.flavorOptions),
+      tags: stringifyJsonArray(data.tags),
+      occasionTags: stringifyJsonArray(data.occasionTags),
+      dietaryTags: stringifyJsonArray(data.dietaryTags),
+      allergens: stringifyJsonArray(data.allergens),
+      searchKeywords: stringifyJsonArray(data.searchKeywords),
+      galleryImages: stringifyJsonArray(data.galleryImages),
+      pickupBranchIds: stringifyJsonArray(data.pickupBranchIds),
+      branchStock: stringifyJsonArray(data.branchStock),
     },
     include: { category: true },
   });
@@ -288,24 +328,35 @@ export async function updateProduct(
     isAvailable?: boolean;
     sizeOptions?: SizeOption[];
     flavorOptions?: FlavorOption[];
+    tags?: string[];
+    occasionTags?: string[];
+    dietaryTags?: string[];
+    allergens?: string[];
+    searchKeywords?: string[];
+    galleryImages?: string[];
+    pickupBranchIds?: string[];
+    branchStock?: BranchStock[];
+    preparationTimeMinutes?: number;
+    requiresPreorder?: boolean;
+    preorderMinHours?: number;
+    availableToday?: boolean;
+    sortPriority?: number;
   }>,
 ): Promise<Product> {
   const product = await prisma.product.update({
     where: { id },
     data: {
       ...data,
-      sizeOptions:
-        data.sizeOptions !== undefined
-          ? data.sizeOptions
-            ? JSON.stringify(data.sizeOptions)
-            : null
-          : undefined,
-      flavorOptions:
-        data.flavorOptions !== undefined
-          ? data.flavorOptions
-            ? JSON.stringify(data.flavorOptions)
-            : null
-          : undefined,
+      sizeOptions: stringifyJsonArray(data.sizeOptions),
+      flavorOptions: stringifyJsonArray(data.flavorOptions),
+      tags: stringifyJsonArray(data.tags),
+      occasionTags: stringifyJsonArray(data.occasionTags),
+      dietaryTags: stringifyJsonArray(data.dietaryTags),
+      allergens: stringifyJsonArray(data.allergens),
+      searchKeywords: stringifyJsonArray(data.searchKeywords),
+      galleryImages: stringifyJsonArray(data.galleryImages),
+      pickupBranchIds: stringifyJsonArray(data.pickupBranchIds),
+      branchStock: stringifyJsonArray(data.branchStock),
     },
     include: { category: true },
   });

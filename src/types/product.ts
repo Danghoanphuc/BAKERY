@@ -9,6 +9,11 @@ export interface FlavorOption {
   label: string; // e.g., "Chocolate", "Vanilla", "Strawberry"
 }
 
+export interface BranchStock {
+  branchId: string;
+  stock: number;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -24,6 +29,20 @@ export interface Product {
   sizeOptions?: SizeOption[];
   flavorOptions?: FlavorOption[];
   requiresMessage?: boolean; // Allow custom message on cake
+  // Search and merchandising metadata
+  tags?: string[];
+  occasionTags?: string[];
+  dietaryTags?: string[];
+  allergens?: string[];
+  searchKeywords?: string[];
+  galleryImages?: string[];
+  pickupBranchIds?: string[];
+  branchStock?: BranchStock[];
+  preparationTimeMinutes?: number;
+  requiresPreorder?: boolean;
+  preorderMinHours?: number;
+  availableToday?: boolean;
+  sortPriority?: number;
   // Feature flags
   isFeatured?: boolean; // Hiển thị ở trang chủ
   isNew?: boolean; // Sản phẩm mới

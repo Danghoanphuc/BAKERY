@@ -112,7 +112,7 @@ export const Modal: React.FC<ModalProps> = ({
   // Portal rendering for proper z-index
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end lg:items-center justify-center lg:p-4"
+      className="fixed inset-0 z-[120] flex items-end lg:items-center justify-center lg:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"

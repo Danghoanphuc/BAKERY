@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { ArrowLeft, Clock3, MapPin, ShoppingBag } from "lucide-react";
+
 import { useCartStore } from "@/store/cartStore";
 import { useOrderConfigStore } from "@/store/orderConfigStore";
 import { formatPrice } from "@/lib/utils";
-import { Button } from "@/components/common";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -21,7 +22,16 @@ export default function CheckoutPage() {
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
 
-  // Wait for client-side hydration
+  const isPickup = config.deliveryMode === "pickup";
+  const deliveryFee = isPickup || totalPrice >= 149000 ? 0 : 20000;
+  const finalTotal = totalPrice + deliveryFee;
+
+  const destinationLabel = useMemo(() => {
+    if (isPickup) return "Nhận tại cửa hàng chính";
+    if (!config.deliveryAddress) return "Chưa chọn địa chỉ giao hàng";
+    return `${config.deliveryAddress.street}, ${config.deliveryAddress.district}, ${config.deliveryAddress.city}`;
+  }, [config.deliveryAddress, isPickup]);
+
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -30,29 +40,28 @@ export default function CheckoutPage() {
     if (isClient && items.length === 0) {
       router.push("/cart");
     }
-  }, [isClient, items, router]);
+  }, [isClient, items.length, router]);
 
   if (!isClient) {
     return (
-      <main className="min-h-screen bg-neutral-50 flex items-center justify-center">
-        <p className="text-neutral-600">Đang tải...</p>
+      <main className="flex min-h-screen items-center justify-center bg-bg-main">
+        <p className="text-sm font-bold text-text-muted">Đang tải...</p>
       </main>
     );
   }
 
-  if (items.length === 0) {
-    return null;
-  }
+  if (items.length === 0) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setIsSubmitting(true);
     setError(null);
 
     try {
-      const deliveryAddressString = config.deliveryAddress
-        ? `${config.deliveryAddress.street}, ${config.deliveryAddress.district}, ${config.deliveryAddress.city}`
-        : undefined;
+      const deliveryAddressString =
+        !isPickup && config.deliveryAddress
+          ? `${config.deliveryAddress.street}, ${config.deliveryAddress.district}, ${config.deliveryAddress.city}`
+          : undefined;
 
       const pickupTimeDate =
         config.orderTiming.type === "scheduled" &&
@@ -63,27 +72,28 @@ export default function CheckoutPage() {
             )
           : undefined;
 
-      const res = await fetch("/api/orders", {
+      const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customerName: formData.name,
           customerPhone: formData.phone,
           customerEmail: formData.email || undefined,
-          totalAmount: totalPrice,
+          totalAmount: finalTotal,
           orderType: config.deliveryMode,
           deliveryAddress: deliveryAddressString,
           pickupTime: pickupTimeDate,
+          deliveryFee,
           notes: formData.notes || undefined,
-          items: items,
+          items,
         }),
       });
 
-      if (!res.ok) {
+      if (!response.ok) {
         throw new Error("Failed to create order");
       }
 
-      const order = await res.json();
+      const order = await response.json();
       clearCart();
       router.push(`/order-success?orderNumber=${order.orderNumber}`);
     } catch (err) {
@@ -95,162 +105,200 @@ export default function CheckoutPage() {
   };
 
   return (
-    <main className="min-h-screen bg-neutral-50">
-      <header className="bg-white border-b border-neutral-200 p-4 lg:py-6 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+    <main className="min-h-screen bg-bg-main text-text-primary">
+      <div className="mx-auto min-h-screen w-full max-w-[480px] px-4 pb-32 pt-5">
+        <header className="mb-5 flex items-center justify-between">
           <button
+            type="button"
             onClick={() => router.back()}
-            className="flex items-center text-neutral-600 hover:text-neutral-900"
+            className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#3d2417] shadow-sm"
+            aria-label="Quay lại"
           >
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            <span className="ml-2">Quay lại</span>
+            <ArrowLeft className="h-5 w-5" />
           </button>
-          <h1 className="text-lg lg:text-xl font-semibold">Thanh toán</h1>
-          <div></div>
-        </div>
-      </header>
+          <div className="text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#d85d6c]">
+              {isPickup ? "Tự đến lấy" : "Giao tận nơi"}
+            </p>
+            <h1 className="text-xl font-black text-[#3d2417]">Thanh toán</h1>
+          </div>
+          <div className="h-10 w-10" />
+        </header>
 
-      <div className="max-w-7xl mx-auto lg:grid lg:grid-cols-3 lg:gap-8 lg:p-6">
-        <div className="lg:col-span-2 p-4 lg:p-0 space-y-4">
-          {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-              {error}
+        {error && (
+          <div className="mb-4 rounded-[16px] border border-red-200 bg-red-50 p-3 text-sm font-bold text-red-700">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <section className="rounded-[20px] border border-[#f0dfcc] bg-white p-4 shadow-sm">
+            <h2 className="text-base font-black text-[#3d2417]">
+              Thông tin khách hàng
+            </h2>
+            <div className="mt-4 space-y-3">
+              <Field
+                label="Họ tên"
+                required
+                value={formData.name}
+                onChange={(value) => setFormData({ ...formData, name: value })}
+              />
+              <Field
+                label="Số điện thoại"
+                required
+                type="tel"
+                value={formData.phone}
+                onChange={(value) => setFormData({ ...formData, phone: value })}
+              />
+              <Field
+                label="Email"
+                type="email"
+                value={formData.email}
+                onChange={(value) => setFormData({ ...formData, email: value })}
+              />
             </div>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="bg-white rounded-lg p-6 shadow-sm border border-neutral-200">
-              <h2 className="text-lg font-semibold mb-4">
-                Thông tin khách hàng
-              </h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Họ tên *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Số điện thoại *
-                  </label>
-                  <input
-                    type="tel"
-                    required
-                    value={formData.phone}
-                    onChange={(e) =>
-                      setFormData({ ...formData, phone: e.target.value })
-                    }
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-1">
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
+          </section>
+
+          <section className="rounded-[20px] border border-[#f0dfcc] bg-white p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-[#fff4ec] text-[#d85d6c]">
+                {isPickup ? (
+                  <Clock3 className="h-5 w-5" />
+                ) : (
+                  <MapPin className="h-5 w-5" />
+                )}
+              </span>
+              <div className="min-w-0 flex-1">
+                <h2 className="text-base font-black text-[#3d2417]">
+                  {isPickup ? "Điểm nhận bánh" : "Địa chỉ giao bánh"}
+                </h2>
+                <p className="mt-1 text-sm font-semibold leading-5 text-[#7b6254]">
+                  {destinationLabel}
+                </p>
+                <p className="mt-2 text-xs leading-5 text-text-muted">
+                  {isPickup
+                    ? "Bạn có thể ghi giờ muốn nhận trong phần ghi chú nếu chưa đặt lịch."
+                    : "Nếu chưa chọn địa chỉ, tiệm sẽ liên hệ xác nhận trước khi giao."}
+                </p>
               </div>
             </div>
+          </section>
 
-            <div className="bg-white rounded-lg p-6 shadow-sm border border-neutral-200">
-              <h2 className="text-lg font-semibold mb-4">Ghi chú</h2>
-              <textarea
-                value={formData.notes}
-                onChange={(e) =>
-                  setFormData({ ...formData, notes: e.target.value })
-                }
-                rows={3}
-                className="w-full px-4 py-2 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                placeholder="Ghi chú cho đơn hàng..."
-              />
-            </div>
-          </form>
-        </div>
+          <section className="rounded-[20px] border border-[#f0dfcc] bg-white p-4 shadow-sm">
+            <h2 className="text-base font-black text-[#3d2417]">Ghi chú</h2>
+            <textarea
+              value={formData.notes}
+              onChange={(event) =>
+                setFormData({ ...formData, notes: event.target.value })
+              }
+              rows={3}
+              className="mt-3 w-full resize-none rounded-[14px] border border-[#eadbcc] px-3 py-2 text-sm outline-none focus:border-[#d85d6c] focus:ring-2 focus:ring-[#d85d6c]/15"
+              placeholder={
+                isPickup
+                  ? "Ví dụ: Tôi muốn nhận bánh lúc 17:30"
+                  : "Ví dụ: Gọi trước khi giao, để bảo vệ nhận giúp..."
+              }
+            />
+          </section>
 
-        <div className="lg:col-span-1">
-          <div className="p-4 lg:p-6 bg-white border-t lg:border lg:rounded-lg border-neutral-200 lg:sticky lg:top-24">
-            <h2 className="text-lg font-semibold mb-4">Đơn hàng</h2>
-            <div className="space-y-4 mb-6">
+          <section className="rounded-[20px] border border-[#f0dfcc] bg-white p-4 shadow-sm">
+            <h2 className="mb-3 flex items-center gap-2 text-base font-black text-[#3d2417]">
+              <ShoppingBag className="h-5 w-5 text-[#d85d6c]" />
+              Đơn hàng
+            </h2>
+            <div className="space-y-3">
               {items.map((item) => (
                 <div key={item.cartItemId} className="flex items-start gap-3">
                   <img
                     src={item.imageUrl}
                     alt={item.productName}
-                    className="w-12 h-12 rounded-lg object-cover"
+                    className="h-12 w-12 rounded-[12px] object-cover"
                   />
-                  <div className="flex-1">
-                    <div className="text-sm font-medium text-neutral-900">
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 text-sm font-bold text-[#3d2417]">
                       {item.productName} x{item.quantity}
-                    </div>
-                    <div className="text-xs text-neutral-500">
-                      {item.selectedSize && `Kích thước: ${item.selectedSize}`}
-                      {item.selectedFlavor && ` • Vị: ${item.selectedFlavor}`}
-                    </div>
+                    </p>
+                    <p className="mt-1 text-xs text-text-muted">
+                      {item.selectedSize && `Size ${item.selectedSize}`}
+                      {item.selectedFlavor && ` - Vị ${item.selectedFlavor}`}
+                    </p>
                   </div>
-                  <div className="text-sm font-medium text-neutral-900">
+                  <p className="text-sm font-black text-[#3d2417]">
                     {formatPrice(item.price * item.quantity)}
-                  </div>
+                  </p>
                 </div>
               ))}
             </div>
 
-            <div className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-neutral-600">Tạm tính:</span>
-                <span className="font-medium">{formatPrice(totalPrice)}</span>
+            <div className="mt-4 space-y-2 border-t border-[#f0dfd4] pt-4">
+              <SummaryRow label="Tạm tính" value={formatPrice(totalPrice)} />
+              <SummaryRow
+                label={isPickup ? "Phí nhận tại quán" : "Phí vận chuyển"}
+                value={deliveryFee === 0 ? "Miễn phí" : formatPrice(deliveryFee)}
+              />
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-base font-black text-[#3d2417]">
+                  Tổng cộng
+                </span>
+                <span className="text-2xl font-black text-[#d85d6c]">
+                  {formatPrice(finalTotal)}
+                </span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-neutral-600">Phí vận chuyển:</span>
-                <span className="font-medium">Miễn phí</span>
-              </div>
-              <div className="border-t border-neutral-200 pt-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-lg font-semibold">Tổng cộng:</span>
-                  <span className="text-xl font-bold text-red-500">
-                    {formatPrice(totalPrice)}
-                  </span>
-                </div>
-              </div>
-
-              <Button
-                variant="primary"
-                className="w-full py-3 mt-4"
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Đang xử lý..." : "Đặt hàng ngay"}
-              </Button>
             </div>
-          </div>
-        </div>
+          </section>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="h-12 w-full rounded-[16px] bg-[#d85d6c] text-[15px] font-black text-white shadow-[0_8px_18px_rgba(216,93,108,0.26)] transition active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-[#d8c8bd]"
+          >
+            {isSubmitting
+              ? "Đang xử lý..."
+              : isPickup
+                ? "Xác nhận đơn đến lấy"
+                : "Xác nhận đơn giao tận nơi"}
+          </button>
+        </form>
       </div>
     </main>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  type = "text",
+  required = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  required?: boolean;
+}) {
+  return (
+    <label className="block">
+      <span className="text-sm font-bold text-[#65483a]">
+        {label}
+        {required && " *"}
+      </span>
+      <input
+        type={type}
+        required={required}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 h-11 w-full rounded-[14px] border border-[#eadbcc] px-3 text-sm outline-none focus:border-[#d85d6c] focus:ring-2 focus:ring-[#d85d6c]/15"
+      />
+    </label>
+  );
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between text-sm font-semibold text-text-muted">
+      <span>{label}</span>
+      <span className="text-[#3d2417]">{value}</span>
+    </div>
   );
 }

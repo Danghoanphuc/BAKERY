@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -19,6 +19,7 @@ import { clsx } from "clsx";
 
 import { ProductDetailModal } from "@/features/product/components/ProductDetailModal";
 import { Toast } from "@/components/common";
+import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import { useToast } from "@/hooks/useToast";
 import { useCartStore } from "@/store/cartStore";
 import { useOrderConfigStore } from "@/store/orderConfigStore";
@@ -31,20 +32,113 @@ import {
   type HomeCategoryVisual,
 } from "../../data/homeContent";
 
+const FAVORITE_STORAGE_KEY = "bakery-favorite-products";
+
 interface BakeryHomeProps {
   categories: Category[];
   favoriteProducts: Product[];
 }
 
+interface HomeProfileSummary {
+  name?: string;
+  points: number;
+  address?: string;
+}
+
 export function BakeryHome({ categories, favoriteProducts }: BakeryHomeProps) {
   const { addItem, totalQuantity } = useCartStore();
+  const { config } = useOrderConfigStore();
   const { toast, showToast, hideToast } = useToast();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [profileSummary, setProfileSummary] = useState<HomeProfileSummary>({
+    points: 0,
+  });
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
 
   const categoryVisuals = useMemo(
     () => mapCategoriesToVisuals(categories),
     [categories],
   );
+
+  const deliveryAddress = useMemo(
+    () =>
+      getDeliveryAddressLabel(
+        config.deliveryAddress,
+        profileSummary.address,
+      ),
+    [config.deliveryAddress, profileSummary.address],
+  );
+
+  const visibleFavoriteProducts = useMemo(
+    () =>
+      favoriteProducts.filter((product) =>
+        config.deliveryMode === "pickup"
+          ? product.availableForPickup !== false
+          : product.availableForDelivery !== false,
+      ),
+    [config.deliveryMode, favoriteProducts],
+  );
+
+  useEffect(() => {
+    try {
+      const savedFavoriteIds = window.localStorage.getItem(FAVORITE_STORAGE_KEY);
+      if (savedFavoriteIds) {
+        const parsed = JSON.parse(savedFavoriteIds);
+        if (Array.isArray(parsed)) {
+          setFavoriteIds(parsed.filter((item) => typeof item === "string"));
+        }
+      }
+    } catch {
+      setFavoriteIds([]);
+    }
+
+    let cancelled = false;
+
+    fetch("/api/profile")
+      .then((response) => {
+        if (!response.ok) return null;
+        return response.json();
+      })
+      .then((data) => {
+        if (!data || cancelled) return;
+        setProfileSummary({
+          name: data.customer?.name,
+          points: data.rewards?.points?.current ?? 0,
+          address: data.customer?.personalization?.defaultDeliveryAddress,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setProfileSummary((current) => current);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const toggleFavorite = (productId: string) => {
+    setFavoriteIds((current) => {
+      const isFavorite = current.includes(productId);
+      const next = isFavorite
+        ? current.filter((id) => id !== productId)
+        : [...current, productId];
+
+      try {
+        window.localStorage.setItem(FAVORITE_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // The heart state can still work in memory if local storage is blocked.
+      }
+
+      showToast(
+        isFavorite ? "Đã bỏ khỏi danh sách yêu thích" : "Đã thêm vào yêu thích",
+        "success",
+      );
+
+      return next;
+    });
+  };
 
   const handleAddToCart = (customization: {
     quantity: number;
@@ -81,21 +175,37 @@ export function BakeryHome({ categories, favoriteProducts }: BakeryHomeProps) {
 
   return (
     <div className="min-h-screen bg-bg-main text-text-primary">
-      <div className="absolute top-0 left-0 right-0 h-[300px] bg-gradient-to-b from-bg-soft to-bg-main pointer-events-none" />
+      <div className="pointer-events-none absolute left-0 right-0 top-0 h-[300px] bg-gradient-to-b from-bg-soft to-bg-main" />
 
       <div className="relative mx-auto min-h-screen w-full max-w-[480px] px-4 pb-32 pt-2 sm:px-4">
-        <HomeTopBar cartCount={totalQuantity} />
+        <HomeTopBar
+          cartCount={totalQuantity}
+          points={profileSummary.points}
+          address={deliveryAddress}
+          favoriteCount={favoriteIds.length}
+        />
         <SearchPill />
-        <RewardHero />
-        <DeliverySwitch />
+        <DeliverySwitch
+          onModeChange={(mode) =>
+            showToast(
+              mode === "pickup"
+                ? "Đã chuyển sang đến lấy tại quán"
+                : "Đã chuyển sang giao tận nơi",
+              "success",
+            )
+          }
+        />
         <PromoTileGrid />
         <CategoryStrip categories={categoryVisuals} />
         <MarketingGrid />
         <FavoriteSection
-          products={favoriteProducts}
+          products={visibleFavoriteProducts}
+          favoriteIds={favoriteIds}
+          onToggleFavorite={toggleFavorite}
           onProductClick={setSelectedProduct}
         />
-        <ShippingOffer />
+        <ShippingOffer mode={config.deliveryMode} />
+        <RewardHero name={profileSummary.name} points={profileSummary.points} />
       </div>
 
       {selectedProduct && (
@@ -117,22 +227,30 @@ export function BakeryHome({ categories, favoriteProducts }: BakeryHomeProps) {
   );
 }
 
-function HomeTopBar({ cartCount }: { cartCount: number }) {
+function HomeTopBar({
+  cartCount,
+  points,
+  address,
+  favoriteCount,
+}: {
+  cartCount: number;
+  points: number;
+  address: string;
+  favoriteCount: number;
+}) {
   return (
-    <header className="pt-2 pb-4">
-      <div className="flex items-center justify-between">
+    <header className="pb-4 pt-2">
+      <div className="flex items-center justify-between gap-3">
         <Link
           href="/account"
-          className="flex min-w-0 items-center gap-1 text-text-primary"
+          className="flex min-w-0 flex-1 items-center gap-1 text-text-primary"
         >
           <MapPin className="h-5 w-5 shrink-0" strokeWidth={2.5} />
-          <span className="truncate text-[13px] font-medium">
-            Giao đến: 45 Nguyễn Văn Cừ
-          </span>
+          <span className="truncate text-[13px] font-medium">{address}</span>
           <ChevronDown className="h-4 w-4 shrink-0" />
         </Link>
 
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           <Link
             href="/rewards"
             className="flex items-center gap-1.5 rounded-full bg-[#fceecb] px-3 py-1.5 text-[12px] font-bold text-text-primary shadow-sm"
@@ -141,12 +259,18 @@ function HomeTopBar({ cartCount }: { cartCount: number }) {
               $
             </span>
             <span>
-              450 <span className="font-medium">điểm</span>
+              {points.toLocaleString("vi-VN")}{" "}
+              <span className="font-medium">điểm</span>
             </span>
           </Link>
 
-          <Link href="/profile" aria-label="Yêu thích">
+          <Link href="/favorites" className="relative" aria-label="Yêu thích">
             <Heart className="h-6 w-6 text-text-primary" strokeWidth={1.5} />
+            {favoriteCount > 0 && (
+              <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full border-[1.5px] border-bg-main bg-[#d85d6c] text-[10px] font-bold text-white shadow-sm">
+                {favoriteCount}
+              </span>
+            )}
           </Link>
 
           <Link href="/cart" className="relative" aria-label="Giỏ hàng">
@@ -154,9 +278,11 @@ function HomeTopBar({ cartCount }: { cartCount: number }) {
               className="h-6 w-6 text-text-primary"
               strokeWidth={1.5}
             />
-            <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand-500 text-[10px] font-bold text-white shadow-sm border-[1.5px] border-bg-main">
-              {cartCount > 0 ? cartCount : 3}
-            </span>
+            {cartCount > 0 && (
+              <span className="absolute -right-1.5 -top-1.5 flex h-4 w-4 items-center justify-center rounded-full border-[1.5px] border-bg-main bg-brand-500 text-[10px] font-bold text-white shadow-sm">
+                {cartCount}
+              </span>
+            )}
           </Link>
         </div>
       </div>
@@ -168,7 +294,7 @@ function SearchPill() {
   return (
     <Link
       href="/search"
-      className="mb-4 flex h-[42px] items-center gap-2 rounded-full border border-[#f0e3d3] bg-white px-3 shadow-[0_2px_8px_rgba(139,75,31,0.04)]"
+      className="mb-2 flex h-[42px] items-center gap-2 rounded-full border border-[#f0e3d3] bg-white px-3 shadow-[0_2px_8px_rgba(139,75,31,0.04)]"
     >
       <Search className="h-4 w-4 text-text-light" />
       <span className="truncate text-[13px] text-text-light">
@@ -178,36 +304,37 @@ function SearchPill() {
   );
 }
 
-function RewardHero() {
+function RewardHero({ name, points }: { name?: string; points: number }) {
+  const redeemablePoints = Math.min(Math.max(points, 0), 400);
+
   return (
     <Link
       href="/rewards"
-      className="relative block h-[150px] w-full overflow-hidden rounded-[20px] bg-[#4a2111]"
+      className="relative mt-6 block h-[150px] w-full overflow-hidden rounded-[20px] bg-[#4a2111]"
     >
       <Image
         src="https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=800&q=90"
-        alt="Hero banner"
+        alt="Ưu đãi đổi điểm"
         fill
         className="object-cover object-right opacity-90"
-        priority
       />
       <div className="absolute inset-0 bg-gradient-to-r from-[#38160a] via-[#38160a]/80 to-transparent" />
 
-      <div className="absolute inset-y-0 left-0 flex w-[65%] flex-col justify-center px-4">
-        <p className="text-[15px] text-[#f7e8db] font-medium leading-tight">
+      <div className="absolute inset-y-0 left-0 flex w-[68%] flex-col justify-center px-4">
+        <p className="text-[15px] font-medium leading-tight text-[#f7e8db]">
           Chào{" "}
-          <span className="font-serif italic text-accent-gold text-[18px]">
-            Hoàn Phúc,
+          <span className="font-serif text-[18px] italic text-accent-gold">
+            {name || "bạn"},
           </span>
         </p>
         <p className="mt-1 text-[15px] font-medium leading-tight text-[#f7e8db]">
           dùng{" "}
           <span className="text-[28px] font-black text-brand-500">
-            400 điểm
+            {redeemablePoints.toLocaleString("vi-VN")} điểm
           </span>
         </p>
-        <p className="text-[13px] font-medium leading-tight text-[#f7e8db] mt-1">
-          đổi ngay 1 Bánh sừng trâu nhé!
+        <p className="mt-1 text-[13px] font-medium leading-tight text-[#f7e8db]">
+          đổi ngay ưu đãi ngọt ngào hôm nay.
         </p>
         <div className="mt-3 inline-flex h-8 w-fit items-center justify-center gap-1 rounded-full bg-gradient-to-r from-brand-400 to-brand-600 px-3 shadow-md">
           <span className="text-[12px] font-semibold text-white">
@@ -220,53 +347,29 @@ function RewardHero() {
   );
 }
 
-function DeliverySwitch() {
+function DeliverySwitch({
+  onModeChange,
+}: {
+  onModeChange?: (mode: "delivery" | "pickup") => void;
+}) {
   const { config, setDeliveryMode } = useOrderConfigStore();
   const mode = config.deliveryMode;
+  const handleModeChange = (nextMode: "delivery" | "pickup") => {
+    setDeliveryMode(nextMode);
+    if (nextMode !== mode) onModeChange?.(nextMode);
+  };
 
   return (
-    <div className="my-4 grid grid-cols-2 rounded-[22px] bg-bg-surface p-1 shadow-inner">
+    <div className="mb-4 grid h-9 grid-cols-2 rounded-full border border-[#efdfd1] bg-white p-1 shadow-[0_2px_8px_rgba(139,75,31,0.04)]">
       <DeliveryOption
         active={mode === "delivery"}
-        icon={
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-            />
-          </svg>
-        }
-        title="Giao Tận Nơi"
-        subtitle="Nhận bánh tại nhà"
-        onClick={() => setDeliveryMode("delivery")}
+        title="Giao tận nơi"
+        onClick={() => handleModeChange("delivery")}
       />
       <DeliveryOption
         active={mode === "pickup"}
-        icon={
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-            />
-          </svg>
-        }
-        title="Đến Lấy Tại Quán"
-        subtitle="Ghé tiệm lấy bánh"
-        onClick={() => setDeliveryMode("pickup")}
+        title="Đến lấy tại quán"
+        onClick={() => handleModeChange("pickup")}
       />
     </div>
   );
@@ -274,15 +377,11 @@ function DeliverySwitch() {
 
 function DeliveryOption({
   active,
-  icon,
   title,
-  subtitle,
   onClick,
 }: {
   active: boolean;
-  icon: ReactNode;
   title: string;
-  subtitle: string;
   onClick: () => void;
 }) {
   return (
@@ -290,26 +389,13 @@ function DeliveryOption({
       type="button"
       onClick={onClick}
       className={clsx(
-        "flex min-h-[52px] items-center justify-center gap-2 rounded-[18px] px-1 text-left transition",
+        "flex h-7 items-center justify-center rounded-full px-2 text-center text-[12px] font-bold transition",
         active
-          ? "bg-text-secondary text-white shadow-md"
-          : "text-text-secondary",
+          ? "bg-[#3d2417] text-white shadow-sm"
+          : "text-[#7b6254] hover:bg-[#fff7f2]",
       )}
     >
-      <span className="shrink-0">{icon}</span>
-      <span className="min-w-0">
-        <span className="block text-[13px] font-bold leading-tight">
-          {title}
-        </span>
-        <span
-          className={clsx(
-            "block truncate text-[10px]",
-            active ? "text-[#e8d7cd]" : "text-text-muted",
-          )}
-        >
-          {subtitle}
-        </span>
-      </span>
+      {title}
     </button>
   );
 }
@@ -319,14 +405,14 @@ function PromoTileGrid() {
     <div className="grid grid-cols-2 gap-3">
       <Link
         href="/search?q=healthy"
-        className="relative h-[68px] overflow-hidden rounded-[16px] bg-[#f4f7e6] p-3 shadow-sm border border-[#e5e9cc]"
+        className="relative h-[68px] overflow-hidden rounded-[16px] border border-[#e5e9cc] bg-[#f4f7e6] p-3 shadow-sm"
       >
         <div className="relative z-10 max-w-[65%]">
-          <p className="text-[13px] font-bold text-accent-healthy leading-tight">
-            Góc Bánh Healthy
+          <p className="text-[13px] font-bold leading-tight text-accent-healthy">
+            Góc bánh Healthy
           </p>
           <p className="mt-0.5 text-[10px] text-accent-healthy-light">
-            Nguyên cám • Keto • Ít ngọt
+            Nguyên cám - Keto - Ít ngọt
           </p>
         </div>
         <Image
@@ -334,20 +420,20 @@ function PromoTileGrid() {
           alt="Healthy"
           width={80}
           height={68}
-          className="absolute -bottom-1 -right-2 h-[60px] w-[70px] object-cover rounded-tl-full"
+          className="absolute -bottom-1 -right-2 h-[60px] w-[70px] rounded-tl-full object-cover"
         />
       </Link>
 
       <Link
         href="/search?q=event"
-        className="relative h-[68px] overflow-hidden rounded-[16px] bg-[#fceeed] p-3 shadow-sm border border-[#f5dbdb]"
+        className="relative h-[68px] overflow-hidden rounded-[16px] border border-[#f5dbdb] bg-[#fceeed] p-3 shadow-sm"
       >
         <div className="relative z-10 max-w-[65%]">
-          <p className="text-[13px] font-bold text-accent-pink leading-tight">
-            Bánh Sự Kiện
+          <p className="text-[13px] font-bold leading-tight text-accent-pink">
+            Bánh sự kiện
           </p>
           <p className="mt-0.5 text-[10px] text-[#d68585]">
-            Sinh nhật • Kỷ niệm
+            Sinh nhật - Kỷ niệm
           </p>
         </div>
         <Image
@@ -355,7 +441,7 @@ function PromoTileGrid() {
           alt="Event"
           width={80}
           height={68}
-          className="absolute -bottom-1 -right-2 h-[60px] w-[70px] object-cover rounded-tl-full"
+          className="absolute -bottom-1 -right-2 h-[60px] w-[70px] rounded-tl-full object-cover"
         />
       </Link>
     </div>
@@ -366,7 +452,7 @@ function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
   return (
     <section className="pt-6">
       <SectionHeader title="Danh mục" href="/category" action="Xem tất cả" />
-      <div className="grid grid-cols-5 gap-2 mt-3">
+      <div className="mt-3 grid grid-cols-5 gap-2">
         {categories.slice(0, 5).map((category) => (
           <Link
             key={category.name}
@@ -379,7 +465,7 @@ function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
                 alt={category.name}
                 fill
                 sizes="60px"
-                className="object-cover p-2 rounded-full"
+                className="rounded-full object-cover p-2"
               />
             </span>
             <span className="text-center text-[11px] font-medium leading-tight text-text-primary">
@@ -395,68 +481,91 @@ function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
 function MarketingGrid() {
   return (
     <div className="grid grid-cols-3 gap-2.5 pt-6">
-      <div className="relative h-[72px] overflow-hidden rounded-[16px] bg-bg-card p-2.5 shadow-sm border border-[#f5e3ce]">
-        <p className="relative z-10 text-[12px] font-bold text-text-primary leading-tight max-w-[70%]">
-          Mới Ra Lò
-        </p>
-        <p className="relative z-10 mt-0.5 text-[9px] text-text-muted leading-tight max-w-[60%]">
-          Thơm ngon mỗi ngày
-        </p>
+      <MarketingTile
+        title="Mới ra lò"
+        subtitle="Thơm ngon mỗi ngày"
+        imageUrl="https://images.unsplash.com/photo-1623334044303-241021148842?auto=format&fit=crop&w=200&q=80"
+        imageAlt="Mới ra lò"
+        badge="MỚI"
+      />
+      <MarketingTile
+        title="Best Seller"
+        subtitle="Bán chạy nhất tuần"
+        imageUrl="https://images.unsplash.com/photo-1586985289688-ca3cf47d3e6e?auto=format&fit=crop&w=200&q=80"
+        imageAlt="Best Seller"
+        tone="pink"
+      />
+      <MarketingTile
+        title="Combo tiết kiệm"
+        subtitle="Ưu đãi hấp dẫn"
+        imageUrl="https://images.unsplash.com/photo-1608198093002-ad4e005484ec?auto=format&fit=crop&w=200&q=80"
+        imageAlt="Combo"
+        tone="gold"
+        badge="%"
+      />
+    </div>
+  );
+}
+
+function MarketingTile({
+  title,
+  subtitle,
+  imageUrl,
+  imageAlt,
+  tone = "cream",
+  badge,
+}: {
+  title: string;
+  subtitle: string;
+  imageUrl: string;
+  imageAlt: string;
+  tone?: "cream" | "pink" | "gold";
+  badge?: string;
+}) {
+  const toneClass = {
+    cream: "border-[#f5e3ce] bg-bg-card text-text-primary",
+    pink: "border-[#f5dada] bg-[#fdf0ee] text-[#cf6262]",
+    gold: "border-[#f0debd] bg-[#fbf0dc] text-[#b5803a]",
+  }[tone];
+
+  return (
+    <div
+      className={clsx(
+        "relative h-[72px] overflow-hidden rounded-[16px] border p-2.5 shadow-sm",
+        toneClass,
+      )}
+    >
+      <p className="relative z-10 max-w-[72%] text-[12px] font-bold leading-tight">
+        {title}
+      </p>
+      <p className="relative z-10 mt-0.5 max-w-[62%] text-[9px] leading-tight text-text-muted">
+        {subtitle}
+      </p>
+      {badge && (
         <span className="absolute right-1.5 top-1.5 z-20 rounded-full bg-brand-500 px-1.5 py-0.5 text-[8px] font-bold text-white">
-          MỚI
+          {badge}
         </span>
-        <Image
-          src="https://images.unsplash.com/photo-1623334044303-241021148842?auto=format&fit=crop&w=200&q=80"
-          alt="Mới ra lò"
-          width={80}
-          height={60}
-          className="absolute -bottom-2 -right-3 h-[60px] w-[60px] object-cover rounded-tl-full"
-        />
-      </div>
-
-      <div className="relative h-[72px] overflow-hidden rounded-[16px] bg-[#fdf0ee] p-2.5 shadow-sm border border-[#f5dada]">
-        <p className="relative z-10 text-[12px] font-bold text-[#cf6262] leading-tight max-w-[70%]">
-          Best Seller
-        </p>
-        <p className="relative z-10 mt-0.5 text-[9px] text-[#b57a7a] leading-tight max-w-[60%]">
-          Bán chạy nhất tuần
-        </p>
-        <Image
-          src="https://images.unsplash.com/photo-1586985289688-ca3cf47d3e6e?auto=format&fit=crop&w=200&q=80"
-          alt="Best Seller"
-          width={80}
-          height={60}
-          className="absolute -bottom-2 -right-3 h-[60px] w-[60px] object-cover rounded-tl-full"
-        />
-      </div>
-
-      <div className="relative h-[72px] overflow-hidden rounded-[16px] bg-[#fbf0dc] p-2.5 shadow-sm border border-[#f0debd]">
-        <p className="relative z-10 text-[12px] font-bold text-[#b5803a] leading-tight max-w-[70%]">
-          Combo Tiết Kiệm
-        </p>
-        <p className="relative z-10 mt-0.5 text-[9px] text-[#a38055] leading-tight max-w-[60%]">
-          Ưu đãi hấp dẫn
-        </p>
-        <span className="absolute right-1.5 bottom-1.5 z-20 rounded-full bg-brand-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
-          %
-        </span>
-        <Image
-          src="https://images.unsplash.com/photo-1608198093002-ad4e005484ec?auto=format&fit=crop&w=200&q=80"
-          alt="Combo"
-          width={80}
-          height={60}
-          className="absolute -bottom-2 -right-3 h-[60px] w-[60px] object-cover rounded-tl-full opacity-80"
-        />
-      </div>
+      )}
+      <Image
+        src={imageUrl}
+        alt={imageAlt}
+        width={80}
+        height={60}
+        className="absolute -bottom-2 -right-3 h-[60px] w-[60px] rounded-tl-full object-cover"
+      />
     </div>
   );
 }
 
 function FavoriteSection({
   products,
+  favoriteIds,
+  onToggleFavorite,
   onProductClick,
 }: {
   products: Product[];
+  favoriteIds: string[];
+  onToggleFavorite: (productId: string) => void;
   onProductClick: (product: Product) => void;
 }) {
   return (
@@ -464,25 +573,29 @@ function FavoriteSection({
       <SectionHeader
         title={
           <span className="flex items-center gap-1">
-            Món Ruột Của Bạn <Sparkles className="h-4 w-4 text-[#d9a263]" />
+            Món ruột của bạn <Sparkles className="h-4 w-4 text-[#d9a263]" />
           </span>
         }
-        href="/search"
+        href="/favorites"
         action="Xem thêm"
       />
       <p className="-mt-1.5 mb-3 text-[11px] text-text-muted">
         Dựa trên những món bạn đã mua gần đây
       </p>
 
-      <div className="grid grid-cols-3 gap-3">
-        {products.slice(0, 3).map((product, index) => (
-          <ProductMiniCard
-            key={product.id}
-            product={product}
-            rating={(4.8 + index * 0.05).toFixed(1)}
-            onClick={() => onProductClick(product)}
-          />
-        ))}
+      <div className="-mx-4 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex w-max gap-3">
+          {products.slice(0, 8).map((product, index) => (
+            <ProductMiniCard
+              key={product.id}
+              product={product}
+              rating={(4.8 + index * 0.03).toFixed(1)}
+              isFavorite={favoriteIds.includes(product.id)}
+              onToggleFavorite={() => onToggleFavorite(product.id)}
+              onClick={() => onProductClick(product)}
+            />
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -491,41 +604,62 @@ function FavoriteSection({
 function ProductMiniCard({
   product,
   rating,
+  isFavorite,
+  onToggleFavorite,
   onClick,
 }: {
   product: Product;
   rating: string;
+  isFavorite: boolean;
+  onToggleFavorite: () => void;
   onClick: () => void;
 }) {
   return (
-    <article className="flex flex-col overflow-hidden rounded-[16px] bg-white shadow-[0_4px_12px_rgba(139,75,31,0.06)] border border-[#f0e3d3]">
+    <article className="flex w-[154px] shrink-0 flex-col overflow-hidden rounded-[16px] border border-[#f0e3d3] bg-white shadow-[0_4px_12px_rgba(139,75,31,0.06)]">
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#fdf9f4]">
+        <button
+          type="button"
+          onClick={onClick}
+          className="relative h-full w-full"
+          aria-label={`Xem ${product.name}`}
+        >
+          <ProductImage
+            src={product.imageUrl}
+            alt={product.name}
+            className="object-cover"
+          />
+        </button>
+        <button
+          type="button"
+          onClick={onToggleFavorite}
+          className={clsx(
+            "absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-white/95 shadow-sm transition active:scale-95",
+            isFavorite ? "text-[#d85d6c]" : "text-[#c99b9b]",
+          )}
+          aria-label={isFavorite ? "Bỏ yêu thích" : "Thêm yêu thích"}
+        >
+          <Heart
+            className={clsx("h-3.5 w-3.5", isFavorite && "fill-current")}
+            strokeWidth={2}
+          />
+        </button>
+      </div>
+
       <button
         type="button"
         onClick={onClick}
         className="block w-full text-left"
         aria-label={`Xem ${product.name}`}
       >
-        <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#fdf9f4]">
-          <Image
-            src={product.imageUrl}
-            alt={product.name}
-            fill
-            sizes="140px"
-            className="object-cover"
-          />
-          <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-white/90 text-[#d48c8c] shadow-sm">
-            <Heart className="h-3.5 w-3.5" strokeWidth={2} />
-          </span>
-        </div>
         <div className="p-2 pt-2.5">
-          <h3 className="line-clamp-1 text-[12px] font-semibold text-text-primary">
+          <h3 className="line-clamp-2 min-h-[32px] text-[12px] font-semibold leading-tight text-text-primary">
             {product.name}
           </h3>
-          <div className="mt-1 flex items-center justify-between">
-            <span className="text-[13px] font-extrabold text-brand-500">
+          <div className="mt-2 flex items-center justify-between gap-1">
+            <span className="truncate text-[13px] font-extrabold text-brand-500">
               {formatPrice(product.price).replace(" ", "")}
             </span>
-            <span className="flex items-center gap-0.5 text-[10px] font-medium text-text-muted">
+            <span className="flex shrink-0 items-center gap-0.5 text-[10px] font-medium text-text-muted">
               <Star className="h-2.5 w-2.5 fill-accent-star text-accent-star" />
               {rating}
             </span>
@@ -536,25 +670,27 @@ function ProductMiniCard({
         <button
           type="button"
           onClick={onClick}
-          className="flex h-7 w-full items-center justify-center gap-1 rounded-full bg-brand-500 text-[11px] font-bold text-white transition active:scale-95"
+          className="flex h-8 w-full items-center justify-center gap-1 rounded-full bg-[#d85d6c] text-[11px] font-bold text-white shadow-sm transition active:scale-95"
         >
           <Plus className="h-3.5 w-3.5" />
-          Thêm vào giỏ
+          Thêm
         </button>
       </div>
     </article>
   );
 }
 
-function ShippingOffer() {
+function ShippingOffer({ mode }: { mode: "delivery" | "pickup" }) {
+  const isPickup = mode === "pickup";
+
   return (
     <Link
-      href="/cart"
+      href={isPickup ? "/checkout" : "/cart"}
       className="mt-6 flex min-h-[56px] items-center gap-3 rounded-[18px] border border-[#f0dfcc] bg-[#fcf4e8] px-3 py-2 shadow-sm"
     >
       <div className="flex flex-col items-center justify-center">
         <svg
-          className="w-8 h-8 text-accent-star"
+          className="h-8 w-8 text-accent-star"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -572,11 +708,19 @@ function ShippingOffer() {
       </div>
       <span className="min-w-0 flex-1">
         <span className="block text-[11px] font-bold text-text-primary">
-          Ưu đãi hôm nay
+          {isPickup ? "Ưu đãi tự đến lấy" : "Ưu đãi hôm nay"}
         </span>
         <span className="block truncate text-[13px] font-bold text-text-primary">
-          Miễn phí ship cho đơn từ{" "}
-          <span className="text-brand-500">149.000đ</span>
+          {isPickup ? (
+            <>
+              Không tính phí giao hàng, nhận bánh nhanh tại quán
+            </>
+          ) : (
+            <>
+              Miễn phí ship cho đơn từ{" "}
+              <span className="text-brand-500">149.000đ</span>
+            </>
+          )}
         </span>
       </span>
       <ChevronRight className="h-4 w-4 text-text-muted" />
@@ -607,11 +751,20 @@ function SectionHeader({
   );
 }
 
+function getDeliveryAddressLabel(
+  address?: { street: string; district: string; city: string },
+  profileAddress?: string,
+) {
+  if (address) return `Giao đến: ${address.street}, ${address.district}`;
+  if (profileAddress) return `Giao đến: ${profileAddress}`;
+  return "Chọn địa chỉ giao hàng";
+}
+
 function isValidUrl(string: string) {
   try {
     new URL(string);
     return true;
-  } catch (_) {
+  } catch {
     return false;
   }
 }

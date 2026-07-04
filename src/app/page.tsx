@@ -18,7 +18,7 @@ async function loadFavoriteProducts(): Promise<Product[]> {
     const products = await getProducts();
     const curatedProducts = products
       .filter((product) => product.isFeatured || product.isBestseller)
-      .slice(0, 3);
+      .slice(0, 8);
 
     return curatedProducts;
   } catch (error) {

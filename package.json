@@ -9,18 +9,13 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "npx prisma generate && npx prisma db push && npm run build:next",
+    "build": "npm run build:next",
     "build:next": "next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed": "tsx scripts/seed-firebase.ts",
-    "seed:prisma": "tsx prisma/seed.ts",
-    "db:studio": "prisma studio"
-  },
-  "prisma": {
-    "seed": "tsx prisma/seed.ts"
+    "seed": "tsx scripts/seed-firebase-db.ts"
   },
   "repository": {
     "type": "git",
@@ -35,8 +30,8 @@
   },
   "homepage": "https://github.com/Danghoanphuc/BAKERY#readme",
   "dependencies": {
-    "@prisma/client": "^5.22.0",
     "clsx": "^2.1.1",
+    "dotenv": "^17.4.2",
     "firebase": "^12.15.0",
     "lucide-react": "^1.20.0",
     "next": "^16.2.9",
@@ -58,7 +53,6 @@
     "eslint-config-next": "^16.2.9",
     "jsdom": "^29.1.1",
     "postcss": "^8.5.15",
-    "prisma": "^5.22.0",
     "tailwindcss": "^4.3.1",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",

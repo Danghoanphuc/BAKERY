@@ -1,10 +1,5 @@
 import { NextResponse } from "next/server";
-import {
-  getOrders,
-  createOrder,
-  generateOrderNumber,
-  getAllProducts,
-} from "@/lib/db";
+import { createOrder, generateOrderNumber, getAllProducts } from "@/lib/db";
 import { createCustomerSessionCookie } from "@/lib/auth/customer-session";
 import {
   createOrUpdateCustomerFromPurchase,

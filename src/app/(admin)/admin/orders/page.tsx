@@ -154,8 +154,9 @@ export default function OrdersPage() {
       active: orders.filter((order) => activeStatuses.has(order.status)).length,
       overdue: orders.filter(isOverdueOrder).length,
       ready: orders.filter((order) => order.status === "ready").length,
-      cancelledToday: todayOrders.filter((order) => order.status === "cancelled")
-        .length,
+      cancelledToday: todayOrders.filter(
+        (order) => order.status === "cancelled",
+      ).length,
       revenueToday,
     };
   }, [orders]);
@@ -205,13 +206,19 @@ export default function OrdersPage() {
       setMessage("Đã cập nhật đơn hàng.");
     } catch (err) {
       console.error("Failed to update order:", err);
-      setError(err instanceof Error ? err.message : "Không thể cập nhật đơn hàng.");
+      setError(
+        err instanceof Error ? err.message : "Không thể cập nhật đơn hàng.",
+      );
     } finally {
       setIsSaving(false);
     }
   }
 
-  async function updateStatus(order: Order, status: OrderStatus, note?: string) {
+  async function updateStatus(
+    order: Order,
+    status: OrderStatus,
+    note?: string,
+  ) {
     await updateOrder(order, { status, cancelReason: note });
   }
 
@@ -277,7 +284,8 @@ export default function OrdersPage() {
             Quản lý đơn hàng
           </h1>
           <p className="mt-1 text-neutral-600">
-            Theo dõi vận hành, xử lý bếp, giao hàng và pickup trong một màn hình.
+            Theo dõi vận hành, xử lý bếp, giao hàng và pickup trong một màn
+            hình.
           </p>
         </div>
         <button
@@ -303,11 +311,34 @@ export default function OrdersPage() {
 
       <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
         <StatCard icon={<Clock3 />} label="Chờ xử lý" value={stats.pending} />
-        <StatCard icon={<PackageCheck />} label="Đang vận hành" value={stats.active} />
-        <StatCard icon={<AlertTriangle />} label="Quá hạn" value={stats.overdue} tone="danger" />
-        <StatCard icon={<Truck />} label="Sẵn sàng giao/lấy" value={stats.ready} />
-        <StatCard icon={<XCircle />} label="Hủy hôm nay" value={stats.cancelledToday} tone="warn" />
-        <StatCard icon={<CheckCircle2 />} label="Doanh thu hôm nay" value={formatPrice(stats.revenueToday)} wide />
+        <StatCard
+          icon={<PackageCheck />}
+          label="Đang vận hành"
+          value={stats.active}
+        />
+        <StatCard
+          icon={<AlertTriangle />}
+          label="Quá hạn"
+          value={stats.overdue}
+          tone="danger"
+        />
+        <StatCard
+          icon={<Truck />}
+          label="Sẵn sàng giao/lấy"
+          value={stats.ready}
+        />
+        <StatCard
+          icon={<XCircle />}
+          label="Hủy hôm nay"
+          value={stats.cancelledToday}
+          tone="warn"
+        />
+        <StatCard
+          icon={<CheckCircle2 />}
+          label="Doanh thu hôm nay"
+          value={formatPrice(stats.revenueToday)}
+          wide
+        />
       </div>
 
       <div className="rounded-lg border border-neutral-200 bg-white p-4">
@@ -326,7 +357,9 @@ export default function OrdersPage() {
             onChange={(value) => setStatusFilter(value as StatusFilter)}
             options={[
               ["all", "Tất cả trạng thái"],
-              ...statuses.map((status) => [status.value, status.label] as [string, string]),
+              ...statuses.map(
+                (status) => [status.value, status.label] as [string, string],
+              ),
             ]}
           />
           <Select
@@ -370,9 +403,21 @@ export default function OrdersPage() {
             Đã chọn {selectedIds.length} đơn
           </span>
           <div className="flex flex-wrap gap-2">
-            <BulkButton label="Xác nhận" onClick={() => bulkUpdateStatus("confirmed")} disabled={isSaving} />
-            <BulkButton label="Đang chuẩn bị" onClick={() => bulkUpdateStatus("preparing")} disabled={isSaving} />
-            <BulkButton label="Hoàn thành" onClick={() => bulkUpdateStatus("completed")} disabled={isSaving} />
+            <BulkButton
+              label="Xác nhận"
+              onClick={() => bulkUpdateStatus("confirmed")}
+              disabled={isSaving}
+            />
+            <BulkButton
+              label="Đang chuẩn bị"
+              onClick={() => bulkUpdateStatus("preparing")}
+              disabled={isSaving}
+            />
+            <BulkButton
+              label="Hoàn thành"
+              onClick={() => bulkUpdateStatus("completed")}
+              disabled={isSaving}
+            />
             <button
               onClick={() => setSelectedIds([])}
               className="rounded-md px-3 py-1.5 text-sm font-semibold text-neutral-600 hover:bg-white"
@@ -409,7 +454,10 @@ export default function OrdersPage() {
             <tbody className="divide-y divide-neutral-200 bg-white">
               {isLoading && (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-sm text-neutral-500">
+                  <td
+                    colSpan={9}
+                    className="px-6 py-12 text-center text-sm text-neutral-500"
+                  >
                     <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />
                     Đang tải đơn hàng...
                   </td>
@@ -500,7 +548,10 @@ export default function OrdersPage() {
 
               {!isLoading && filteredOrders.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-6 py-12 text-center text-sm text-neutral-500">
+                  <td
+                    colSpan={9}
+                    className="px-6 py-12 text-center text-sm text-neutral-500"
+                  >
                     Không có đơn hàng phù hợp.
                   </td>
                 </tr>
@@ -628,7 +679,10 @@ function OrderDetailModal({
               <h3 className="mb-3 font-bold text-neutral-900">Sản phẩm</h3>
               <div className="divide-y divide-neutral-100 rounded-lg border border-neutral-100">
                 {order.items.map((item) => (
-                  <div key={item.cartItemId} className="flex items-center gap-4 p-3">
+                  <div
+                    key={item.cartItemId}
+                    className="flex items-center gap-4 p-3"
+                  >
                     <img
                       src={item.imageUrl}
                       alt={item.productName}
@@ -642,7 +696,8 @@ function OrderDetailModal({
                         {[
                           item.selectedSize && `Size: ${item.selectedSize}`,
                           item.selectedFlavor && `Vị: ${item.selectedFlavor}`,
-                          item.customMessage && `Tin nhắn: ${item.customMessage}`,
+                          item.customMessage &&
+                            `Tin nhắn: ${item.customMessage}`,
                           item.candles ? `${item.candles} nến` : "",
                         ]
                           .filter(Boolean)
@@ -664,26 +719,39 @@ function OrderDetailModal({
 
             <section className="rounded-lg border border-neutral-200 p-4">
               <h3 className="mb-3 font-bold text-neutral-900">Timeline</h3>
-              <Timeline items={order.statusHistory ?? []} currentStatus={order.status} />
+              <Timeline
+                items={order.statusHistory ?? []}
+                currentStatus={order.status}
+              />
             </section>
           </div>
 
           <div className="space-y-5">
             <section className="rounded-lg border border-neutral-200 p-4">
-              <h3 className="mb-3 font-bold text-neutral-900">Thông tin khách</h3>
+              <h3 className="mb-3 font-bold text-neutral-900">
+                Thông tin khách
+              </h3>
               <InfoLine label="Khách hàng" value={order.customerName} />
               <InfoLine label="Điện thoại" value={order.customerPhone} />
               {order.customerEmail && (
                 <InfoLine label="Email" value={order.customerEmail} />
               )}
-              <InfoLine label="Loại đơn" value={orderTypeLabel[order.orderType]} />
+              <InfoLine
+                label="Loại đơn"
+                value={orderTypeLabel[order.orderType]}
+              />
               {order.deliveryAddress && (
                 <InfoLine label="Địa chỉ" value={order.deliveryAddress} />
               )}
               {order.pickupTime && (
-                <InfoLine label="Giờ hẹn" value={formatDateTime(order.pickupTime)} />
+                <InfoLine
+                  label="Giờ hẹn"
+                  value={formatDateTime(order.pickupTime)}
+                />
               )}
-              {order.notes && <InfoLine label="Ghi chú khách" value={order.notes} />}
+              {order.notes && (
+                <InfoLine label="Ghi chú khách" value={order.notes} />
+              )}
             </section>
 
             <form
@@ -756,11 +824,28 @@ function OrderDetailModal({
 
             <section className="rounded-lg border border-neutral-200 p-4">
               <h3 className="mb-3 font-bold text-neutral-900">Tổng kết</h3>
-              <InfoLine label="Tạm tính" value={formatPrice(order.totalAmount + (order.discountAmount ?? 0) - (order.deliveryFee ?? 0))} />
-              <InfoLine label="Phí giao hàng" value={formatPrice(order.deliveryFee ?? 0)} />
-              <InfoLine label="Giảm giá" value={formatPrice(order.discountAmount ?? 0)} />
+              <InfoLine
+                label="Tạm tính"
+                value={formatPrice(
+                  order.totalAmount +
+                    (order.discountAmount ?? 0) -
+                    (order.deliveryFee ?? 0),
+                )}
+              />
+              <InfoLine
+                label="Phí giao hàng"
+                value={formatPrice(order.deliveryFee ?? 0)}
+              />
+              <InfoLine
+                label="Giảm giá"
+                value={formatPrice(order.discountAmount ?? 0)}
+              />
               <div className="mt-3 border-t border-neutral-200 pt-3">
-                <InfoLine label="Tổng cộng" value={formatPrice(order.totalAmount)} strong />
+                <InfoLine
+                  label="Tổng cộng"
+                  value={formatPrice(order.totalAmount)}
+                  strong
+                />
               </div>
             </section>
           </div>
@@ -784,7 +869,9 @@ function StatCard({
   wide?: boolean;
 }) {
   return (
-    <div className={`rounded-lg border border-neutral-200 bg-white p-4 shadow-sm ${wide ? "md:col-span-2 xl:col-span-1" : ""}`}>
+    <div
+      className={`rounded-lg border border-neutral-200 bg-white p-4 shadow-sm ${wide ? "md:col-span-2 xl:col-span-1" : ""}`}
+    >
       <div
         className={`mb-3 inline-flex rounded-lg p-2 ${
           tone === "danger"
@@ -879,7 +966,13 @@ function Timeline({
 }) {
   const history = items.length
     ? items
-    : [{ status: currentStatus, at: new Date().toISOString(), actor: "system" }];
+    : [
+        {
+          status: currentStatus,
+          at: new Date().toISOString(),
+          actor: "system",
+        },
+      ];
 
   return (
     <div className="space-y-3">
@@ -924,7 +1017,9 @@ function InfoLine({
       <span className="text-neutral-500">{label}</span>
       <span
         className={`text-right ${
-          strong ? "text-base font-bold text-neutral-900" : "font-medium text-neutral-800"
+          strong
+            ? "text-base font-bold text-neutral-900"
+            : "font-medium text-neutral-800"
         }`}
       >
         {value}
@@ -950,8 +1045,8 @@ function matchesDateFilter(order: Order, filter: DateFilter) {
   if (filter === "upcoming") {
     return Boolean(
       order.pickupTime &&
-        new Date(order.pickupTime).getTime() >= Date.now() &&
-        activeStatuses.has(order.status),
+      new Date(order.pickupTime).getTime() >= Date.now() &&
+      activeStatuses.has(order.status),
     );
   }
   return isOverdueOrder(order);
@@ -982,11 +1077,20 @@ function formatPrice(price: number) {
   }).format(price);
 }
 
-function formatDateTime(date: Date | string) {
-  return new Intl.DateTimeFormat("vi-VN", {
-    dateStyle: "short",
-    timeStyle: "short",
-  }).format(new Date(date));
+function formatDateTime(date: Date | string | undefined) {
+  if (!date) return "N/A";
+
+  try {
+    const dateObj = typeof date === "string" ? new Date(date) : date;
+    if (isNaN(dateObj.getTime())) return "N/A";
+
+    return new Intl.DateTimeFormat("vi-VN", {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(dateObj);
+  } catch {
+    return "N/A";
+  }
 }
 
 function buildPrintableOrder(order: Order) {

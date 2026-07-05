@@ -5,3 +5,4 @@ export * from "./order";
 export * from "./orderConfig";
 export * from "./customer";
 export * from "./marketing";
+export * from "./voucher";

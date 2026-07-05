@@ -11,6 +11,7 @@ function hashIp(value?: string | null) {
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const token = url.searchParams.get("token");
+  const nextPath = url.searchParams.get("next");
 
   if (!token) {
     return NextResponse.redirect(new URL("/account/login?error=missing_token", url.origin));
@@ -29,7 +30,13 @@ export async function GET(request: Request) {
     );
   }
 
-  const response = NextResponse.redirect(new URL("/profile", url.origin));
+  const safeNext =
+    nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
+      ? nextPath
+      : result.customer.hasPassword
+        ? "/profile"
+        : "/account/password?setup=1";
+  const response = NextResponse.redirect(new URL(safeNext, url.origin));
   response.headers.append("Set-Cookie", createCustomerSessionCookie(result.customer.id));
   return response;
 }

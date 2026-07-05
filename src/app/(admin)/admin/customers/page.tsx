@@ -8,6 +8,7 @@ import {
   Link2,
   Mail,
   Plus,
+  QrCode,
   RefreshCw,
   Search,
   Sparkles,
@@ -21,6 +22,11 @@ import type { Customer, CustomerInput, LoyaltyTier, Order } from "@/types";
 type CustomerWithMetrics = Customer & {
   orderCount: number;
   lifetimeValue: number;
+  magicLinkUrl?: string;
+};
+
+type CustomerInvite = Customer & {
+  magicLinkUrl?: string;
 };
 
 const emptyForm: CustomerInput = {
@@ -84,8 +90,17 @@ function getTierByValue(value: number): LoyaltyTier {
   return "new";
 }
 
+function getClientPublicBaseUrl() {
+  const configured =
+    process.env.NEXT_PUBLIC_CUSTOMER_APP_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL;
+  const origin = typeof window === "undefined" ? "" : window.location.origin;
+  return (configured || origin).replace(/\/$/, "");
+}
+
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<CustomerInvite[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -221,17 +236,27 @@ export default function CustomersPage() {
 
   const formatDate = (date?: Date | string) => {
     if (!date) return "Chưa có";
-    return new Intl.DateTimeFormat("vi-VN", {
-      dateStyle: "short",
-      timeStyle: "short",
-    }).format(new Date(date));
+
+    try {
+      const dateObj = typeof date === "string" ? new Date(date) : date;
+      if (isNaN(dateObj.getTime())) return "Chưa có";
+
+      return new Intl.DateTimeFormat("vi-VN", {
+        dateStyle: "short",
+        timeStyle: "short",
+      }).format(dateObj);
+    } catch {
+      return "Chưa có";
+    }
   };
 
-  const buildMagicUrl = (customer: Customer) => {
+  const buildMagicUrl = (customer: CustomerInvite) => {
+    if (customer.magicLinkUrl) return customer.magicLinkUrl;
     if (!customer.currentMagicLinkToken) return "";
-    const origin = typeof window === "undefined" ? "" : window.location.origin;
-    return `${origin}/auth/magic?token=${customer.currentMagicLinkToken}`;
+    return `${getClientPublicBaseUrl()}/auth/magic?token=${customer.currentMagicLinkToken}`;
   };
+
+  const registerUrl = `${getClientPublicBaseUrl()}/account/register`;
 
   const isMagicLinkExpired = (customer: Customer) => {
     if (!customer.magicLinkExpiresAt) return true;
@@ -283,7 +308,7 @@ export default function CustomersPage() {
         throw new Error("Failed to create customer");
       }
 
-      const customer = await response.json();
+      const customer = (await response.json()) as CustomerInvite;
       setCustomers((current) => [customer, ...current]);
       closeModal();
     } catch (err) {
@@ -314,6 +339,7 @@ export default function CustomersPage() {
                 ...item,
                 currentMagicLinkToken: data.token,
                 magicLinkExpiresAt: data.expiresAt,
+                magicLinkUrl: data.magicLinkUrl,
                 inviteSentAt: new Date(),
               }
             : item,
@@ -345,12 +371,26 @@ export default function CustomersPage() {
     }
   };
 
-  const getMailTo = (customer: Customer) => {
+  const getMailTo = (customer: CustomerInvite) => {
     const subject = encodeURIComponent("Magic link tài khoản Bakery của bạn");
     const body = encodeURIComponent(
       `Chào ${customer.name},\n\nBakery đã tạo tài khoản cho bạn. Link này chỉ dùng được một lần và sẽ hết hạn sau 30 phút:\n${buildMagicUrl(customer)}\n\nNhững lần sau bạn có thể đăng nhập nhanh bằng Zalo.`,
     );
     return `mailto:${customer.email ?? ""}?subject=${subject}&body=${body}`;
+  };
+
+  const getSmsHref = (customer: CustomerInvite) => {
+    const body = encodeURIComponent(
+      `Bakery da tao tai khoan cho ban. Bam link de kich hoat va dat mat khau: ${buildMagicUrl(customer)}`,
+    );
+    return `sms:${customer.phone}?&body=${body}`;
+  };
+
+  const getZaloHref = (customer: CustomerInvite) => {
+    const text = encodeURIComponent(
+      `Bakery da tao tai khoan cho ban. Bam link de kich hoat va dat mat khau: ${buildMagicUrl(customer)}`,
+    );
+    return `https://zalo.me/${customer.phone}?text=${text}`;
   };
 
   return (
@@ -365,14 +405,25 @@ export default function CustomersPage() {
             chăm sóc
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openAddModal}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-600"
-        >
-          <Plus className="h-4 w-4" />
-          Tạo khách hàng
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <a
+            href={registerUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+          >
+            <QrCode className="h-4 w-4" />
+            QR đăng ký
+          </a>
+          <button
+            type="button"
+            onClick={openAddModal}
+            className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-600"
+          >
+            <Plus className="h-4 w-4" />
+            Tạo khách hàng
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -380,6 +431,35 @@ export default function CustomersPage() {
           {error}
         </div>
       )}
+
+      <section className="flex flex-col gap-4 rounded-lg border border-neutral-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">
+            <QrCode className="h-4 w-4" />
+            QR tự đăng ký
+          </div>
+          <h2 className="mt-3 text-lg font-bold text-neutral-950">
+            Khách tự quét để tạo tài khoản
+          </h2>
+          <p className="mt-1 max-w-2xl text-sm text-neutral-600">
+            Dùng tại quầy thu ngân: khách quét mã, nhập tên và số điện thoại,
+            sau đó mở link kích hoạt để đặt mật khẩu.
+          </p>
+          <a
+            href={registerUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-brand-700"
+          >
+            {registerUrl}
+          </a>
+        </div>
+        <img
+          src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(registerUrl)}`}
+          alt="QR đăng ký tài khoản khách hàng"
+          className="h-[140px] w-[140px] rounded-lg border border-neutral-200 bg-white p-2 sm:h-[180px] sm:w-[180px]"
+        />
+      </section>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
         {stats.map((stat) => {
@@ -536,6 +616,24 @@ export default function CustomersPage() {
                               <Mail className="h-4 w-4" />
                               Email
                             </a>
+                          )}
+                          {!expired && (
+                            <>
+                              <a
+                                href={getSmsHref(customer)}
+                                className="inline-flex items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+                              >
+                                SMS
+                              </a>
+                              <a
+                                href={getZaloHref(customer)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="inline-flex items-center gap-2 rounded-lg border border-neutral-300 px-3 py-2 text-sm font-medium text-neutral-700 transition-colors hover:bg-neutral-50"
+                              >
+                                Zalo
+                              </a>
+                            </>
                           )}
                           {customer.currentMagicLinkToken && !expired && (
                             <Link

@@ -6,6 +6,7 @@ import { clsx } from "clsx";
 
 import { Modal } from "@/components/common";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
+import { ProductShareButton } from "@/features/product/components/ProductShareButton";
 import { useOrderConfigStore } from "@/store/orderConfigStore";
 import type { Product } from "@/types";
 
@@ -149,7 +150,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <p className="mt-3 text-xl font-black text-[#d85d6c]">
               {formatCurrency(finalPrice)}
             </p>
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-3 flex flex-wrap items-center gap-2">
               <span
                 className={clsx(
                   "rounded-full px-2.5 py-1 text-[11px] font-black",
@@ -164,6 +165,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     ? "Có thể nhận tại quán"
                     : "Có thể giao tận nơi"}
               </span>
+              <ProductShareButton
+                product={product}
+                label="Chia se"
+                className="h-8 rounded-full px-3 text-[11px]"
+              />
             </div>
           </div>
 

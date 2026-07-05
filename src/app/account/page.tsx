@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { ArrowLeft, Loader2, Save, ShieldCheck } from "lucide-react";
+import { ArrowLeft, KeyRound, Loader2, Save, ShieldCheck } from "lucide-react";
 import type { Customer } from "@/types";
 
 type AccountForm = {
@@ -184,6 +184,14 @@ export default function AccountPage() {
             />
           </div>
         </section>
+
+        <Link
+          href="/account/password"
+          className="mt-4 flex h-12 items-center justify-center gap-2 rounded-[14px] border border-[#edd8ca] bg-white text-[14px] font-black text-[#7a4b31] shadow-sm"
+        >
+          <KeyRound className="h-4 w-4" />
+          Doi mat khau
+        </Link>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <section className="rounded-[18px] bg-white/82 p-4 shadow-[0_10px_24px_rgba(83,38,12,0.08)]">

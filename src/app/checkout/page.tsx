@@ -6,16 +6,21 @@ import { ArrowLeft, Clock3, MapPin, ShoppingBag } from "lucide-react";
 
 import { useCartStore } from "@/store/cartStore";
 import { useOrderConfigStore } from "@/store/orderConfigStore";
+import { useVoucherStore } from "@/store/voucherStore";
 import { formatPrice } from "@/lib/utils";
+import { calculateVoucherPricing } from "@/lib/vouchers";
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, totalPrice, clearCart } = useCartStore();
   const { config } = useOrderConfigStore();
+  const { selectedVoucher, clearSelectedVoucher } = useVoucherStore();
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
     email: "",
+    birthday: "",
+    gender: "",
     notes: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,8 +28,9 @@ export default function CheckoutPage() {
   const [isClient, setIsClient] = useState(false);
 
   const isPickup = config.deliveryMode === "pickup";
+  const voucherPricing = calculateVoucherPricing(totalPrice, selectedVoucher);
   const deliveryFee = isPickup || totalPrice >= 149000 ? 0 : 20000;
-  const finalTotal = totalPrice + deliveryFee;
+  const finalTotal = voucherPricing.totalAfterDiscount + deliveryFee;
 
   const destinationLabel = useMemo(() => {
     if (isPickup) return "Nhận tại cửa hàng chính";
@@ -84,6 +90,12 @@ export default function CheckoutPage() {
           deliveryAddress: deliveryAddressString,
           pickupTime: pickupTimeDate,
           deliveryFee,
+          discountAmount: voucherPricing.discountAmount,
+          voucherCode: selectedVoucher?.code,
+          voucherId: selectedVoucher?.id,
+          voucherUseMode: selectedVoucher?.useMode,
+          customerBirthday: formData.birthday || undefined,
+          customerGender: formData.gender || undefined,
           notes: formData.notes || undefined,
           items,
         }),
@@ -95,6 +107,7 @@ export default function CheckoutPage() {
 
       const order = await response.json();
       clearCart();
+      clearSelectedVoucher();
       router.push(`/order-success?orderNumber=${order.orderNumber}`);
     } catch (err) {
       console.error(err);
@@ -156,8 +169,56 @@ export default function CheckoutPage() {
                 value={formData.email}
                 onChange={(value) => setFormData({ ...formData, email: value })}
               />
+              {selectedVoucher && (
+                <>
+                  <Field
+                    label="Ngày sinh"
+                    type="date"
+                    value={formData.birthday}
+                    onChange={(value) =>
+                      setFormData({ ...formData, birthday: value })
+                    }
+                  />
+                  <label className="block">
+                    <span className="text-sm font-bold text-[#65483a]">
+                      Giới tính
+                    </span>
+                    <select
+                      value={formData.gender}
+                      onChange={(event) =>
+                        setFormData({ ...formData, gender: event.target.value })
+                      }
+                      className="mt-1 h-11 w-full rounded-[14px] border border-[#eadbcc] px-3 text-sm outline-none focus:border-[#d85d6c] focus:ring-2 focus:ring-[#d85d6c]/15"
+                    >
+                      <option value="">Chưa chọn</option>
+                      <option value="female">Nữ</option>
+                      <option value="male">Nam</option>
+                      <option value="other">Khác</option>
+                    </select>
+                  </label>
+                </>
+              )}
             </div>
           </section>
+
+          {selectedVoucher && (
+            <section className="rounded-[20px] border border-[#f0b64d] bg-[#fff8ec] p-4 shadow-sm">
+              <h2 className="text-base font-black text-[#3d2417]">
+                Voucher đang áp dụng
+              </h2>
+              <p className="mt-1 text-sm font-semibold text-[#7b6254]">
+                {selectedVoucher.title}
+              </p>
+              <p className="mt-2 text-sm font-black text-[#34802f]">
+                Giảm {formatPrice(voucherPricing.discountAmount)}
+              </p>
+              {!voucherPricing.isEligible && (
+                <p className="mt-2 text-xs font-semibold text-red-700">
+                  {voucherPricing.reason}
+                </p>
+              )}
+            </section>
+          )}
 
           <section className="rounded-[20px] border border-[#f0dfcc] bg-white p-4 shadow-sm">
             <div className="flex items-start gap-3">
@@ -232,6 +293,12 @@ export default function CheckoutPage() {
 
             <div className="mt-4 space-y-2 border-t border-[#f0dfd4] pt-4">
               <SummaryRow label="Tạm tính" value={formatPrice(totalPrice)} />
+              {voucherPricing.discountAmount > 0 && (
+                <SummaryRow
+                  label="Voucher"
+                  value={`-${formatPrice(voucherPricing.discountAmount)}`}
+                />
+              )}
               <SummaryRow
                 label={isPickup ? "Phí nhận tại quán" : "Phí vận chuyển"}
                 value={deliveryFee === 0 ? "Miễn phí" : formatPrice(deliveryFee)}

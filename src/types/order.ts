@@ -1,5 +1,6 @@
 import type { CartItem } from "./cart";
 import type { Product } from "./product";
+import type { VoucherUseMode } from "./voucher";
 
 export type OrderStatus = "pending" | "confirmed" | "preparing" | "ready" | "processing" | "completed" | "delivered" | "cancelled";
 export type OrderType = "delivery" | "pickup" | "preorder";
@@ -31,6 +32,9 @@ export interface Order {
   assignedTo?: string;
   deliveryFee?: number;
   discountAmount?: number;
+  voucherCode?: string;
+  voucherId?: string;
+  voucherUseMode?: VoucherUseMode;
   statusHistory?: OrderStatusHistoryItem[];
   createdAt: Date;
   updatedAt: Date;

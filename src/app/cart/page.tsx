@@ -15,7 +15,9 @@ import {
 
 import { useCartStore } from "@/store/cartStore";
 import { useOrderConfigStore } from "@/store/orderConfigStore";
+import { useVoucherStore } from "@/store/voucherStore";
 import { formatPrice } from "@/lib/utils";
+import { calculateVoucherPricing } from "@/lib/vouchers";
 
 export default function CartPage() {
   const router = useRouter();
@@ -28,6 +30,8 @@ export default function CartPage() {
     clearCart,
   } = useCartStore();
   const { config } = useOrderConfigStore();
+  const { selectedVoucher, clearSelectedVoucher } = useVoucherStore();
+  const voucherPricing = calculateVoucherPricing(totalPrice, selectedVoucher);
 
   const handleQuantityChange = (cartItemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -85,6 +89,33 @@ export default function CartPage() {
         />
 
         <ModeNotice mode={config.deliveryMode} />
+
+        {selectedVoucher && (
+          <section className="mt-4 rounded-[18px] border border-[#f0b64d] bg-[#fff8ec] p-4 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[13px] font-black text-[#8a4a28]">
+                  Đang dùng voucher
+                </p>
+                <h2 className="mt-1 text-[16px] font-black text-[#3d2417]">
+                  {selectedVoucher.title}
+                </h2>
+                <p className="mt-1 text-[12px] font-semibold text-[#7b6254]">
+                  {voucherPricing.isEligible
+                    ? `Dự kiến giảm ${formatPrice(voucherPricing.discountAmount)}`
+                    : voucherPricing.reason}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={clearSelectedVoucher}
+                className="text-[12px] font-black text-[#d85d6c]"
+              >
+                Bỏ
+              </button>
+            </div>
+          </section>
+        )}
 
         <section className="mt-4 space-y-3">
           {items.map((item) => (
@@ -166,6 +197,7 @@ export default function CartPage() {
       <CheckoutSummary
         totalQuantity={totalQuantity}
         totalPrice={totalPrice}
+        discountAmount={voucherPricing.discountAmount}
         mode={config.deliveryMode}
         onCheckout={() => router.push("/checkout")}
       />
@@ -291,17 +323,19 @@ function QuantityStepper({
 function CheckoutSummary({
   totalQuantity,
   totalPrice,
+  discountAmount,
   mode,
   onCheckout,
 }: {
   totalQuantity: number;
   totalPrice: number;
+  discountAmount: number;
   mode: "delivery" | "pickup";
   onCheckout: () => void;
 }) {
   const isPickup = mode === "pickup";
   const deliveryFee = isPickup || totalPrice >= 149000 ? 0 : 20000;
-  const finalTotal = totalPrice + deliveryFee;
+  const finalTotal = Math.max(0, totalPrice - discountAmount) + deliveryFee;
 
   return (
     <div
@@ -320,6 +354,12 @@ function CheckoutSummary({
               {deliveryFee === 0 ? "Miễn phí" : formatPrice(deliveryFee)}
             </span>
           </div>
+          {discountAmount > 0 && (
+            <div className="flex items-center justify-between text-[13px] font-semibold text-text-muted">
+              <span>Voucher</span>
+              <span className="text-[#34802f]">-{formatPrice(discountAmount)}</span>
+            </div>
+          )}
           <div className="rounded-[14px] bg-[#fff8ec] px-3 py-2 text-[12px] font-semibold text-[#8a4a28]">
             {isPickup
               ? "Bạn sẽ chọn giờ nhận bánh ở bước thanh toán."

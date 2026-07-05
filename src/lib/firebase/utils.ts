@@ -194,6 +194,25 @@ export function normalizeOrder(id: string, data: FirestoreDocument): Order {
     pickupTime:
       typeof data.pickupTime === "string" ? data.pickupTime : undefined,
     notes: typeof data.notes === "string" ? data.notes : undefined,
+    internalNotes:
+      typeof data.internalNotes === "string" ? data.internalNotes : undefined,
+    cancelReason:
+      typeof data.cancelReason === "string" ? data.cancelReason : undefined,
+    assignedTo: typeof data.assignedTo === "string" ? data.assignedTo : undefined,
+    deliveryFee:
+      typeof data.deliveryFee === "number" ? data.deliveryFee : undefined,
+    discountAmount:
+      typeof data.discountAmount === "number" ? data.discountAmount : undefined,
+    voucherCode:
+      typeof data.voucherCode === "string" ? data.voucherCode : undefined,
+    voucherId: typeof data.voucherId === "string" ? data.voucherId : undefined,
+    voucherUseMode:
+      typeof data.voucherUseMode === "string"
+        ? (data.voucherUseMode as Order["voucherUseMode"])
+        : undefined,
+    statusHistory: Array.isArray(data.statusHistory)
+      ? (data.statusHistory as Order["statusHistory"])
+      : undefined,
     createdAt,
     updatedAt,
   };
@@ -240,6 +259,11 @@ export function normalizeCustomer(
     name: String(data.name ?? ""),
     phone: String(data.phone ?? ""),
     email: typeof data.email === "string" ? data.email : undefined,
+    birthday: typeof data.birthday === "string" ? data.birthday : undefined,
+    gender:
+      data.gender === "male" || data.gender === "female" || data.gender === "other"
+        ? data.gender
+        : undefined,
     status:
       data.status === "active" || data.status === "paused"
         ? data.status
@@ -260,6 +284,8 @@ export function normalizeCustomer(
     lastLoginAt: toDate(data.lastLoginAt as FirestoreDateValue),
     zaloUserId:
       typeof data.zaloUserId === "string" ? data.zaloUserId : undefined,
+    hasPassword: typeof data.passwordHash === "string" && data.passwordHash.length > 0,
+    passwordSetAt: toDate(data.passwordSetAt as FirestoreDateValue),
     personalization: normalizeCustomerPersonalization(data.personalization),
     createdAt,
     updatedAt,

@@ -22,6 +22,7 @@ export { getAllOrders } from "./orders";
 // Export customer functions
 export {
   consumeMagicLink,
+  buildMagicLinkUrl,
   createCustomer,
   createCustomerWithMagicLink,
   createMagicLinkForCustomer,

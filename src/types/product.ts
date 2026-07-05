@@ -21,6 +21,10 @@ export interface Product {
   imageUrl: string;
   categoryId?: string;
   description?: string;
+  ingredients?: string[];
+  shelfLife?: string;
+  storage?: string;
+  saleArea?: string[];
   availableForDelivery?: boolean;
   availableForPickup?: boolean;
   stock?: number; // Tồn kho cho admin/inventory

@@ -17,6 +17,8 @@ export interface Customer {
   name: string;
   phone: string;
   email?: string;
+  birthday?: string;
+  gender?: "male" | "female" | "other";
   status: CustomerStatus;
   loyaltyPoints: number;
   tier: LoyaltyTier;
@@ -26,6 +28,8 @@ export interface Customer {
   lastOrderAt?: Date;
   lastLoginAt?: Date;
   zaloUserId?: string;
+  hasPassword?: boolean;
+  passwordSetAt?: Date;
   personalization: CustomerPersonalization;
   createdAt: Date;
   updatedAt: Date;
@@ -48,6 +52,8 @@ export interface CustomerInput {
   name: string;
   phone: string;
   email?: string;
+  birthday?: string;
+  gender?: "male" | "female" | "other";
   status?: CustomerStatus;
   loyaltyPoints?: number;
   tier?: LoyaltyTier;

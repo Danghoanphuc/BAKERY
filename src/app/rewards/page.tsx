@@ -1,99 +1,65 @@
 "use client";
 
-import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
-  ArrowLeft,
+  Bike,
   Gift,
-  Info,
   Loader2,
-  Lock,
-  Ticket,
-  VolumeX,
+  MapPin,
+  QrCode,
+  ShoppingBag,
+  TicketPercent,
+  X,
 } from "lucide-react";
 
+import { useOrderConfigStore } from "@/store/orderConfigStore";
+import { useVoucherStore } from "@/store/voucherStore";
+import type { PublicVoucher, VoucherUseMode } from "@/types/voucher";
+import { toSelectedVoucher } from "@/lib/vouchers";
+
 type RewardsData = {
-  customer: {
+  customer?: {
     id: string;
     name: string;
     phone: string;
-    email?: string;
     tier: string;
     tierIcon: string;
   };
-  points: {
+  points?: {
     current: number;
-    totalEarned: number;
     neededForNextTier: number;
     progressPercent: number;
   };
-  journey: {
-    currentTierId: string;
-    nextTierId: string | null;
-    tiers: Array<{
-      id: string;
-      name: string;
-      threshold: number;
-      icon: string;
-      benefit: string;
-      unlocked: boolean;
-    }>;
-  };
-  totals: {
-    orderCount: number;
-    lifetimeValue: number;
-    favoriteProduct: string;
-    favoriteQuantity: number;
-  };
-  vouchers: Array<{
-    id: string;
-    title: string;
-    description: string;
-    unlocked: boolean;
-  }>;
-  badges: Array<{
-    id: string;
-    title: string;
-    description: string;
-    icon: string;
-    unlocked: boolean;
-  }>;
 };
 
-const formatNumber = (value: number) =>
-  new Intl.NumberFormat("vi-VN").format(value);
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(value);
-
 export default function RewardsPage() {
-  const [data, setData] = useState<RewardsData | null>(null);
-  const [activeTab, setActiveTab] = useState<"journey" | "offers">("journey");
+  const router = useRouter();
+  const { setDeliveryMode, setOrderTiming } = useOrderConfigStore();
+  const { setSelectedVoucher } = useVoucherStore();
+  const [publicVouchers, setPublicVouchers] = useState<PublicVoucher[]>([]);
+  const [rewardsData, setRewardsData] = useState<RewardsData | null>(null);
+  const [selectedVoucher, setSelectedVoucherModal] =
+    useState<PublicVoucher | null>(null);
+  const [posVoucher, setPosVoucher] = useState<PublicVoucher | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadRewards() {
       try {
-        const response = await fetch("/api/rewards");
+        const [publicRes, privateRes] = await Promise.all([
+          fetch("/api/vouchers/public"),
+          fetch("/api/rewards"),
+        ]);
 
-        if (response.status === 401) {
-          window.location.href = "/account/login?next=/rewards";
-          return;
+        if (publicRes.ok) {
+          const data = await publicRes.json();
+          setPublicVouchers(data.vouchers ?? []);
         }
 
-        if (!response.ok) {
-          throw new Error("Failed to load rewards");
+        if (privateRes.ok) {
+          setRewardsData(await privateRes.json());
         }
-
-        setData(await response.json());
-      } catch (err) {
-        console.error("Failed to load rewards:", err);
-        setError("Không thể tải trang tích điểm");
       } finally {
         setIsLoading(false);
       }
@@ -102,317 +68,271 @@ export default function RewardsPage() {
     loadRewards();
   }, []);
 
+  const heroVoucher = useMemo(
+    () => publicVouchers[0] ?? null,
+    [publicVouchers],
+  );
+
+  function useVoucher(voucher: PublicVoucher, useMode: VoucherUseMode) {
+    if (useMode === "pos_pickup_now") {
+      setPosVoucher(voucher);
+      setSelectedVoucherModal(null);
+      return;
+    }
+
+    setSelectedVoucher(toSelectedVoucher(voucher, useMode));
+    setDeliveryMode(useMode === "web_delivery" ? "delivery" : "pickup");
+    if (useMode === "web_pickup_later") {
+      setOrderTiming({ type: "scheduled" });
+    }
+    router.push("/");
+  }
+
   if (isLoading) {
     return (
-      <main className="min-h-screen bg-[#fff8e9] pt-6 pb-28 flex items-center justify-center">
-        <div className="flex items-center gap-2 text-[#7a351f]">
+      <main className="grid min-h-screen place-items-center bg-[#fff8ef] text-[#7a4b31]">
+        <div className="flex items-center gap-2 text-sm font-bold">
           <Loader2 className="h-5 w-5 animate-spin" />
-          <span>Đang mở hành trình hảo ngọt...</span>
+          Đang mở kho ưu đãi...
         </div>
       </main>
     );
   }
-
-  if (error || !data) {
-    return (
-      <main className="min-h-screen bg-[#fff8e9] pt-6 pb-28 flex items-center justify-center px-4">
-        <div className="rounded-lg border border-red-200 bg-white p-6 text-center text-red-700">
-          {error || "Không tìm thấy dữ liệu tích điểm"}
-        </div>
-      </main>
-    );
-  }
-
-  const topVoucher =
-    data.vouchers.find((voucher) => voucher.unlocked) ?? data.vouchers[0];
 
   return (
-    <main className="min-h-screen bg-bg-main pt-6 pb-28 text-text-primary">
-      <div className="mx-auto max-w-md px-4 pb-6 md:max-w-3xl">
-        <div className="relative overflow-hidden rounded-b-[2rem] bg-[radial-gradient(circle_at_top_left,#fff4ca,#fffaf0_45%,#fff7e8)] px-4 pb-5 pt-3 shadow-sm">
-          <div className="pointer-events-none absolute -left-10 top-20 text-5xl opacity-20">
-            🍰
-          </div>
-          <div className="pointer-events-none absolute -right-8 top-24 text-5xl opacity-20">
-            🥐
-          </div>
-          <div className="flex items-center justify-between">
-            <Link
-              href="/profile"
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-[#a94d2a] text-white shadow-[0_4px_0_#7a351f]"
-              aria-label="Quay lại hồ sơ"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Link>
-            <div className="flex gap-2">
-              <button className="flex h-10 w-10 items-center justify-center rounded-full bg-[#a94d2a] text-white shadow-[0_4px_0_#7a351f]">
-                <VolumeX className="h-4 w-4" />
-              </button>
-              <button className="flex h-10 w-10 items-center justify-center rounded-full bg-[#a94d2a] text-white shadow-[0_4px_0_#7a351f]">
-                <Info className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          <section className="mt-4 grid grid-cols-[90px_1fr] items-center gap-3">
-            <div className="relative">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full border-3 border-[#ffc979] bg-white shadow-inner">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#ffe2bf] text-3xl">
-                  🧑‍🍳
-                </div>
-              </div>
-              <div className="absolute bottom-0 right-0 flex h-7 w-7 items-center justify-center rounded-full border-3 border-white bg-[#f5a83a] text-white shadow text-xs">
-                ✎
-              </div>
-            </div>
-            <div className="min-w-0">
-              <h1 className="break-words text-xl font-black uppercase leading-tight tracking-wide text-text-primary">
-                {data.customer.name}
+    <main className="min-h-screen bg-[#fff8ef] pb-28 text-[#3d2417]">
+      <section className="mx-auto w-full max-w-[520px] px-4 pt-6">
+        <div className="rounded-lg border border-[#f0e1d2] bg-white p-5 shadow-[0_14px_30px_rgba(83,38,12,0.08)]">
+          <div className="flex items-start gap-3">
+            <span className="grid h-12 w-12 place-items-center rounded-[14px] bg-[#d85d6c] text-white">
+              <Gift className="h-6 w-6" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-black uppercase text-[#d85d6c]">
+                Voucher công khai
+              </p>
+              <h1 className="mt-1 text-[28px] font-black leading-tight">
+                Quét bill, nhận ưu đãi cho lần mua sau
               </h1>
-              <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border-2 border-[#f2a38e] bg-[#fff0e9] px-3 py-1.5 text-xs font-bold uppercase text-text-primary">
-                <span>{data.customer.tierIcon}</span>
-                {data.customer.tier}
-              </div>
+              <p className="mt-2 text-sm font-semibold leading-6 text-[#7b6254]">
+                Chưa cần đăng nhập. Khi dùng voucher, bạn chỉ cần nhập số điện
+                thoại để tiệm kiểm tra ưu đãi.
+              </p>
             </div>
-          </section>
-
-          <Link
-            href="#vouchers"
-            className="mt-4 flex items-center justify-center gap-2 rounded-full border-4 border-[#f7bd47] bg-gradient-to-b from-[#ffe376] to-[#f3a71c] px-4 py-3 text-sm font-black uppercase text-[#74351f] shadow-[0_5px_0_#b56c14]"
-          >
-            <Ticket className="h-5 w-5" />
-            Kho voucher của tôi
-          </Link>
-        </div>
-
-        <div className="mt-4 rounded-full border border-[#f5d5a6] bg-white p-1.5 shadow-sm">
-          <div className="grid grid-cols-2 gap-1">
-            <button
-              onClick={() => setActiveTab("journey")}
-              className={`rounded-full px-4 py-3 text-sm font-bold transition ${
-                activeTab === "journey"
-                  ? "bg-gradient-to-r from-[#5b2b18] to-[#7d3c23] text-white shadow"
-                  : "text-[#9a5a34]"
-              }`}
-            >
-              🍰 Hành trình hảo ngọt
-            </button>
-            <button
-              onClick={() => setActiveTab("offers")}
-              className={`rounded-full px-4 py-3 text-sm font-bold transition ${
-                activeTab === "offers"
-                  ? "bg-gradient-to-r from-[#5b2b18] to-[#7d3c23] text-white shadow"
-                  : "text-[#9a5a34]"
-              }`}
-            >
-              🎁 Ưu đãi
-            </button>
           </div>
+
+          {rewardsData?.customer && (
+            <div className="mt-4 rounded-lg bg-[#fff4ec] px-3 py-2 text-sm font-bold text-[#7a4b31]">
+              Xin chào {rewardsData.customer.name}. Bạn đang có{" "}
+              {rewardsData.points?.current ?? 0} điểm.
+            </div>
+          )}
         </div>
 
-        {activeTab === "journey" ? (
-          <>
-            <section className="mt-4 rounded-3xl border-3 border-[#e7ad67] bg-[#fffaf0] p-4 shadow-[0_8px_18px_rgba(122,53,31,0.14)]">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-lg font-black uppercase text-[#7a351f]">
-                    Thành tích 2026
-                  </h2>
-                  <p className="mt-1.5 text-xs leading-5 text-[#7f4a31]">
-                    {data.points.neededForNextTier > 0 ? (
-                      <>
-                        Cần thêm{" "}
-                        <strong className="text-brand-500">
-                          {formatNumber(data.points.neededForNextTier)} điểm
-                        </strong>{" "}
-                        nữa để lên hạng và nhận ưu đãi mới.
-                      </>
-                    ) : (
-                      <>Bạn đã chạm hạng cao nhất trong hành trình hảo ngọt.</>
-                    )}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <div className="text-4xl font-black leading-none text-brand-500">
-                    {formatNumber(data.points.current)}
-                  </div>
-                  <div className="text-sm font-black leading-tight text-text-primary">
-                    Điểm
-                    <br />
-                    Ngọt Ngào
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 h-2.5 rounded-full bg-[#f2d6ad]">
-                <div
-                  className="h-2.5 rounded-full bg-gradient-to-r from-[#8b3a21] to-[#f0a12d]"
-                  style={{ width: `${data.points.progressPercent}%` }}
-                />
-              </div>
-
-              <div className="mt-4 grid grid-cols-4 gap-1.5">
-                {data.journey.tiers.map((tier) => (
-                  <div
-                    key={tier.id}
-                    className={`rounded-xl border p-1.5 text-center ${
-                      tier.unlocked
-                        ? "border-[#f1bd4f] bg-[#fff0be] shadow-inner"
-                        : "border-[#edd0aa] bg-white opacity-70"
-                    }`}
-                  >
-                    <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-full border border-[#e8b56a] bg-white text-2xl">
-                      {tier.icon}
-                    </div>
-                    <div className="mt-1.5 min-h-8 text-[10px] font-bold leading-tight text-text-primary">
-                      {tier.name}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            <section className="mt-5 rounded-3xl border-3 border-[#f0c47e] bg-[#fffaf0] p-3 shadow-[0_8px_18px_rgba(122,53,31,0.12)]">
-              <div className="mx-auto -mt-7 mb-2 w-fit rounded-lg bg-gradient-to-b from-[#ffd58a] to-[#efa744] px-6 py-1.5 text-center text-sm font-black uppercase text-[#74351f] shadow">
-                Tổng giá trị tích lũy
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <StatCard
-                  icon="🪙"
-                  label="Tổng điểm đã tích"
-                  value={formatNumber(data.points.totalEarned)}
-                  detail="Điểm ngọt"
-                />
-                <StatCard
-                  icon="🏪"
-                  label="Số lần ghé tiệm"
-                  value={formatNumber(data.totals.orderCount)}
-                  detail="Lần mua"
-                />
-                <StatCard
-                  icon="🥐"
-                  label="Món ruột của bạn"
-                  value={formatNumber(data.totals.favoriteQuantity)}
-                  detail={data.totals.favoriteProduct}
-                />
-              </div>
-              <div className="mt-2.5 rounded-xl bg-white/70 px-3 py-2.5 text-center text-xs font-semibold text-[#8b4a2d]">
-                Tổng chi tiêu đã ghi nhận:{" "}
-                {formatCurrency(data.totals.lifetimeValue)}
-              </div>
-            </section>
-
-            <section className="mt-5 rounded-3xl border-3 border-[#f0c47e] bg-[#fffaf0] p-3 shadow-[0_8px_18px_rgba(122,53,31,0.12)]">
-              <div className="mx-auto -mt-7 mb-3 w-fit rounded-xl bg-gradient-to-b from-brand-400 to-brand-600 px-6 py-1.5 text-center text-sm font-black uppercase text-white shadow">
-                Bộ sưu tập danh hiệu
-              </div>
-              <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-                {data.badges.map((badge) => (
-                  <div
-                    key={badge.id}
-                    className={`rounded-xl border p-2 text-center ${
-                      badge.unlocked
-                        ? "border-[#f2c15d] bg-white"
-                        : "border-neutral-300 bg-neutral-100 text-neutral-500 grayscale"
-                    }`}
-                  >
-                    <div className="relative mx-auto flex h-14 w-14 items-center justify-center rounded-full border-3 border-[#f0c47e] bg-[#fff4d6] text-2xl">
-                      {badge.unlocked ? (
-                        badge.icon
-                      ) : (
-                        <Lock className="h-6 w-6" />
-                      )}
-                    </div>
-                    <div
-                      className={`mx-auto -mt-2.5 w-fit rounded-full px-2 py-0.5 text-[9px] font-black uppercase text-white ${badge.unlocked ? "bg-brand-500" : "bg-neutral-400"}`}
-                    >
-                      {badge.unlocked ? "Đã mở khóa" : "Chưa mở khóa"}
-                    </div>
-                    <h3 className="mt-2 text-xs font-black text-text-primary">
-                      {badge.title}
-                    </h3>
-                    <p className="mt-0.5 text-[10px] leading-3 text-[#7f4a31]">
-                      {badge.description}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </>
-        ) : (
-          <section
-            id="vouchers"
-            className="mt-4 rounded-3xl border-3 border-[#e7ad67] bg-[#fffaf0] p-4 shadow-[0_8px_18px_rgba(122,53,31,0.14)]"
-          >
-            <h2 className="text-lg font-black uppercase text-[#7a351f]">
-              Kho ưu đãi
-            </h2>
-            <div className="mt-3 space-y-2.5">
-              {data.vouchers.map((voucher) => (
-                <div
-                  key={voucher.id}
-                  className={`rounded-xl border p-3 ${
-                    voucher.unlocked
-                      ? "border-[#f0b64d] bg-gradient-to-r from-[#fff5ca] to-white"
-                      : "border-neutral-200 bg-neutral-50 opacity-70"
-                  }`}
-                >
-                  <div className="flex items-start gap-2.5">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#f3a71c] text-white">
-                      <Gift className="h-4 w-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <h3 className="text-sm font-black text-[#74351f]">
-                        {voucher.title}
-                      </h3>
-                      <p className="mt-0.5 text-xs text-[#7f4a31]">
-                        {voucher.description}
-                      </p>
-                    </div>
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${voucher.unlocked ? "bg-green-100 text-green-700" : "bg-neutral-200 text-neutral-500"}`}
-                    >
-                      {voucher.unlocked ? "Dùng được" : "Khóa"}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {topVoucher && (
-              <div className="mt-3 rounded-xl bg-[#7a351f] px-3 py-2.5 text-center text-xs font-semibold text-white">
-                Ưu đãi nổi bật: {topVoucher.title}
-              </div>
-            )}
-          </section>
+        {heroVoucher && (
+          <VoucherCard
+            voucher={heroVoucher}
+            featured
+            onUse={() => setSelectedVoucherModal(heroVoucher)}
+          />
         )}
-      </div>
+
+        <div className="mt-4 space-y-3">
+          {publicVouchers.slice(heroVoucher ? 1 : 0).map((voucher) => (
+            <VoucherCard
+              key={voucher.id}
+              voucher={voucher}
+              onUse={() => setSelectedVoucherModal(voucher)}
+            />
+          ))}
+        </div>
+      </section>
+
+      {selectedVoucher && (
+        <UseVoucherModal
+          voucher={selectedVoucher}
+          onClose={() => setSelectedVoucherModal(null)}
+          onUse={useVoucher}
+        />
+      )}
+
+      {posVoucher && (
+        <PosVoucherModal
+          voucher={posVoucher}
+          onClose={() => setPosVoucher(null)}
+        />
+      )}
     </main>
   );
 }
 
-function StatCard({
-  icon,
-  label,
-  value,
-  detail,
+function VoucherCard({
+  voucher,
+  featured,
+  onUse,
 }: {
-  icon: string;
-  label: string;
-  value: string;
-  detail: string;
+  voucher: PublicVoucher;
+  featured?: boolean;
+  onUse: () => void;
 }) {
   return (
-    <div className="rounded-xl border-2 border-[#f0c47e] bg-white p-2 text-center shadow-sm">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#fff1c9] text-2xl">
-        {icon}
+    <article
+      className={`mt-4 overflow-hidden rounded-lg border bg-white shadow-[0_12px_26px_rgba(83,38,12,0.08)] ${
+        featured ? "border-[#f0b64d]" : "border-[#f0e1d2]"
+      }`}
+    >
+      <div className="flex">
+        <div className="grid w-24 place-items-center bg-[#d85d6c] text-white">
+          <TicketPercent className="h-9 w-9" />
+        </div>
+        <div className="min-w-0 flex-1 p-4">
+          <p className="text-xs font-black uppercase text-[#d85d6c]">
+            {voucher.code}
+          </p>
+          <h2 className="mt-1 text-lg font-black leading-tight">
+            {voucher.title}
+          </h2>
+          <p className="mt-1 text-sm font-semibold leading-5 text-[#7b6254]">
+            {voucher.description}
+          </p>
+          <button
+            type="button"
+            onClick={onUse}
+            className="mt-3 h-10 rounded-lg bg-[#d85d6c] px-4 text-sm font-black text-white"
+          >
+            Sử dụng voucher
+          </button>
+        </div>
       </div>
-      <p className="mt-2 min-h-8 text-[10px] font-semibold leading-4 text-[#7f4a31]">
-        {label}
-      </p>
-      <p className="mt-0.5 text-xl font-black text-[#df4d67]">{value}</p>
-      <p className="mt-0.5 truncate text-[10px] font-bold text-[#74351f]">
-        {detail}
-      </p>
+    </article>
+  );
+}
+
+function UseVoucherModal({
+  voucher,
+  onClose,
+  onUse,
+}: {
+  voucher: PublicVoucher;
+  onClose: () => void;
+  onUse: (voucher: PublicVoucher, mode: VoucherUseMode) => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[120] flex items-end bg-black/45 p-4 sm:items-center sm:justify-center">
+      <div className="w-full max-w-md rounded-lg bg-white p-4 shadow-xl">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-lg font-black text-[#3d2417]">
+              Bạn muốn dùng voucher ở đâu?
+            </h2>
+            <p className="mt-1 text-sm font-semibold text-[#7b6254]">
+              {voucher.title}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid h-9 w-9 place-items-center rounded-full bg-[#fff4ec]"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="mt-4 grid gap-3">
+          <ModeButton
+            icon={<MapPin className="h-5 w-5" />}
+            title="Dùng tại quầy"
+            description="Đang ở tiệm? Hiện mã để nhân viên quét và giảm trực tiếp."
+            onClick={() => onUse(voucher, "pos_pickup_now")}
+          />
+          <ModeButton
+            icon={<ShoppingBag className="h-5 w-5" />}
+            title="Đặt trước, đến lấy"
+            description="Chọn bánh trên web, hẹn giờ chuẩn bị rồi ghé lấy sau."
+            onClick={() => onUse(voucher, "web_pickup_later")}
+          />
+          <ModeButton
+            icon={<Bike className="h-5 w-5" />}
+            title="Giao tận nơi"
+            description="Đặt bánh giao về nhà như bình thường."
+            onClick={() => onUse(voucher, "web_delivery")}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ModeButton({
+  icon,
+  title,
+  description,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-start gap-3 rounded-lg border border-[#eadbcc] bg-[#fffaf6] p-3 text-left transition active:scale-[0.99]"
+    >
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white text-[#d85d6c]">
+        {icon}
+      </span>
+      <span>
+        <span className="block text-sm font-black text-[#3d2417]">{title}</span>
+        <span className="mt-1 block text-xs font-semibold leading-5 text-[#7b6254]">
+          {description}
+        </span>
+      </span>
+    </button>
+  );
+}
+
+function PosVoucherModal({
+  voucher,
+  onClose,
+}: {
+  voucher: PublicVoucher;
+  onClose: () => void;
+}) {
+  const qrData = `BAKERY-VOUCHER:${voucher.code}`;
+
+  return (
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-[#fff8ef] p-4">
+      <div className="w-full max-w-sm rounded-lg border border-[#f0e1d2] bg-white p-5 text-center shadow-xl">
+        <div className="mx-auto grid h-14 w-14 place-items-center rounded-[16px] bg-[#d85d6c] text-white">
+          <QrCode className="h-8 w-8" />
+        </div>
+        <h2 className="mt-4 text-xl font-black text-[#3d2417]">
+          Đưa mã này cho nhân viên quét
+        </h2>
+        <p className="mt-2 text-sm font-semibold leading-6 text-[#7b6254]">
+          Voucher: {voucher.title}
+        </p>
+        <img
+          src={`https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(qrData)}`}
+          alt={`QR voucher ${voucher.code}`}
+          className="mx-auto mt-5 h-[220px] w-[220px] rounded-lg border border-[#eadbcc] bg-white p-3"
+        />
+        <div className="mt-4 rounded-lg bg-[#fff4ec] px-3 py-2 text-2xl font-black tracking-[0.08em] text-[#3d2417]">
+          {voucher.code}
+        </div>
+        <p className="mt-2 text-xs font-semibold text-[#7b6254]">
+          Nhân viên nhập mã này ở trang Quét voucher tại quầy.
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="mt-5 h-11 w-full rounded-lg border border-[#eadbcc] text-sm font-black text-[#3d2417]"
+        >
+          Đóng
+        </button>
+      </div>
     </div>
   );
 }

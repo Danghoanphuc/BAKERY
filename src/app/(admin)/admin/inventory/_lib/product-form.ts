@@ -19,10 +19,14 @@ export type ProductFormData = {
   sizeOptions: SizeOption[];
   flavorOptions: FlavorOption[];
   tags: string;
+  ingredients: string;
   occasionTags: string;
   dietaryTags: string;
   allergens: string;
   searchKeywords: string;
+  shelfLife: string;
+  storage: string;
+  saleArea: string;
   galleryImages: string;
   pickupBranchIds: string;
   preparationTimeMinutes: number;
@@ -50,10 +54,14 @@ export function createEmptyProductForm(categoryId = ""): ProductFormData {
     sizeOptions: [],
     flavorOptions: [],
     tags: "",
+    ingredients: "",
     occasionTags: "",
     dietaryTags: "",
     allergens: "",
     searchKeywords: "",
+    shelfLife: "",
+    storage: "",
+    saleArea: "",
     galleryImages: "",
     pickupBranchIds: "",
     preparationTimeMinutes: 30,
@@ -82,10 +90,14 @@ export function productToForm(product: Product, fallbackCategoryId = ""): Produc
     sizeOptions: product.sizeOptions ?? [],
     flavorOptions: product.flavorOptions ?? [],
     tags: joinTags(product.tags),
+    ingredients: joinTags(product.ingredients),
     occasionTags: joinTags(product.occasionTags),
     dietaryTags: joinTags(product.dietaryTags),
     allergens: joinTags(product.allergens),
     searchKeywords: joinTags(product.searchKeywords),
+    shelfLife: product.shelfLife ?? "",
+    storage: product.storage ?? "",
+    saleArea: joinTags(product.saleArea),
     galleryImages: joinTags(product.galleryImages),
     pickupBranchIds: joinTags(product.pickupBranchIds),
     preparationTimeMinutes: product.preparationTimeMinutes ?? 30,
@@ -105,10 +117,14 @@ export function productFormToPayload(formData: ProductFormData) {
     preorderMinHours: Number(formData.preorderMinHours) || 0,
     sortPriority: Number(formData.sortPriority) || 0,
     tags: splitTags(formData.tags),
+    ingredients: splitTags(formData.ingredients),
     occasionTags: splitTags(formData.occasionTags),
     dietaryTags: splitTags(formData.dietaryTags),
     allergens: splitTags(formData.allergens),
     searchKeywords: splitTags(formData.searchKeywords),
+    shelfLife: formData.shelfLife.trim(),
+    storage: formData.storage.trim(),
+    saleArea: splitTags(formData.saleArea),
     galleryImages: splitTags(formData.galleryImages),
     pickupBranchIds: splitTags(formData.pickupBranchIds),
   };

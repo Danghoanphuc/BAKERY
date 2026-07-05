@@ -70,17 +70,27 @@ export default function OrderHistory() {
               0,
             );
 
+            const dateObj = order.createdAt
+              ? typeof order.createdAt === "string"
+                ? new Date(order.createdAt)
+                : order.createdAt
+              : new Date();
+
+            const formattedDate = !isNaN(dateObj.getTime())
+              ? dateObj.toLocaleDateString("vi-VN", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "N/A";
+
             return {
               id: order.id,
               title: firstItem?.name || "Đơn hàng",
               itemCount: totalCount,
-              date: new Date(order.createdAt).toLocaleDateString("vi-VN", {
-                day: "2-digit",
-                month: "2-digit",
-                year: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              }),
+              date: formattedDate,
               price: order.totalAmount,
               pointsEarned: Math.floor(order.totalAmount / 10000),
               status: order.status.toLowerCase() as OrderStatus,

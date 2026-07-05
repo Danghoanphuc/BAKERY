@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { createMagicLinkForCustomer, getCustomerByPhone } from "@/lib/firebase";
+import {
+  buildMagicLinkUrl,
+  createMagicLinkForCustomer,
+  getCustomerByPhone,
+} from "@/lib/firebase";
 
 export async function POST(request: Request) {
   try {
@@ -9,7 +13,14 @@ export async function POST(request: Request) {
       const customer = await getCustomerByPhone(phone);
 
       if (customer) {
-        await createMagicLinkForCustomer(customer.id);
+        const result = await createMagicLinkForCustomer(customer.id);
+
+        return NextResponse.json({
+          ok: true,
+          message:
+            "He thong da tao link dang nhap moi. Neu chua co kenh SMS/Zalo tu dong, nhan vien co the copy link nay de gui cho khach.",
+          magicLinkUrl: buildMagicLinkUrl(result.urlPath),
+        });
       }
     }
 

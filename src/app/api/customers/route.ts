@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { createCustomerWithMagicLink, getAllCustomers } from "@/lib/firebase";
+import {
+  buildMagicLinkUrl,
+  createCustomerWithMagicLink,
+  getAllCustomers,
+} from "@/lib/firebase";
 
 export async function GET() {
   try {
@@ -32,6 +36,7 @@ export async function POST(request: Request) {
         currentMagicLinkToken: result.token,
         magicLinkExpiresAt: result.expiresAt,
         magicLinkUrlPath: result.urlPath,
+        magicLinkUrl: buildMagicLinkUrl(result.urlPath),
       },
       { status: 201 },
     );

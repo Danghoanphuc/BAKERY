@@ -18,6 +18,7 @@ import type {
   CustomerPersonalization,
   MagicLinkResult,
 } from "@/types";
+import { toPublicUrl } from "@/lib/public-url";
 import { db } from "./config";
 import { normalizeCustomer, normalizeMagicLink } from "./utils";
 
@@ -28,6 +29,10 @@ const MAGIC_LINK_TTL_MINUTES = 30;
 export type ConsumeMagicLinkResult =
   | { ok: true; customer: Customer }
   | { ok: false; reason: "missing" | "used" | "expired" };
+
+export type CustomerAuthRecord = Customer & {
+  passwordHash?: string;
+};
 
 function createToken() {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
@@ -85,6 +90,8 @@ function buildCreatePayload(data: CustomerInput) {
     name: data.name.trim(),
     phone: normalizePhone(data.phone),
     email: normalizeOptionalString(data.email),
+    birthday: normalizeOptionalString(data.birthday),
+    gender: data.gender,
     status: data.status ?? "invited",
     loyaltyPoints: data.loyaltyPoints ?? 0,
     tier: data.tier ?? "new",
@@ -101,6 +108,10 @@ function buildUpdatePayload(data: Partial<CustomerInput>) {
   if (data.name !== undefined) payload.name = data.name.trim();
   if (data.phone !== undefined) payload.phone = normalizePhone(data.phone);
   if (data.email !== undefined) payload.email = normalizeOptionalString(data.email);
+  if (data.birthday !== undefined) {
+    payload.birthday = normalizeOptionalString(data.birthday);
+  }
+  if (data.gender !== undefined) payload.gender = data.gender;
   if (data.status !== undefined) payload.status = data.status;
   if (data.loyaltyPoints !== undefined) payload.loyaltyPoints = data.loyaltyPoints;
   if (data.tier !== undefined) payload.tier = data.tier;
@@ -155,6 +166,28 @@ export async function getCustomerByPhone(phone: string): Promise<Customer | null
   return customerDoc
     ? normalizeCustomer(customerDoc.id, customerDoc.data())
     : null;
+}
+
+export async function getCustomerAuthByPhone(
+  phone: string,
+): Promise<CustomerAuthRecord | null> {
+  const customersRef = collection(db, CUSTOMERS_COLLECTION);
+  const customersQuery = query(
+    customersRef,
+    where("phone", "==", normalizePhone(phone)),
+    limit(1),
+  );
+  const snapshot = await getDocs(customersQuery);
+  const customerDoc = snapshot.docs[0];
+
+  if (!customerDoc) return null;
+
+  const data = customerDoc.data();
+  return {
+    ...normalizeCustomer(customerDoc.id, data),
+    passwordHash:
+      typeof data.passwordHash === "string" ? data.passwordHash : undefined,
+  };
 }
 
 export async function getCustomerByZaloUserId(
@@ -287,6 +320,10 @@ export async function createMagicLinkForCustomer(
     urlPath: `/auth/magic?token=${token}`,
     expiresAt,
   };
+}
+
+export function buildMagicLinkUrl(urlPath: string) {
+  return toPublicUrl(urlPath);
 }
 
 export async function createCustomerWithMagicLink(

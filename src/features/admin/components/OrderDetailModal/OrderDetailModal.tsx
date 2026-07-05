@@ -32,11 +32,20 @@ export function OrderDetailModal({
     }).format(price);
   };
 
-  const formatDate = (date: Date) => {
-    return new Intl.DateTimeFormat("vi-VN", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(date);
+  const formatDate = (date: Date | string | undefined) => {
+    if (!date) return "N/A";
+
+    try {
+      const dateObj = typeof date === "string" ? new Date(date) : date;
+      if (isNaN(dateObj.getTime())) return "N/A";
+
+      return new Intl.DateTimeFormat("vi-VN", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(dateObj);
+    } catch {
+      return "N/A";
+    }
   };
 
   const orderTypeLabel = {
@@ -89,7 +98,7 @@ export function OrderDetailModal({
             {order.pickupTime && (
               <div className="flex items-center gap-2">
                 <Clock className="w-4 h-4 text-neutral-500" />
-                <span>Lấy lúc: {formatDate(new Date(order.pickupTime))}</span>
+                <span>Lấy lúc: {formatDate(order.pickupTime)}</span>
               </div>
             )}
           </div>

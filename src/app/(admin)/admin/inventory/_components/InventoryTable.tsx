@@ -1,5 +1,6 @@
 import { Edit2, ImageIcon, Loader2, Search, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
+import { ProductShareButton } from "@/features/product/components/ProductShareButton";
 import type { Product } from "@/types";
 import type { ProductFilter } from "../_lib/product-form";
 import { formatPrice, getStockStatus } from "../_lib/inventory-utils";
@@ -192,6 +193,12 @@ function InventoryTableRow({
           >
             <Edit2 className="h-4 w-4" />
           </button>
+          <ProductShareButton
+            product={product}
+            iconOnly
+            label="Copy link san pham"
+            className="border-0 text-neutral-500 hover:text-brand-600"
+          />
           <button
             type="button"
             onClick={() => onDelete(product)}

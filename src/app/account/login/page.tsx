@@ -3,18 +3,9 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState } from "react";
-import { MessageCircle, Phone, ShieldCheck } from "lucide-react";
+import { ArrowRight, KeyRound, Loader2, MessageCircle, Phone } from "lucide-react";
 
-const errorMessages: Record<string, string> = {
-  magic_missing: "Link không tồn tại. Bạn có thể nhập số điện thoại để quán tạo lại link đăng nhập.",
-  magic_used: "Link này đã được dùng một lần. Hãy nhập số điện thoại để quán tạo lại link mới.",
-  magic_expired: "Link đã hết hạn. Hãy nhập số điện thoại để quán tạo lại link mới.",
-  missing_token: "Link không hợp lệ. Hãy nhập số điện thoại để quán tạo lại link mới.",
-  zalo_not_configured: "Đăng nhập Zalo chưa được cấu hình.",
-  zalo_missing_code: "Zalo chưa trả mã đăng nhập.",
-  zalo_no_customer: "Không tìm thấy tài khoản khớp với Zalo của bạn.",
-  zalo_failed: "Đăng nhập Zalo chưa thành công. Vui lòng thử lại.",
-};
+type LoginStep = "phone" | "profile" | "otp" | "password";
 
 export default function AccountLoginPage() {
   return (
@@ -26,113 +17,280 @@ export default function AccountLoginPage() {
 
 function AccountLoginContent() {
   const searchParams = useSearchParams();
-  const error = searchParams.get("error");
-  const message = error ? errorMessages[error] : undefined;
+  const nextPath = searchParams.get("next") || "/profile";
+  const [step, setStep] = useState<LoginStep>("phone");
   const [phone, setPhone] = useState("");
+  const [name, setName] = useState("");
+  const [birthday, setBirthday] = useState("");
+  const [gender, setGender] = useState("");
+  const [otp, setOtp] = useState("");
+  const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
+  const [devOtp, setDevOtp] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  async function handlePhoneRequest(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function requestOtp(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault();
     setIsSubmitting(true);
+    setError(null);
     setNotice(null);
-    setFormError(null);
+    setDevOtp(null);
 
     try {
-      const response = await fetch("/api/auth/phone-login-request", {
+      const response = await fetch("/api/auth/otp/request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone }),
+        body: JSON.stringify({ phone, name, birthday, gender }),
+      });
+      const data = await response.json();
+
+      if (data.requiresProfile) {
+        setStep("profile");
+        setNotice(data.message);
+        return;
+      }
+
+      if (!response.ok) {
+        setError(data.error || "Không thể gửi OTP.");
+        return;
+      }
+
+      setNotice(data.message || "Mã OTP đã được gửi.");
+      setDevOtp(data.devOtp || null);
+      setStep("otp");
+    } catch (err) {
+      console.error("Request OTP failed:", err);
+      setError("Không thể gửi OTP. Vui lòng thử lại.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function verifyOtp(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/auth/otp/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, otp }),
       });
       const data = await response.json();
 
       if (!response.ok) {
-        setFormError(data.error || "Không thể tạo yêu cầu đăng nhập");
+        setError(data.error || "OTP không đúng.");
         return;
       }
 
-      setNotice(data.message);
+      window.location.href = nextPath;
     } catch (err) {
-      console.error("Phone login request failed:", err);
-      setFormError("Không thể tạo yêu cầu đăng nhập. Vui lòng thử lại.");
+      console.error("Verify OTP failed:", err);
+      setError("Không thể xác thực OTP.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function loginWithPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/auth/password-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, password }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.error || "Đăng nhập chưa thành công.");
+        return;
+      }
+
+      window.location.href = nextPath;
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <main className="min-h-screen bg-neutral-50 pt-20">
-      <div className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-md items-center px-4 py-10">
-        <div className="w-full rounded-lg border border-neutral-200 bg-white p-6 shadow-sm">
-          <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-full bg-primary-50 text-primary-600">
-            <ShieldCheck className="h-7 w-7" />
+    <main className="min-h-screen bg-[#fff8ef] px-4 py-8 text-[#3d2417]">
+      <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-[430px] flex-col justify-center">
+        <div className="mb-6">
+          <div className="grid h-14 w-14 place-items-center rounded-[16px] bg-[#d85d6c] text-white shadow-[0_12px_24px_rgba(216,93,108,0.24)]">
+            <Phone className="h-7 w-7" />
           </div>
-          <h1 className="text-2xl font-bold text-neutral-900">
-            Đăng nhập tài khoản Bakery
+          <h1 className="mt-4 text-[30px] font-black leading-tight">
+            Nhập số điện thoại
           </h1>
-          <p className="mt-2 text-sm text-neutral-600">
-            Nhập số điện thoại đã được tạo trong CRM. Hệ thống sẽ tạo magic link mới để nhân viên gửi thủ công cho bạn.
+          <p className="mt-2 text-[15px] font-semibold leading-6 text-[#7b6254]">
+            Tiệm sẽ gửi OTP để mở voucher, điểm tích lũy và đơn hàng của bạn.
           </p>
+        </div>
 
-          {message && (
-            <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              {message}
-            </div>
+        <section className="rounded-lg border border-[#f0e1d2] bg-white p-5 shadow-[0_14px_30px_rgba(83,38,12,0.08)]">
+          {notice && <Notice tone="success" text={notice} />}
+          {error && <Notice tone="error" text={error} />}
+          {devOtp && (
+            <Notice tone="warning" text={`Mã test local: ${devOtp}`} />
           )}
 
-          {notice && (
-            <div className="mt-5 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-              {notice}
-            </div>
+          {step === "phone" && (
+            <form onSubmit={requestOtp} className="mt-4 space-y-4">
+              <Field label="Số điện thoại" type="tel" value={phone} onChange={setPhone} />
+              <button
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#d85d6c] text-sm font-black text-white disabled:opacity-70"
+                disabled={isSubmitting}
+              >
+                {isSubmitting && <Loader2 className="h-5 w-5 animate-spin" />}
+                Nhận mã OTP
+              </button>
+            </form>
           )}
 
-          {formError && (
-            <div className="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {formError}
-            </div>
+          {step === "profile" && (
+            <form onSubmit={requestOtp} className="mt-4 space-y-4">
+              <Field label="Số điện thoại" type="tel" value={phone} onChange={setPhone} />
+              <Field label="Tên của bạn" value={name} onChange={setName} />
+              <Field label="Ngày sinh" type="date" value={birthday} onChange={setBirthday} />
+              <label className="block">
+                <span className="text-xs font-black uppercase text-[#7b4b34]">
+                  Giới tính
+                </span>
+                <select
+                  value={gender}
+                  onChange={(event) => setGender(event.target.value)}
+                  className="mt-1 h-12 w-full rounded-lg border border-[#eadbcc] bg-[#fffaf6] px-3 text-[15px] font-semibold outline-none focus:border-[#d85d6c]"
+                >
+                  <option value="">Chưa chọn</option>
+                  <option value="female">Nữ</option>
+                  <option value="male">Nam</option>
+                  <option value="other">Khác</option>
+                </select>
+              </label>
+              <button
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#d85d6c] text-sm font-black text-white disabled:opacity-70"
+                disabled={isSubmitting}
+              >
+                {isSubmitting && <Loader2 className="h-5 w-5 animate-spin" />}
+                Gửi OTP
+              </button>
+            </form>
           )}
 
-          <form onSubmit={handlePhoneRequest} className="mt-6 space-y-3">
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-neutral-700">
-                Số điện thoại
-              </span>
-              <input
-                type="tel"
-                required
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                placeholder="Ví dụ: 0901234567"
-                className="w-full rounded-lg border border-neutral-300 px-3 py-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </label>
+          {step === "otp" && (
+            <form onSubmit={verifyOtp} className="mt-4 space-y-4">
+              <Field label="Mã OTP" inputMode="numeric" value={otp} onChange={setOtp} />
+              <button
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#d85d6c] text-sm font-black text-white disabled:opacity-70"
+                disabled={isSubmitting}
+              >
+                {isSubmitting && <Loader2 className="h-5 w-5 animate-spin" />}
+                Xác nhận
+              </button>
+              <button
+                type="button"
+                onClick={() => requestOtp()}
+                className="flex h-11 w-full items-center justify-center rounded-lg border border-[#eadbcc] text-sm font-black text-[#3d2417]"
+              >
+                Gửi lại OTP
+              </button>
+            </form>
+          )}
+
+          {step === "password" && (
+            <form onSubmit={loginWithPassword} className="mt-4 space-y-4">
+              <Field label="Số điện thoại" type="tel" value={phone} onChange={setPhone} />
+              <Field label="Mật khẩu" type="password" value={password} onChange={setPassword} />
+              <button
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#d85d6c] text-sm font-black text-white disabled:opacity-70"
+                disabled={isSubmitting}
+              >
+                <KeyRound className="h-5 w-5" />
+                Đăng nhập
+              </button>
+            </form>
+          )}
+
+          <div className="mt-4 grid gap-2">
             <button
-              type="submit"
-              disabled={isSubmitting}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary-600 px-4 py-3 text-sm font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-60"
+              type="button"
+              onClick={() => setStep(step === "password" ? "phone" : "password")}
+              className="flex h-11 w-full items-center justify-center rounded-lg border border-[#eadbcc] text-sm font-black text-[#3d2417]"
             >
-              <Phone className="h-5 w-5" />
-              {isSubmitting ? "Đang tạo yêu cầu..." : "Yêu cầu magic link"}
+              {step === "password" ? "Dùng OTP" : "Tôi có mật khẩu"}
             </button>
-          </form>
+            <a
+              href="/auth/zalo"
+              className="flex h-11 items-center justify-center gap-2 rounded-lg border border-[#0068ff] text-sm font-black text-[#0068ff]"
+            >
+              <MessageCircle className="h-5 w-5" />
+              Zalo
+            </a>
+          </div>
+        </section>
 
-          <a
-            href="/auth/zalo"
-            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-[#0068ff] px-4 py-3 text-sm font-semibold text-[#0068ff] hover:bg-blue-50"
-          >
-            <MessageCircle className="h-5 w-5" />
-            Đăng nhập bằng Zalo
-          </a>
-
-          <Link
-            href="/order"
-            className="mt-3 inline-flex w-full items-center justify-center rounded-lg border border-neutral-300 px-4 py-3 text-sm font-medium text-neutral-700 hover:bg-neutral-50"
-          >
-            Xem bánh trước
+        <div className="mt-4 grid gap-2 text-center text-sm font-bold text-[#7b6254]">
+          <Link href="/rewards" className="inline-flex items-center justify-center gap-1">
+            Xem voucher công khai <ArrowRight className="h-4 w-4" />
           </Link>
+          <Link href="/">Xem bánh trước</Link>
         </div>
       </div>
     </main>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  type = "text",
+  inputMode,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  inputMode?: "numeric";
+}) {
+  return (
+    <label className="block">
+      <span className="text-xs font-black uppercase text-[#7b4b34]">{label}</span>
+      <input
+        type={type}
+        inputMode={inputMode}
+        required
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="mt-1 h-12 w-full rounded-lg border border-[#eadbcc] bg-[#fffaf6] px-3 text-[15px] font-semibold outline-none focus:border-[#d85d6c]"
+      />
+    </label>
+  );
+}
+
+function Notice({
+  text,
+  tone,
+}: {
+  text: string;
+  tone: "success" | "error" | "warning";
+}) {
+  const className =
+    tone === "success"
+      ? "bg-green-50 text-green-700"
+      : tone === "error"
+        ? "bg-red-50 text-red-700"
+        : "bg-amber-50 text-amber-800";
+
+  return (
+    <p className={`mt-4 rounded-lg px-3 py-2 text-sm font-semibold ${className}`}>
+      {text}
+    </p>
   );
 }

@@ -640,6 +640,14 @@ function MetadataSection({
           onChange={(tags) => setFormData((prev) => ({ ...prev, tags }))}
         />
         <TagInput
+          label="Thành phần"
+          value={formData.ingredients}
+          placeholder="bột mì, trứng, bơ, sữa"
+          onChange={(ingredients) =>
+            setFormData((prev) => ({ ...prev, ingredients }))
+          }
+        />
+        <TagInput
           label="Dịp sử dụng"
           value={formData.occasionTags}
           placeholder="sinh nhật, kỷ niệm, tiệc công ty"
@@ -661,6 +669,26 @@ function MetadataSection({
           placeholder="sữa, trứng, gluten, hạt"
           onChange={(allergens) =>
             setFormData((prev) => ({ ...prev, allergens }))
+          }
+        />
+        <TextField
+          label="Hạn dùng"
+          value={formData.shelfLife}
+          onChange={(shelfLife) =>
+            setFormData((prev) => ({ ...prev, shelfLife }))
+          }
+        />
+        <TextAreaField
+          label="Bảo quản"
+          value={formData.storage}
+          onChange={(storage) => setFormData((prev) => ({ ...prev, storage }))}
+        />
+        <TagInput
+          label="Khu vực bán"
+          value={formData.saleArea}
+          placeholder="Buôn Ma Thuột, Đắk Lắk, Tây Nguyên"
+          onChange={(saleArea) =>
+            setFormData((prev) => ({ ...prev, saleArea }))
           }
         />
         <TagInput

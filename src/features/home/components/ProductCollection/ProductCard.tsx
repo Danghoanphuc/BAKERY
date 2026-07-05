@@ -2,9 +2,11 @@
 
 import React from "react";
 import { clsx } from "clsx";
-import { Product } from "@/types/product";
 import { Button } from "@/components/common";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
+import { ProductShareButton } from "@/features/product/components/ProductShareButton";
+import { getProductPath } from "@/lib/product-path";
+import { Product } from "@/types/product";
 
 export interface ProductCardProps {
   product: Product;
@@ -28,46 +30,53 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   return (
-    <div className="w-[140px] lg:w-full bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden hover:shadow-md transition-shadow duration-200">
-      {/* Product Image */}
-      <div className="relative w-full aspect-[5/4] lg:aspect-square bg-neutral-100 overflow-hidden group">
+    <div className="w-[140px] overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md lg:w-full">
+      <a
+        href={getProductPath(product)}
+        className="group relative block aspect-[5/4] w-full overflow-hidden bg-neutral-100 lg:aspect-square"
+        aria-label={`Xem ${product.name}`}
+      >
         <ProductImage
           src={product.imageUrl}
           alt={product.name}
           className={clsx(
-            "object-cover transition-all duration-300 w-full h-full",
+            "h-full w-full object-cover transition-all duration-300",
             "group-hover:scale-105",
           )}
         />
-      </div>
+      </a>
 
-      {/* Product Info */}
       <div className="p-2 lg:p-4">
-        {/* Product Name */}
         <h3
-          className="text-[13px] lg:text-base font-medium text-neutral-900 mb-1.5 min-h-[2.5rem] lg:min-h-[3rem] overflow-hidden"
+          className="mb-1.5 min-h-[2.5rem] overflow-hidden text-[13px] font-medium text-neutral-900 lg:min-h-[3rem] lg:text-base"
           style={{
             display: "-webkit-box",
             WebkitLineClamp: 2,
             WebkitBoxOrient: "vertical",
           }}
         >
-          {product.name}
+          <a href={getProductPath(product)}>{product.name}</a>
         </h3>
 
-        {/* Price and Add Button */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-1.5">
-          <span className="text-[14px] lg:text-base font-bold text-primary-600">
+        <div className="flex flex-col items-start justify-between gap-1.5 lg:flex-row lg:items-center">
+          <span className="text-[14px] font-bold text-primary-600 lg:text-base">
             {formatPrice(product.price)}
           </span>
-          <Button
-            variant="primary"
-            className="touch-target px-2 py-1 lg:px-4 lg:py-2 text-[12px] lg:text-sm font-bold min-w-[48px] lg:min-w-[80px] h-8 lg:h-10 w-full lg:w-auto rounded-md"
-            onClick={handleAddToCart}
-            data-testid="add-to-cart-btn"
-          >
-            Thêm
-          </Button>
+          <div className="flex w-full items-center gap-1.5 lg:w-auto">
+            <ProductShareButton
+              product={product}
+              iconOnly
+              className="h-8 w-8 shrink-0 lg:h-10 lg:w-10"
+            />
+            <Button
+              variant="primary"
+              className="touch-target h-8 w-full min-w-[48px] rounded-md px-2 py-1 text-[12px] font-bold lg:h-10 lg:w-auto lg:min-w-[80px] lg:px-4 lg:py-2 lg:text-sm"
+              onClick={handleAddToCart}
+              data-testid="add-to-cart-btn"
+            >
+              Thêm
+            </Button>
+          </div>
         </div>
       </div>
     </div>

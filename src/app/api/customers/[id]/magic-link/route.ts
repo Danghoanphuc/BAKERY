@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createMagicLinkForCustomer } from "@/lib/firebase";
+import { buildMagicLinkUrl, createMagicLinkForCustomer } from "@/lib/firebase";
 
 export async function POST(
   _request: Request,
@@ -11,6 +11,7 @@ export async function POST(
     return NextResponse.json({
       token: result.token,
       urlPath: result.urlPath,
+      magicLinkUrl: buildMagicLinkUrl(result.urlPath),
       expiresAt: result.expiresAt,
       customer: result.customer,
     });

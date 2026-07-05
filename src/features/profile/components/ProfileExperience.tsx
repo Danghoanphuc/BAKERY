@@ -385,24 +385,18 @@ function ProfileMenu({ data }: { data: ProfileExperienceData }) {
             </Link>
           );
         })}
-        <button
-          type="button"
-          onClick={async () => {
-            try {
-              await fetch("/api/auth/logout", { method: "POST" });
-              window.location.href = "/account/login";
-            } catch (error) {
-              console.error("Logout failed:", error);
-            }
-          }}
-          className="flex min-h-[54px] w-full items-center gap-3 px-4 text-left"
-        >
-          <LogOut className="h-7 w-7 shrink-0 text-[#df5a67]" />
-          <span className="min-w-0 flex-1 text-[14px] font-black text-[#df5a67]">
-            Đăng xuất
-          </span>
-          <ChevronRight className="h-5 w-5 shrink-0 text-[#8b776b]" />
-        </button>
+        <form action="/api/auth/logout" method="POST">
+          <button
+            type="submit"
+            className="flex min-h-[54px] w-full items-center gap-3 px-4 text-left"
+          >
+            <LogOut className="h-7 w-7 shrink-0 text-[#df5a67]" />
+            <span className="min-w-0 flex-1 text-[14px] font-black text-[#df5a67]">
+              Đăng xuất
+            </span>
+            <ChevronRight className="h-5 w-5 shrink-0 text-[#8b776b]" />
+          </button>
+        </form>
       </div>
     </section>
   );

@@ -55,7 +55,6 @@ export async function GET(request: Request) {
     // TODO: Ideally, decode the session cookie to get customerId
     // For now, return empty array since we need customer filtering
     // This prevents unauthorized access to all orders
-    const orders = await getOrders();
 
     // Return empty array for now - should filter by customer in production
     // TODO: Add customer filtering when customer session decoding is implemented

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Bike,
@@ -33,7 +33,7 @@ type RewardsData = {
   };
 };
 
-export default function RewardsPage() {
+function RewardsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const forcePublic = searchParams.get("public") === "1";
@@ -189,6 +189,23 @@ export default function RewardsPage() {
         />
       )}
     </main>
+  );
+}
+
+export default function RewardsPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="grid min-h-screen place-items-center bg-[#fff8ef] text-[#7a4b31]">
+          <div className="flex items-center gap-2 text-sm font-bold">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Đang mở kho ưu đãi...
+          </div>
+        </main>
+      }
+    >
+      <RewardsContent />
+    </Suspense>
   );
 }
 

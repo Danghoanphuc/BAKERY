@@ -1,4 +1,5 @@
 import { getCategories, getProducts } from "@/lib/db";
+import { serializeForClient } from "@/lib/firebase/utils";
 import { SearchExperience } from "./search-experience";
 
 export default async function SearchPage() {
@@ -7,5 +8,10 @@ export default async function SearchPage() {
     getCategories(),
   ]);
 
-  return <SearchExperience products={products} categories={categories} />;
+  return (
+    <SearchExperience
+      products={serializeForClient(products)}
+      categories={serializeForClient(categories)}
+    />
+  );
 }

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getCategories, getProductsByCategory } from "@/lib/db";
+import { serializeForClient } from "@/lib/firebase/utils";
 import { CategoryPageClient } from "./category-page-client";
 
 interface CategoryPageProps {
@@ -19,5 +20,10 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     notFound();
   }
 
-  return <CategoryPageClient category={category} products={products} />;
+  return (
+    <CategoryPageClient
+      category={serializeForClient(category)}
+      products={serializeForClient(products)}
+    />
+  );
 }

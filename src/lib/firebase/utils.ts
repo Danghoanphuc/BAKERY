@@ -44,6 +44,32 @@ function toDate(value: FirestoreDateValue): Date | undefined {
   return undefined;
 }
 
+/**
+ * Serialize object to plain JSON-safe format for passing to Client Components
+ * Converts Date objects to ISO strings to avoid Next.js serialization errors
+ */
+export function serializeForClient<T>(obj: T): T {
+  if (obj === null || obj === undefined) return obj;
+
+  if (obj instanceof Date) {
+    return obj.toISOString() as unknown as T;
+  }
+
+  if (Array.isArray(obj)) {
+    return obj.map((item) => serializeForClient(item)) as unknown as T;
+  }
+
+  if (typeof obj === "object") {
+    const serialized: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      serialized[key] = serializeForClient(value);
+    }
+    return serialized as T;
+  }
+
+  return obj;
+}
+
 export function normalizeCategory(
   id: string,
   data: FirestoreDocument,
@@ -122,7 +148,9 @@ export function normalizeProduct(id: string, data: FirestoreDocument): Product {
         ? data.preorderMinHours
         : undefined,
     availableToday:
-      typeof data.availableToday === "boolean" ? data.availableToday : undefined,
+      typeof data.availableToday === "boolean"
+        ? data.availableToday
+        : undefined,
     sortPriority:
       typeof data.sortPriority === "number" ? data.sortPriority : undefined,
     isFeatured:
@@ -230,7 +258,8 @@ export function normalizeCustomer(
     inviteSentAt: toDate(data.inviteSentAt as FirestoreDateValue),
     lastOrderAt: toDate(data.lastOrderAt as FirestoreDateValue),
     lastLoginAt: toDate(data.lastLoginAt as FirestoreDateValue),
-    zaloUserId: typeof data.zaloUserId === "string" ? data.zaloUserId : undefined,
+    zaloUserId:
+      typeof data.zaloUserId === "string" ? data.zaloUserId : undefined,
     personalization: normalizeCustomerPersonalization(data.personalization),
     createdAt,
     updatedAt,
@@ -253,7 +282,8 @@ export function normalizeMagicLink(
     usedAt: toDate(data.usedAt as FirestoreDateValue),
     firstUserAgent:
       typeof data.firstUserAgent === "string" ? data.firstUserAgent : undefined,
-    firstIpHash: typeof data.firstIpHash === "string" ? data.firstIpHash : undefined,
+    firstIpHash:
+      typeof data.firstIpHash === "string" ? data.firstIpHash : undefined,
     createdAt,
     updatedAt,
   };

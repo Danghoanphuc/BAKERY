@@ -1,5 +1,6 @@
 import { BakeryHome } from "@/features/home/components";
 import { getCategories, getProducts } from "@/lib/db";
+import { serializeForClient } from "@/lib/firebase/utils";
 import type { Category } from "@/types/category";
 import type { Product } from "@/types/product";
 
@@ -34,6 +35,9 @@ export default async function HomePage() {
   ]);
 
   return (
-    <BakeryHome categories={categories} favoriteProducts={favoriteProducts} />
+    <BakeryHome
+      categories={serializeForClient(categories)}
+      favoriteProducts={serializeForClient(favoriteProducts)}
+    />
   );
 }

@@ -37,32 +37,6 @@ function stripUndefinedDeep<T>(value: T): T {
   return value;
 }
 
-function serializeForJson(value: unknown): unknown {
-  if (value instanceof Date) return value.toISOString();
-
-  if (Array.isArray(value)) {
-    return value.map((item) => serializeForJson(item));
-  }
-
-  if (value && typeof value === "object") {
-    if ("toDate" in value && typeof value.toDate === "function") {
-      const date = value.toDate();
-      return date instanceof Date && !Number.isNaN(date.getTime())
-        ? date.toISOString()
-        : null;
-    }
-
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>).map(([key, item]) => [
-        key,
-        serializeForJson(item),
-      ]),
-    );
-  }
-
-  return value;
-}
-
 export async function GET(request: Request) {
   try {
     // Check authentication

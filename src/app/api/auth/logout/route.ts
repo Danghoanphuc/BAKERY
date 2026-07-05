@@ -6,3 +6,11 @@ export async function POST() {
   response.headers.append("Set-Cookie", createClearCustomerSessionCookie());
   return response;
 }
+
+// Handle direct URL access or browser navigation to logout endpoint
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const response = NextResponse.redirect(new URL("/account/login", url.origin));
+  response.headers.append("Set-Cookie", createClearCustomerSessionCookie());
+  return response;
+}

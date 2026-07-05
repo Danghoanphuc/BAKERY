@@ -15,6 +15,9 @@ import {
 import { db } from "./app";
 import type { Category, Product, Order } from "@/types";
 
+// Re-export db for other modules
+export { db };
+
 // ============================================
 // CATEGORIES
 // ============================================

@@ -1,13 +1,16 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { Minus, Plus, ShoppingCart } from "lucide-react";
+import Link from "next/link";
+import { Minus, Plus, ShoppingCart, TicketPercent } from "lucide-react";
 import { clsx } from "clsx";
 
 import { Modal } from "@/components/common";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import { ProductShareButton } from "@/features/product/components/ProductShareButton";
 import { useOrderConfigStore } from "@/store/orderConfigStore";
+import { useVoucherStore } from "@/store/voucherStore";
+import { calculateVoucherPricing } from "@/lib/vouchers";
 import type { Product } from "@/types";
 
 interface ProductDetailModalProps {
@@ -30,6 +33,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onAddToCart,
 }) => {
   const { config } = useOrderConfigStore();
+  const { selectedVoucher } = useVoucherStore();
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string | undefined>(
     product.sizeOptions?.[0]?.id,
@@ -67,6 +71,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   }, [product.price, product.sizeOptions, selectedSize]);
 
   const totalPrice = finalPrice * quantity;
+  const voucherPricing = calculateVoucherPricing(totalPrice, selectedVoucher);
   const isPickup = config.deliveryMode === "pickup";
   const isUnavailableForMode = isPickup
     ? product.availableForPickup === false
@@ -150,6 +155,31 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <p className="mt-3 text-xl font-black text-[#d85d6c]">
               {formatCurrency(finalPrice)}
             </p>
+            <Link
+              href="/rewards?public=1"
+              className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-dashed border-[#f0c47e] bg-[#fffaf0] px-3 py-2 text-left"
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <TicketPercent className="h-4 w-4 shrink-0 text-[#d85d6c]" />
+                <span className="min-w-0">
+                  <span className="block truncate text-xs font-black text-[#7a351f]">
+                    {selectedVoucher
+                      ? `Đang áp ${selectedVoucher.code}`
+                      : "Áp voucher / mã giảm giá"}
+                  </span>
+                  <span className="block truncate text-[11px] font-semibold text-[#7b6254]">
+                    {selectedVoucher
+                      ? voucherPricing.isEligible
+                        ? `Dự kiến còn ${formatCurrency(voucherPricing.totalAfterDiscount)}`
+                        : voucherPricing.reason
+                      : "Chọn ưu đãi trước khi thêm vào giỏ"}
+                  </span>
+                </span>
+              </span>
+              <span className="shrink-0 text-xs font-black text-[#d85d6c]">
+                {selectedVoucher ? "Đổi" : "Chọn"}
+              </span>
+            </Link>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <span
                 className={clsx(

@@ -4,6 +4,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  increment,
   limit,
   orderBy,
   query,
@@ -230,30 +231,38 @@ export async function createCustomer(data: CustomerInput): Promise<Customer> {
 
 export async function createOrUpdateCustomerFromPurchase(data: CustomerInput) {
   const existingCustomer = await getCustomerByPhone(data.phone);
+  const pointsToAdd =
+    typeof data.loyaltyPoints === "number" && Number.isFinite(data.loyaltyPoints)
+      ? Math.max(0, Math.floor(data.loyaltyPoints))
+      : 0;
 
   if (!existingCustomer) {
     return createCustomer(data);
   }
 
-  await updateCustomer(existingCustomer.id, {
-    name: data.name || existingCustomer.name,
-    email: data.email ?? existingCustomer.email,
-    status: "active",
-    loyaltyPoints: Math.max(
-      existingCustomer.loyaltyPoints,
-      data.loyaltyPoints ?? existingCustomer.loyaltyPoints,
+  await updateDoc(doc(db, CUSTOMERS_COLLECTION, existingCustomer.id), {
+    ...stripUndefinedDeep(
+      buildUpdatePayload({
+        name: data.name || existingCustomer.name,
+        email: data.email ?? existingCustomer.email,
+        status: "active",
+        zaloUserId: data.zaloUserId ?? existingCustomer.zaloUserId,
+        personalization: {
+          ...existingCustomer.personalization,
+          ...data.personalization,
+        },
+      }),
     ),
-    zaloUserId: data.zaloUserId ?? existingCustomer.zaloUserId,
-    personalization: {
-      ...existingCustomer.personalization,
-      ...data.personalization,
-    },
+    ...(pointsToAdd > 0 ? { loyaltyPoints: increment(pointsToAdd) } : {}),
+    lastOrderAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   });
 
   return {
     ...existingCustomer,
     ...data,
     status: "active" as const,
+    loyaltyPoints: existingCustomer.loyaltyPoints + pointsToAdd,
     personalization: {
       ...existingCustomer.personalization,
       ...data.personalization,
@@ -272,6 +281,19 @@ export async function updateCustomer(
       updatedAt: serverTimestamp(),
     }),
   );
+}
+
+export async function awardCustomerLoyaltyPoints(
+  customerId: string,
+  points: number,
+): Promise<void> {
+  if (!Number.isFinite(points) || points <= 0) return;
+
+  await updateDoc(doc(db, CUSTOMERS_COLLECTION, customerId), {
+    loyaltyPoints: increment(Math.floor(points)),
+    lastOrderAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function createMagicLinkForCustomer(

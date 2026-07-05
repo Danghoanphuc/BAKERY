@@ -25,6 +25,12 @@ export interface Product {
   shelfLife?: string;
   storage?: string;
   saleArea?: string[];
+  ingredientsCost?: number;
+  packagingCost?: number;
+  laborCost?: number;
+  overheadCost?: number;
+  wastePercent?: number;
+  targetGrossMarginPercent?: number;
   availableForDelivery?: boolean;
   availableForPickup?: boolean;
   stock?: number; // Tồn kho cho admin/inventory

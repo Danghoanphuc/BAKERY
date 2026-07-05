@@ -1,3 +1,4 @@
+import type { MarketingCampaign } from "@/types";
 import type {
   PublicVoucher,
   SelectedVoucher,
@@ -51,6 +52,33 @@ export function getVoucherByCode(code: string) {
 
 export function getVoucherById(id: string) {
   return PUBLIC_VOUCHERS.find((voucher) => voucher.id === id);
+}
+
+export function getPublicVouchersFromCampaigns(
+  campaigns: MarketingCampaign[],
+) {
+  const campaignVouchers = campaigns
+    .filter((campaign) => campaign.type === "voucher")
+    .filter((campaign) => campaign.status === "active")
+    .filter((campaign) => campaign.publishing?.isPublic)
+    .map(toPublicVoucherFromCampaign)
+    .filter((voucher): voucher is PublicVoucher => Boolean(voucher));
+
+  return campaignVouchers.length ? campaignVouchers : PUBLIC_VOUCHERS;
+}
+
+export function getVoucherByCodeFromCampaigns(
+  code: string,
+  campaigns: MarketingCampaign[],
+) {
+  const normalizedCode = code.trim().toUpperCase();
+  const voucher = campaigns
+    .filter((campaign) => campaign.type === "voucher")
+    .filter((campaign) => campaign.status === "active")
+    .map(toPublicVoucherFromCampaign)
+    .find((item) => item?.code.toUpperCase() === normalizedCode);
+
+  return voucher ?? getVoucherByCode(code);
 }
 
 export function toSelectedVoucher(
@@ -109,6 +137,36 @@ export function calculateVoucherPricing(
     discountAmount,
     totalAfterDiscount: subtotal - discountAmount,
     isEligible: true,
+  };
+}
+
+function toPublicVoucherFromCampaign(
+  campaign: MarketingCampaign,
+): PublicVoucher | null {
+  if (campaign.discountType !== "percent" && campaign.discountType !== "amount") {
+    return null;
+  }
+
+  return {
+    id: campaign.id,
+    code: campaign.code ?? campaign.codePrefix ?? campaign.id,
+    title: campaign.title || campaign.name,
+    description:
+      campaign.customerDescription || campaign.description || campaign.name,
+    discountType: campaign.discountType === "percent" ? "percent" : "fixed",
+    discountValue: campaign.discountValue,
+    maxDiscountAmount:
+      campaign.maxDiscountAmount ?? campaign.rules?.maxDiscountAmount,
+    minOrderValue: campaign.minOrderValue ?? campaign.rules?.minOrderValue,
+    expiresAt: campaign.endDate?.toISOString(),
+    channels: campaign.channels ?? [
+      "pos_pickup_now",
+      "web_pickup_later",
+      "web_delivery",
+    ],
+    maxUsesPerPhone: campaign.rules?.maxUsesPerCustomer ?? 1,
+    requiresPhone: true,
+    isPublic: Boolean(campaign.publishing?.isPublic),
   };
 }
 

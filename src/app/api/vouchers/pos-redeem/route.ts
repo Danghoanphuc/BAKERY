@@ -1,23 +1,30 @@
 import { NextResponse } from "next/server";
 import {
-  addDoc,
   collection,
   getDocs,
   limit,
   query,
-  serverTimestamp,
   where,
 } from "firebase/firestore";
 
-import { createOrUpdateCustomerFromPurchase, getCustomerByPhone } from "@/lib/firebase";
+import {
+  createOrUpdateCustomerFromPurchase,
+  getCustomerByPhone,
+  getMarketingCampaigns,
+  recordVoucherRedemption,
+} from "@/lib/firebase";
 import { db } from "@/lib/firebase/config";
-import { calculateVoucherPricing, getVoucherByCode } from "@/lib/vouchers";
+import {
+  calculateVoucherPricing,
+  getVoucherByCodeFromCampaigns,
+} from "@/lib/vouchers";
 
 const VOUCHER_REDEMPTIONS_COLLECTION = "voucher_redemptions";
 
 export async function POST(request: Request) {
   try {
-    const { code, phone, name, birthday, gender, subtotal } = await request.json();
+    const { code, phone, name, birthday, gender, subtotal } =
+      await request.json();
 
     if (typeof code !== "string" || typeof phone !== "string") {
       return NextResponse.json(
@@ -26,7 +33,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const voucher = getVoucherByCode(code);
+    const campaigns = await getMarketingCampaigns();
+    const voucher = getVoucherByCodeFromCampaigns(code, campaigns);
     if (!voucher || !voucher.channels.includes("pos_pickup_now")) {
       return NextResponse.json(
         { error: "Voucher này không dùng tại quầy." },
@@ -44,12 +52,13 @@ export async function POST(request: Request) {
       );
     }
 
+    const normalizedPhone = phone.replace(/\s+/g, "").trim();
     const existingCustomer = await getCustomerByPhone(phone);
     const redemptionSnapshot = await getDocs(
       query(
         collection(db, VOUCHER_REDEMPTIONS_COLLECTION),
         where("voucherId", "==", voucher.id),
-        where("phone", "==", phone.replace(/\s+/g, "").trim()),
+        where("phone", "==", normalizedPhone),
         limit(voucher.maxUsesPerPhone ?? 1),
       ),
     );
@@ -67,7 +76,10 @@ export async function POST(request: Request) {
     const customer = existingCustomer
       ? existingCustomer
       : await createOrUpdateCustomerFromPurchase({
-          name: typeof name === "string" && name.trim() ? name : `Khách ${phone}`,
+          name:
+            typeof name === "string" && name.trim()
+              ? name
+              : `Khách ${phone}`,
           phone,
           birthday: typeof birthday === "string" ? birthday : undefined,
           gender:
@@ -78,7 +90,7 @@ export async function POST(request: Request) {
           personalization: {},
         });
 
-    await addDoc(collection(db, VOUCHER_REDEMPTIONS_COLLECTION), {
+    await recordVoucherRedemption({
       voucherId: voucher.id,
       voucherCode: voucher.code,
       phone: customer.phone,
@@ -87,7 +99,7 @@ export async function POST(request: Request) {
       subtotal: pricing.subtotal,
       discountAmount: pricing.discountAmount,
       totalAfterDiscount: pricing.totalAfterDiscount,
-      createdAt: serverTimestamp(),
+      source: "pos",
     });
 
     return NextResponse.json({

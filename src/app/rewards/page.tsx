@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Bike,
   Gift,
@@ -35,6 +35,8 @@ type RewardsData = {
 
 export default function RewardsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const forcePublic = searchParams.get("public") === "1";
   const { setDeliveryMode, setOrderTiming } = useOrderConfigStore();
   const { setSelectedVoucher } = useVoucherStore();
   const [publicVouchers, setPublicVouchers] = useState<PublicVoucher[]>([]);
@@ -57,6 +59,11 @@ export default function RewardsPage() {
           setPublicVouchers(data.vouchers ?? []);
         }
 
+        if (privateRes.ok && !forcePublic) {
+          router.replace("/account/rewards");
+          return;
+        }
+
         if (privateRes.ok) {
           setRewardsData(await privateRes.json());
         }
@@ -66,7 +73,7 @@ export default function RewardsPage() {
     }
 
     loadRewards();
-  }, []);
+  }, [forcePublic, router]);
 
   const heroVoucher = useMemo(
     () => publicVouchers[0] ?? null,
@@ -115,8 +122,8 @@ export default function RewardsPage() {
                 Quét bill, nhận ưu đãi cho lần mua sau
               </h1>
               <p className="mt-2 text-sm font-semibold leading-6 text-[#7b6254]">
-                Chưa cần đăng nhập. Khi dùng voucher, bạn chỉ cần nhập số điện
-                thoại để tiệm kiểm tra ưu đãi.
+                Khi dùng voucher, bạn chỉ cần nhập số điện thoại để tiệm kiểm
+                tra ưu đãi.
               </p>
             </div>
           </div>
@@ -135,6 +142,25 @@ export default function RewardsPage() {
             featured
             onUse={() => setSelectedVoucherModal(heroVoucher)}
           />
+        )}
+
+        {!heroVoucher && rewardsData?.customer && (
+          <div className="mt-4 rounded-lg border border-[#f0e1d2] bg-white p-5 text-center shadow-[0_12px_26px_rgba(83,38,12,0.08)]">
+            <h2 className="text-lg font-black text-[#3d2417]">
+              Ưu đãi này đã nằm trong kho của bạn
+            </h2>
+            <p className="mt-2 text-sm font-semibold leading-6 text-[#7b6254]">
+              Bạn đang đăng nhập, nên tiệm đã chuyển voucher phù hợp vào kho cá
+              nhân để quản lý và sử dụng dễ hơn.
+            </p>
+            <button
+              type="button"
+              onClick={() => router.push("/account/rewards")}
+              className="mt-4 h-11 rounded-lg bg-[#d85d6c] px-5 text-sm font-black text-white"
+            >
+              Mở kho voucher của tôi
+            </button>
+          </div>
         )}
 
         <div className="mt-4 space-y-3">
@@ -200,7 +226,7 @@ function VoucherCard({
             onClick={onUse}
             className="mt-3 h-10 rounded-lg bg-[#d85d6c] px-4 text-sm font-black text-white"
           >
-            Sử dụng voucher
+            Sử dụng ngay
           </button>
         </div>
       </div>

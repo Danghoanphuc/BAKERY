@@ -94,6 +94,30 @@ export async function deleteCategory(id: string): Promise<void> {
   await deleteDoc(doc(db, "categories", id));
 }
 
+export async function moveCategoryProducts(
+  fromCategoryId: string,
+  toCategoryId: string,
+): Promise<number> {
+  const productsQuery = query(
+    collection(db, "products"),
+    where("categoryId", "==", fromCategoryId),
+  );
+  const productsSnap = await getDocs(productsQuery);
+
+  if (productsSnap.empty) return 0;
+
+  const batch = writeBatch(db);
+  productsSnap.docs.forEach((productDoc) => {
+    batch.update(productDoc.ref, {
+      categoryId: toCategoryId,
+      updatedAt: Timestamp.now(),
+    });
+  });
+
+  await batch.commit();
+  return productsSnap.size;
+}
+
 export async function reorderCategories(
   items: Array<{ id: string; displayOrder: number }>,
 ): Promise<void> {

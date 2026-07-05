@@ -2,7 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, ShoppingBag, Package, Megaphone, Users, Layers, ScanLine } from "lucide-react";
+import {
+  CircleDollarSign,
+  Home,
+  Layers,
+  Megaphone,
+  Package,
+  ScanLine,
+  ShoppingBag,
+  TicketPercent,
+  Users,
+} from "lucide-react";
 import { clsx } from "clsx";
 
 const menuItems = [
@@ -26,9 +36,21 @@ const menuItems = [
   },
   {
     id: "vouchers",
-    label: "Quét voucher",
-    icon: ScanLine,
+    label: "Voucher",
+    icon: TicketPercent,
     href: "/admin/vouchers",
+  },
+  {
+    id: "voucher-scan",
+    label: "Quét tại quầy",
+    icon: ScanLine,
+    href: "/admin/vouchers/scan",
+  },
+  {
+    id: "finance",
+    label: "Tài chính",
+    icon: CircleDollarSign,
+    href: "/admin/finance",
   },
   {
     id: "categories",
@@ -54,32 +76,32 @@ export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 bg-white border-r border-neutral-200 h-screen sticky top-0 flex flex-col">
-      {/* Logo */}
-      <div className="h-16 flex items-center px-6 border-b border-neutral-200">
-        <h1 className="text-xl font-bold text-primary-600">🍰 Bakery Admin</h1>
+    <aside className="sticky top-0 flex h-screen w-64 flex-col border-r border-neutral-200 bg-white">
+      <div className="flex h-16 items-center border-b border-neutral-200 px-6">
+        <h1 className="text-xl font-bold text-primary-600">Bakery Admin</h1>
       </div>
 
-      {/* Navigation Menu */}
       <nav className="flex-1 px-3 py-4">
         <ul className="space-y-1">
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = pathname === item.href;
+            const isActive =
+              pathname === item.href ||
+              (item.href !== "/admin" && pathname.startsWith(`${item.href}/`));
 
             return (
               <li key={item.id}>
                 <Link
                   href={item.href}
                   className={clsx(
-                    "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors",
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors",
                     "text-sm font-medium",
                     isActive
                       ? "bg-primary-50 text-primary-700"
                       : "text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900",
                   )}
                 >
-                  <Icon className="w-5 h-5" />
+                  <Icon className="h-5 w-5" />
                   <span>{item.label}</span>
                 </Link>
               </li>
@@ -88,8 +110,7 @@ export function AdminSidebar() {
         </ul>
       </nav>
 
-      {/* Footer */}
-      <div className="p-4 border-t border-neutral-200 text-xs text-neutral-500">
+      <div className="border-t border-neutral-200 p-4 text-xs text-neutral-500">
         <p>Version 1.0.0</p>
         <p className="mt-1">© 2026 Bakery Admin</p>
       </div>

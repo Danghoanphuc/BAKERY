@@ -14,11 +14,23 @@ import {
 import { clsx } from "clsx";
 import { formatPrice } from "@/lib/utils";
 import { useCartStore } from "@/store/cartStore";
-import type { Order } from "@prisma/client";
+type ApiOrder = {
+  id: string;
+  items: unknown;
+  createdAt?: Date | string | number | { seconds?: number; toDate?: () => Date };
+  totalAmount: number;
+  loyaltyPointsEarned?: number;
+  status: string;
+  orderType: string;
+  deliveryAddress?: string | null;
+};
 
 // --- Dữ liệu từ API ---
 type OrderStatus =
   | "pending"
+  | "confirmed"
+  | "preparing"
+  | "ready"
   | "processing"
   | "delivered"
   | "cancelled"
@@ -38,6 +50,92 @@ interface OrderItem {
   items: any[];
 }
 
+function toDateSafe(
+  value?: Date | string | number | { seconds?: number; toDate?: () => Date },
+) {
+  if (!value) return new Date();
+  if (value instanceof Date) return value;
+
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? new Date() : parsed;
+  }
+
+  if (typeof value.toDate === "function") {
+    return value.toDate();
+  }
+
+  if (typeof value.seconds === "number") {
+    return new Date(value.seconds * 1000);
+  }
+
+  return new Date();
+}
+
+function normalizeOrderStatus(status: string): OrderStatus {
+  const normalized = status.toLowerCase();
+  if (
+    normalized === "pending" ||
+    normalized === "confirmed" ||
+    normalized === "preparing" ||
+    normalized === "ready" ||
+    normalized === "processing" ||
+    normalized === "delivered" ||
+    normalized === "cancelled" ||
+    normalized === "completed"
+  ) {
+    return normalized;
+  }
+
+  return "pending";
+}
+
+const ORDER_STATUS_CONFIG: Record<
+  OrderStatus,
+  { text: string; color: string; bg: string }
+> = {
+  pending: {
+    text: "Chờ xác nhận",
+    color: "text-accent-star",
+    bg: "bg-[#fcf4e8]",
+  },
+  confirmed: {
+    text: "Đã xác nhận",
+    color: "text-accent-star",
+    bg: "bg-[#fcf4e8]",
+  },
+  preparing: {
+    text: "Đang chuẩn bị",
+    color: "text-accent-star",
+    bg: "bg-[#fcf4e8]",
+  },
+  ready: {
+    text: "Sẵn sàng nhận",
+    color: "text-accent-healthy",
+    bg: "bg-[#f4f7e6]",
+  },
+  processing: {
+    text: "Đang xử lý",
+    color: "text-accent-star",
+    bg: "bg-[#fcf4e8]",
+  },
+  completed: {
+    text: "Hoàn thành",
+    color: "text-accent-healthy",
+    bg: "bg-[#f4f7e6]",
+  },
+  delivered: {
+    text: "Đã giao",
+    color: "text-accent-healthy",
+    bg: "bg-[#f4f7e6]",
+  },
+  cancelled: {
+    text: "Đã hủy",
+    color: "text-text-muted",
+    bg: "bg-[#f4ebe1]",
+  },
+};
+
 const TABS = [
   { id: "all", label: "Tất cả" },
   { id: "pickup", label: "Đến lấy" },
@@ -55,7 +153,7 @@ export default function OrderHistory() {
       try {
         const res = await fetch("/api/orders");
         if (res.ok) {
-          const data: Order[] = await res.json();
+          const data: ApiOrder[] = await res.json();
           // Transform data
           const transformedOrders: OrderItem[] = data.map((order) => {
             // Parse items from JSON string
@@ -70,11 +168,7 @@ export default function OrderHistory() {
               0,
             );
 
-            const dateObj = order.createdAt
-              ? typeof order.createdAt === "string"
-                ? new Date(order.createdAt)
-                : order.createdAt
-              : new Date();
+            const dateObj = toDateSafe(order.createdAt);
 
             const formattedDate = !isNaN(dateObj.getTime())
               ? dateObj.toLocaleDateString("vi-VN", {
@@ -88,12 +182,15 @@ export default function OrderHistory() {
 
             return {
               id: order.id,
-              title: firstItem?.name || "Đơn hàng",
+              title: firstItem?.productName || firstItem?.name || "Đơn hàng",
               itemCount: totalCount,
               date: formattedDate,
               price: order.totalAmount,
-              pointsEarned: Math.floor(order.totalAmount / 10000),
-              status: order.status.toLowerCase() as OrderStatus,
+              pointsEarned:
+                typeof order.loyaltyPointsEarned === "number"
+                  ? order.loyaltyPointsEarned
+                  : Math.floor(order.totalAmount / 10000),
+              status: normalizeOrderStatus(order.status),
               type:
                 order.orderType.toLowerCase() === "pickup"
                   ? "pickup"
@@ -216,10 +313,11 @@ export default function OrderHistory() {
 
 function OrderCard({ order }: { order: OrderItem }) {
   // Config màu sắc và text cho status
-  const statusConfig: Record<
+  const statusConfig: Partial<Record<
     OrderStatus,
     { text: string; color: string; bg: string }
-  > = {
+  >> = {
+    ...ORDER_STATUS_CONFIG,
     completed: {
       text: "Hoàn thành",
       color: "text-accent-healthy",

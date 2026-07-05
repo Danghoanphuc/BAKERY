@@ -92,6 +92,27 @@ export function normalizeProduct(id: string, data: FirestoreDocument): Product {
     categoryId: String(data.categoryId ?? ""),
     description:
       typeof data.description === "string" ? data.description : undefined,
+    ingredients: Array.isArray(data.ingredients)
+      ? (data.ingredients as string[])
+      : undefined,
+    shelfLife: typeof data.shelfLife === "string" ? data.shelfLife : undefined,
+    storage: typeof data.storage === "string" ? data.storage : undefined,
+    saleArea: Array.isArray(data.saleArea)
+      ? (data.saleArea as string[])
+      : undefined,
+    ingredientsCost:
+      typeof data.ingredientsCost === "number" ? data.ingredientsCost : undefined,
+    packagingCost:
+      typeof data.packagingCost === "number" ? data.packagingCost : undefined,
+    laborCost: typeof data.laborCost === "number" ? data.laborCost : undefined,
+    overheadCost:
+      typeof data.overheadCost === "number" ? data.overheadCost : undefined,
+    wastePercent:
+      typeof data.wastePercent === "number" ? data.wastePercent : undefined,
+    targetGrossMarginPercent:
+      typeof data.targetGrossMarginPercent === "number"
+        ? data.targetGrossMarginPercent
+        : undefined,
     availableForDelivery:
       typeof data.availableForDelivery === "boolean"
         ? data.availableForDelivery
@@ -187,6 +208,18 @@ export function normalizeOrder(id: string, data: FirestoreDocument): Order {
     status: (typeof data.status === "string"
       ? data.status
       : "pending") as Order["status"],
+    paymentStatus:
+      data.paymentStatus === "paid" || data.paymentStatus === "refunded"
+        ? data.paymentStatus
+        : "unpaid",
+    paymentMethod:
+      typeof data.paymentMethod === "string"
+        ? (data.paymentMethod as Order["paymentMethod"])
+        : undefined,
+    salesChannel:
+      typeof data.salesChannel === "string"
+        ? (data.salesChannel as Order["salesChannel"])
+        : undefined,
     deliveryAddress:
       typeof data.deliveryAddress === "string"
         ? data.deliveryAddress
@@ -203,6 +236,20 @@ export function normalizeOrder(id: string, data: FirestoreDocument): Order {
       typeof data.deliveryFee === "number" ? data.deliveryFee : undefined,
     discountAmount:
       typeof data.discountAmount === "number" ? data.discountAmount : undefined,
+    productSubtotal:
+      typeof data.productSubtotal === "number" ? data.productSubtotal : undefined,
+    estimatedCostOfGoods:
+      typeof data.estimatedCostOfGoods === "number"
+        ? data.estimatedCostOfGoods
+        : undefined,
+    estimatedGrossProfit:
+      typeof data.estimatedGrossProfit === "number"
+        ? data.estimatedGrossProfit
+        : undefined,
+    loyaltyPointsEarned:
+      typeof data.loyaltyPointsEarned === "number"
+        ? data.loyaltyPointsEarned
+        : undefined,
     voucherCode:
       typeof data.voucherCode === "string" ? data.voucherCode : undefined,
     voucherId: typeof data.voucherId === "string" ? data.voucherId : undefined,

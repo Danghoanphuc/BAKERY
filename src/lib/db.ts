@@ -6,6 +6,7 @@ export {
   createCategory,
   updateCategory,
   deleteCategory,
+  moveCategoryProducts,
   reorderCategories,
   // Products
   getAllProducts,

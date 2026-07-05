@@ -129,6 +129,7 @@ export function ProductFormModal({
 
             <div className="space-y-5">
               <OperationsSection formData={formData} setFormData={setFormData} />
+              <CostingSection formData={formData} setFormData={setFormData} />
               <DisplayLabelsSection formData={formData} setFormData={setFormData} />
               <MetadataSection
                 formData={formData}
@@ -568,6 +569,91 @@ function OperationsSection({
   );
 }
 
+function CostingSection({
+  formData,
+  setFormData,
+}: {
+  formData: ProductFormData;
+  setFormData: Dispatch<SetStateAction<ProductFormData>>;
+}) {
+  const unitCost =
+    formData.ingredientsCost +
+    formData.packagingCost +
+    formData.laborCost +
+    formData.overheadCost;
+  const costWithWaste = Math.round(
+    unitCost * (1 + Math.max(0, formData.wastePercent) / 100),
+  );
+  const grossProfit = Math.max(0, formData.price - costWithWaste);
+  const grossMargin =
+    formData.price > 0 ? Math.round((grossProfit / formData.price) * 1000) / 10 : 0;
+
+  return (
+    <FormSection title="Giá vốn & lợi nhuận">
+      <div className="grid gap-3 md:grid-cols-2">
+        <NumberField
+          label="Nguyên liệu / sản phẩm"
+          min={0}
+          value={formData.ingredientsCost}
+          onChange={(ingredientsCost) =>
+            setFormData((prev) => ({ ...prev, ingredientsCost }))
+          }
+        />
+        <NumberField
+          label="Bao bì"
+          min={0}
+          value={formData.packagingCost}
+          onChange={(packagingCost) =>
+            setFormData((prev) => ({ ...prev, packagingCost }))
+          }
+        />
+        <NumberField
+          label="Công làm ước tính"
+          min={0}
+          value={formData.laborCost}
+          onChange={(laborCost) =>
+            setFormData((prev) => ({ ...prev, laborCost }))
+          }
+        />
+        <NumberField
+          label="Chi phí chung phân bổ"
+          min={0}
+          value={formData.overheadCost}
+          onChange={(overheadCost) =>
+            setFormData((prev) => ({ ...prev, overheadCost }))
+          }
+        />
+        <NumberField
+          label="Hao hụt (%)"
+          min={0}
+          value={formData.wastePercent}
+          onChange={(wastePercent) =>
+            setFormData((prev) => ({ ...prev, wastePercent }))
+          }
+        />
+        <NumberField
+          label="Biên lời mục tiêu (%)"
+          min={0}
+          value={formData.targetGrossMarginPercent}
+          onChange={(targetGrossMarginPercent) =>
+            setFormData((prev) => ({ ...prev, targetGrossMarginPercent }))
+          }
+        />
+      </div>
+      <div className="mt-4 grid gap-2 rounded-lg bg-neutral-50 p-3 text-sm md:grid-cols-3">
+        <CostMetric label="Giá vốn ước tính" value={costWithWaste} />
+        <CostMetric label="Lãi gộp / sản phẩm" value={grossProfit} />
+        <div>
+          <div className="text-xs font-semibold text-neutral-500">Biên lãi</div>
+          <div className="mt-1 text-lg font-black text-neutral-950">
+            {grossMargin}%
+          </div>
+        </div>
+      </div>
+    </FormSection>
+  );
+}
+
 function DisplayLabelsSection({
   formData,
   setFormData,
@@ -906,6 +992,21 @@ function EmptyHint({ text }: { text: string }) {
   return (
     <div className="rounded-lg border border-dashed border-neutral-300 px-3 py-2 text-sm text-neutral-500">
       {text}
+    </div>
+  );
+}
+
+function CostMetric({ label, value }: { label: string; value: number }) {
+  return (
+    <div>
+      <div className="text-xs font-semibold text-neutral-500">{label}</div>
+      <div className="mt-1 text-lg font-black text-neutral-950">
+        {new Intl.NumberFormat("vi-VN", {
+          style: "currency",
+          currency: "VND",
+          maximumFractionDigits: 0,
+        }).format(value)}
+      </div>
     </div>
   );
 }

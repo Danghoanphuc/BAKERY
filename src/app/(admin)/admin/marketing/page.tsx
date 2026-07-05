@@ -93,7 +93,9 @@ const typeLabels: Record<MarketingCampaignType, string> = {
 const discountLabels: Record<MarketingDiscountType, string> = {
   percent: "Giảm %",
   amount: "Giảm tiền",
+  gift_item: "Tặng món",
   free_shipping: "Miễn ship",
+  buy_x_get_y: "Mua X tặng Y",
   points_multiplier: "Nhân điểm",
 };
 

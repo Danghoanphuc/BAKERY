@@ -1,6 +1,7 @@
 import type { CartItem } from "./cart";
 import type { Product } from "./product";
 import type { VoucherUseMode } from "./voucher";
+import type { PaymentMethod, SalesChannel } from "./finance";
 
 export type OrderStatus = "pending" | "confirmed" | "preparing" | "ready" | "processing" | "completed" | "delivered" | "cancelled";
 export type OrderType = "delivery" | "pickup" | "preorder";
@@ -24,6 +25,8 @@ export interface Order {
   orderType: OrderType;
   status: OrderStatus;
   paymentStatus?: PaymentStatus;
+  paymentMethod?: PaymentMethod;
+  salesChannel?: SalesChannel;
   deliveryAddress?: string;
   pickupTime?: string;
   notes?: string;
@@ -32,6 +35,10 @@ export interface Order {
   assignedTo?: string;
   deliveryFee?: number;
   discountAmount?: number;
+  productSubtotal?: number;
+  estimatedCostOfGoods?: number;
+  estimatedGrossProfit?: number;
+  loyaltyPointsEarned?: number;
   voucherCode?: string;
   voucherId?: string;
   voucherUseMode?: VoucherUseMode;

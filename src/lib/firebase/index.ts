@@ -1,5 +1,5 @@
 // Export Firebase configuration
-export { app, db, storage } from "./config";
+export { app, db, storage } from "./app";
 
 // Export category functions
 export { getAllCategories, getCategoryById } from "./categories";
@@ -27,6 +27,7 @@ export {
   createCustomerWithMagicLink,
   createMagicLinkForCustomer,
   createOrUpdateCustomerFromPurchase,
+  awardCustomerLoyaltyPoints,
   getAllCustomers,
   getCustomerById,
   getCustomerByPhone,
@@ -41,6 +42,13 @@ export {
   deleteMarketingCampaign,
   getMarketingCampaigns,
   getMarketingSettings,
+  getVoucherRedemptions,
+  recordVoucherRedemption,
   updateMarketingCampaign,
   updateMarketingSettings,
 } from "./marketing";
+
+export {
+  createFinanceExpense,
+  getFinanceExpenses,
+} from "./finance";

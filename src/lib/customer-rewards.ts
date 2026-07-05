@@ -1,4 +1,9 @@
-import type { Customer, MarketingCampaign, MarketingSettings, Order } from "@/types";
+import type {
+  Customer,
+  MarketingCampaign,
+  MarketingSettings,
+  Order,
+} from "@/types";
 import { defaultMarketingSettings } from "@/lib/firebase/marketing";
 
 const completedStatuses = new Set(["completed", "delivered"]);
@@ -38,7 +43,7 @@ function getFavoriteItem(orders: Order[]) {
   };
 }
 
-function hasNightOrder(orders: Order[]) {
+function hasEveningOrder(orders: Order[]) {
   return orders.some((order) => new Date(order.createdAt).getHours() >= 18);
 }
 
@@ -50,29 +55,29 @@ function getUnlockedBadges(orders: Order[], totalValue: number) {
 
   return [
     {
-      id: "seasonal",
-      title: "Thánh Bắt Trend",
-      description: "Mua bánh theo mùa",
+      id: "first-order",
+      title: "Lần đầu ghé tiệm",
+      description: "Có giao dịch đầu tiên được ghi nhận",
       icon: "🍰",
       unlocked: orders.length >= 1,
     },
     {
       id: "party",
-      title: "Người Hùng Tiệc Tùng",
-      description: "Hay mua bánh kem size lớn",
+      title: "Người đặt tiệc",
+      description: "Hay mua bánh cho dịp đặc biệt",
       icon: "🎂",
       unlocked: cakeOrders.length >= 2 || totalValue >= 1000000,
     },
     {
-      id: "night",
-      title: "Cú Đêm",
-      description: "Hay order buổi tối",
+      id: "evening",
+      title: "Khách buổi tối",
+      description: "Hay mua bánh vào cuối ngày",
       icon: "🌙",
-      unlocked: hasNightOrder(orders),
+      unlocked: hasEveningOrder(orders),
     },
     {
       id: "favorite",
-      title: "Món Ruột",
+      title: "Món ruột",
       description: favorite.quantity
         ? `Đã mua ${favorite.name}`
         : "Có món yêu thích đầu tiên",
@@ -141,8 +146,7 @@ export function buildCustomerRewards(
   const currentTier =
     [...tiers].reverse().find((tier) => currentPoints >= tier.threshold) ??
     tiers[0];
-  const nextTier =
-    tiers.find((tier) => tier.threshold > currentPoints) ?? null;
+  const nextTier = tiers.find((tier) => tier.threshold > currentPoints) ?? null;
   const favorite = getFavoriteItem(completedOrders);
   const neededPoints = nextTier ? nextTier.threshold - currentPoints : 0;
   const progressStart = currentTier.threshold;
@@ -198,7 +202,7 @@ export function buildCustomerRewards(
       },
       {
         id: "sweet-20",
-        title: "Giảm 20% khi lên Bếp Trưởng",
+        title: "Giảm 20% khi lên Bếp trưởng",
         description: nextTier
           ? `Cần thêm ${neededPoints} điểm`
           : "Bạn đã mở khóa hạng cao nhất",

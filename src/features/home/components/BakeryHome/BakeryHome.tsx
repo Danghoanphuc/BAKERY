@@ -23,7 +23,9 @@ import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import { useToast } from "@/hooks/useToast";
 import { useCartStore } from "@/store/cartStore";
 import { useOrderConfigStore } from "@/store/orderConfigStore";
+import { useVoucherStore } from "@/store/voucherStore";
 import { formatPrice } from "@/lib/utils";
+import { calculateVoucherPricing } from "@/lib/vouchers";
 import type { Product } from "@/types/product";
 import type { Category } from "@/types/category";
 
@@ -614,6 +616,9 @@ function ProductMiniCard({
   onToggleFavorite: () => void;
   onClick: () => void;
 }) {
+  const { selectedVoucher } = useVoucherStore();
+  const voucherPricing = calculateVoucherPricing(product.price, selectedVoucher);
+
   return (
     <article className="flex w-[154px] shrink-0 flex-col overflow-hidden rounded-[16px] border border-[#f0e3d3] bg-white shadow-[0_4px_12px_rgba(139,75,31,0.06)]">
       <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#fdf9f4]">
@@ -666,6 +671,16 @@ function ProductMiniCard({
           </div>
         </div>
       </button>
+      <div className="px-2 pb-1">
+        <Link
+          href="/rewards?public=1"
+          className="block rounded-md border border-dashed border-[#f0c47e] bg-[#fffaf0] px-2 py-1 text-center text-[10px] font-black text-[#7a351f]"
+        >
+          {selectedVoucher
+            ? `${selectedVoucher.code}: còn ${formatPrice(voucherPricing.totalAfterDiscount).replace(" ", "")}`
+            : "Chọn voucher"}
+        </Link>
+      </div>
       <div className="mt-auto px-2 pb-2 pt-1">
         <button
           type="button"

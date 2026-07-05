@@ -6,6 +6,8 @@ import { Button } from "@/components/common";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import { ProductShareButton } from "@/features/product/components/ProductShareButton";
 import { getProductPath } from "@/lib/product-path";
+import { calculateVoucherPricing } from "@/lib/vouchers";
+import { useVoucherStore } from "@/store/voucherStore";
 import { Product } from "@/types/product";
 
 export interface ProductCardProps {
@@ -17,6 +19,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   onAddToCart,
 }) => {
+  const { selectedVoucher } = useVoucherStore();
+  const voucherPricing = calculateVoucherPricing(product.price, selectedVoucher);
+
   const formatPrice = (price: number): string => {
     return new Intl.NumberFormat("vi-VN", {
       style: "currency",
@@ -77,6 +82,36 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               Thêm
             </Button>
           </div>
+        </div>
+
+        <div className="mt-2 rounded-md border border-dashed border-[#f0c47e] bg-[#fffaf0] px-2 py-1.5">
+          {selectedVoucher ? (
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate text-[11px] font-bold text-[#7a351f]">
+                  Voucher {selectedVoucher.code}
+                </p>
+                <p className="text-[10px] font-semibold text-[#7b6254]">
+                  {voucherPricing.isEligible
+                    ? `Còn ${formatPrice(voucherPricing.totalAfterDiscount)}`
+                    : voucherPricing.reason}
+                </p>
+              </div>
+              <a
+                href="/rewards?public=1"
+                className="shrink-0 text-[11px] font-black text-[#d85d6c]"
+              >
+                Đổi
+              </a>
+            </div>
+          ) : (
+            <a
+              href="/rewards?public=1"
+              className="block text-center text-[11px] font-black text-[#7a351f]"
+            >
+              Chọn voucher
+            </a>
+          )}
         </div>
       </div>
     </div>

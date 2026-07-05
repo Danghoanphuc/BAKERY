@@ -16,6 +16,12 @@ export type ProductFormData = {
   isBestseller: boolean;
   stock: number;
   isAvailable: boolean;
+  ingredientsCost: number;
+  packagingCost: number;
+  laborCost: number;
+  overheadCost: number;
+  wastePercent: number;
+  targetGrossMarginPercent: number;
   sizeOptions: SizeOption[];
   flavorOptions: FlavorOption[];
   tags: string;
@@ -51,6 +57,12 @@ export function createEmptyProductForm(categoryId = ""): ProductFormData {
     isBestseller: false,
     stock: 0,
     isAvailable: true,
+    ingredientsCost: 0,
+    packagingCost: 0,
+    laborCost: 0,
+    overheadCost: 0,
+    wastePercent: 0,
+    targetGrossMarginPercent: 50,
     sizeOptions: [],
     flavorOptions: [],
     tags: "",
@@ -87,6 +99,12 @@ export function productToForm(product: Product, fallbackCategoryId = ""): Produc
     isBestseller: product.isBestseller ?? false,
     stock: product.stock ?? 0,
     isAvailable: product.isAvailable ?? true,
+    ingredientsCost: product.ingredientsCost ?? 0,
+    packagingCost: product.packagingCost ?? 0,
+    laborCost: product.laborCost ?? 0,
+    overheadCost: product.overheadCost ?? 0,
+    wastePercent: product.wastePercent ?? 0,
+    targetGrossMarginPercent: product.targetGrossMarginPercent ?? 50,
     sizeOptions: product.sizeOptions ?? [],
     flavorOptions: product.flavorOptions ?? [],
     tags: joinTags(product.tags),
@@ -113,6 +131,12 @@ export function productFormToPayload(formData: ProductFormData) {
     ...formData,
     price: Number(formData.price) || 0,
     stock: Number(formData.stock) || 0,
+    ingredientsCost: Number(formData.ingredientsCost) || 0,
+    packagingCost: Number(formData.packagingCost) || 0,
+    laborCost: Number(formData.laborCost) || 0,
+    overheadCost: Number(formData.overheadCost) || 0,
+    wastePercent: Number(formData.wastePercent) || 0,
+    targetGrossMarginPercent: Number(formData.targetGrossMarginPercent) || 0,
     preparationTimeMinutes: Number(formData.preparationTimeMinutes) || 0,
     preorderMinHours: Number(formData.preorderMinHours) || 0,
     sortPriority: Number(formData.sortPriority) || 0,

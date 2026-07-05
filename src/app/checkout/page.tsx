@@ -9,12 +9,15 @@ import { useOrderConfigStore } from "@/store/orderConfigStore";
 import { useVoucherStore } from "@/store/voucherStore";
 import { formatPrice } from "@/lib/utils";
 import { calculateVoucherPricing } from "@/lib/vouchers";
+import type { Customer } from "@/types";
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { items, totalPrice, clearCart } = useCartStore();
-  const { config } = useOrderConfigStore();
+  const { config, setDeliveryAddress } = useOrderConfigStore();
   const { selectedVoucher, clearSelectedVoucher } = useVoucherStore();
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [hasLoadedCustomer, setHasLoadedCustomer] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -41,6 +44,49 @@ export default function CheckoutPage() {
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  useEffect(() => {
+    async function loadCustomer() {
+      try {
+        const response = await fetch("/api/auth/me");
+        if (!response.ok) return;
+
+        const payload = await response.json();
+        const nextCustomer = payload.customer as Customer;
+        setCustomer(nextCustomer);
+        setFormData((current) => ({
+          ...current,
+          name: current.name || nextCustomer.name,
+          phone: current.phone || nextCustomer.phone,
+          email: current.email || nextCustomer.email || "",
+          birthday:
+            current.birthday ||
+            nextCustomer.personalization.birthday ||
+            nextCustomer.birthday ||
+            "",
+          gender: current.gender || nextCustomer.gender || "",
+        }));
+
+        if (!config.deliveryAddress) {
+          const defaultAddress =
+            nextCustomer.personalization.defaultDeliveryAddress;
+          if (defaultAddress) {
+            setDeliveryAddress({
+              street: defaultAddress,
+              district: "",
+              city: "",
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load checkout customer:", err);
+      } finally {
+        setHasLoadedCustomer(true);
+      }
+    }
+
+    loadCustomer();
+  }, [config.deliveryAddress, setDeliveryAddress]);
 
   useEffect(() => {
     if (isClient && items.length === 0) {
@@ -82,9 +128,9 @@ export default function CheckoutPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customerName: formData.name,
-          customerPhone: formData.phone,
-          customerEmail: formData.email || undefined,
+          customerName: formData.name || customer?.name,
+          customerPhone: formData.phone || customer?.phone,
+          customerEmail: formData.email || customer?.email || undefined,
           totalAmount: finalTotal,
           orderType: config.deliveryMode,
           deliveryAddress: deliveryAddressString,
@@ -94,15 +140,23 @@ export default function CheckoutPage() {
           voucherCode: selectedVoucher?.code,
           voucherId: selectedVoucher?.id,
           voucherUseMode: selectedVoucher?.useMode,
-          customerBirthday: formData.birthday || undefined,
-          customerGender: formData.gender || undefined,
+          customerBirthday:
+            formData.birthday ||
+            customer?.personalization.birthday ||
+            customer?.birthday ||
+            undefined,
+          customerGender:
+            (formData.gender as Customer["gender"]) ||
+            customer?.gender ||
+            undefined,
           notes: formData.notes || undefined,
           items,
         }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to create order");
+        const errorPayload = await response.json().catch(() => null);
+        throw new Error(errorPayload?.error || "Failed to create order");
       }
 
       const order = await response.json();
@@ -149,6 +203,24 @@ export default function CheckoutPage() {
             <h2 className="text-base font-black text-[#3d2417]">
               Thông tin khách hàng
             </h2>
+            {customer ? (
+              <div className="mt-3 rounded-[16px] border border-[#f1dfcf] bg-[#fffaf6] p-3">
+                <p className="text-sm font-black text-[#3d2417]">
+                  {customer.name}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-[#7b6254]">
+                  {customer.phone}
+                  {customer.email ? ` - ${customer.email}` : ""}
+                </p>
+                <p className="mt-2 text-xs font-semibold text-[#9a7a66]">
+                  Đang dùng thông tin từ tài khoản đã đăng nhập.
+                </p>
+              </div>
+            ) : !hasLoadedCustomer ? (
+              <p className="mt-3 text-sm font-semibold text-[#7b6254]">
+                Đang kiểm tra tài khoản...
+              </p>
+            ) : (
             <div className="mt-4 space-y-3">
               <Field
                 label="Họ tên"
@@ -199,6 +271,7 @@ export default function CheckoutPage() {
                 </>
               )}
             </div>
+            )}
           </section>
 
           {selectedVoucher && (

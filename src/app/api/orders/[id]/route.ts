@@ -1,6 +1,32 @@
 import { NextResponse } from "next/server";
 import { getOrderById, updateOrder } from "@/lib/db";
 
+function serializeForJson(value: unknown): unknown {
+  if (value instanceof Date) return value.toISOString();
+
+  if (Array.isArray(value)) {
+    return value.map((item) => serializeForJson(item));
+  }
+
+  if (value && typeof value === "object") {
+    if ("toDate" in value && typeof value.toDate === "function") {
+      const date = value.toDate();
+      return date instanceof Date && !Number.isNaN(date.getTime())
+        ? date.toISOString()
+        : null;
+    }
+
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => [
+        key,
+        serializeForJson(item),
+      ]),
+    );
+  }
+
+  return value;
+}
+
 export async function GET(
   _request: Request,
   context: { params: Promise<{ id: string }> },
@@ -14,7 +40,7 @@ export async function GET(
         { status: 404 }
       );
     }
-    return NextResponse.json(order);
+    return NextResponse.json(serializeForJson(order));
   } catch (error) {
     console.error("Error fetching order:", error);
     return NextResponse.json(
@@ -31,8 +57,14 @@ export async function PUT(
   try {
     const { id } = await context.params;
     const data = await request.json();
-    const order = await updateOrder(id, data);
-    return NextResponse.json(order);
+    await updateOrder(id, data);
+    const order = await getOrderById(id);
+
+    if (!order) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(serializeForJson(order));
   } catch (error) {
     console.error("Error updating order:", error);
     if (

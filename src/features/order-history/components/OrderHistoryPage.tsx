@@ -17,7 +17,11 @@ import { useCartStore } from "@/store/cartStore";
 type ApiOrder = {
   id: string;
   items: unknown;
-  createdAt?: Date | string | number | { seconds?: number; toDate?: () => Date };
+  createdAt?:
+    | Date
+    | string
+    | number
+    | { seconds?: number; toDate?: () => Date };
   totalAmount: number;
   loyaltyPointsEarned?: number;
   status: string;
@@ -152,6 +156,13 @@ export default function OrderHistory() {
     const fetchOrders = async () => {
       try {
         const res = await fetch("/api/orders");
+
+        if (res.status === 401) {
+          // Not authenticated - redirect to login
+          window.location.href = "/account/login?next=/order";
+          return;
+        }
+
         if (res.ok) {
           const data: ApiOrder[] = await res.json();
           // Transform data
@@ -313,10 +324,9 @@ export default function OrderHistory() {
 
 function OrderCard({ order }: { order: OrderItem }) {
   // Config màu sắc và text cho status
-  const statusConfig: Partial<Record<
-    OrderStatus,
-    { text: string; color: string; bg: string }
-  >> = {
+  const statusConfig: Partial<
+    Record<OrderStatus, { text: string; color: string; bg: string }>
+  > = {
     ...ORDER_STATUS_CONFIG,
     completed: {
       text: "Hoàn thành",

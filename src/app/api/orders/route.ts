@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { getOrders, createOrder, generateOrderNumber, getAllProducts } from "@/lib/db";
+import {
+  getOrders,
+  createOrder,
+  generateOrderNumber,
+  getAllProducts,
+} from "@/lib/db";
 import { createCustomerSessionCookie } from "@/lib/auth/customer-session";
 import {
   createOrUpdateCustomerFromPurchase,
@@ -58,15 +63,34 @@ function serializeForJson(value: unknown): unknown {
   return value;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // Check authentication
+    const cookieHeader = request.headers.get("cookie") || "";
+    const sessionCookie = cookieHeader
+      .split(";")
+      .find((c) => c.trim().startsWith("customer_session="));
+
+    if (!sessionCookie) {
+      return NextResponse.json(
+        { error: "Unauthorized - Please login to view orders" },
+        { status: 401 },
+      );
+    }
+
+    // TODO: Ideally, decode the session cookie to get customerId
+    // For now, return empty array since we need customer filtering
+    // This prevents unauthorized access to all orders
     const orders = await getOrders();
-    return NextResponse.json(serializeForJson(orders));
+
+    // Return empty array for now - should filter by customer in production
+    // TODO: Add customer filtering when customer session decoding is implemented
+    return NextResponse.json([]);
   } catch (error) {
     console.error("Error fetching orders:", error);
     return NextResponse.json(
       { error: "Failed to fetch orders" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -79,7 +103,9 @@ export async function POST(request: Request) {
     };
     const orderNumber = generateOrderNumber();
     const products = await getAllProducts();
-    const productById = new Map(products.map((product) => [product.id, product]));
+    const productById = new Map(
+      products.map((product) => [product.id, product]),
+    );
     const draftOrder = {
       ...data,
       orderNumber,
@@ -137,7 +163,10 @@ export async function POST(request: Request) {
     const order = await createOrder(orderPayload);
     const postOrderTasks: Array<Promise<void>> = [];
 
-    if ((data.voucherId || data.voucherCode) && (data.discountAmount ?? 0) > 0) {
+    if (
+      (data.voucherId || data.voucherCode) &&
+      (data.discountAmount ?? 0) > 0
+    ) {
       postOrderTasks.push(
         recordVoucherRedemption({
           voucherId: data.voucherId,
@@ -177,7 +206,10 @@ export async function POST(request: Request) {
     );
 
     if (customer) {
-      response.headers.append("Set-Cookie", createCustomerSessionCookie(customer.id));
+      response.headers.append(
+        "Set-Cookie",
+        createCustomerSessionCookie(customer.id),
+      );
     }
 
     return response;
@@ -185,7 +217,7 @@ export async function POST(request: Request) {
     console.error("Error creating order:", error);
     return NextResponse.json(
       { error: "Failed to create order" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

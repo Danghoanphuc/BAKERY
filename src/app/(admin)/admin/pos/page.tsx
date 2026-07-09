@@ -63,7 +63,6 @@ export default function POSPage() {
     PosDisplaySnapshot,
     "updatedAt"
   > | null>(null);
-  const [isPayOSEnabled, setIsPayOSEnabled] = useState(false);
 
   useEffect(() => {
     loadCatalog();
@@ -136,39 +135,25 @@ export default function POSPage() {
   async function loadCatalog() {
     try {
       setIsLoading(true);
-      const [productsResponse, categoriesResponse, configResponse] =
-        await Promise.all([
-          fetch("/api/products"),
-          fetch("/api/categories"),
-          fetch("/api/pos/config"),
-        ]);
+      const [productsResponse, categoriesResponse] = await Promise.all([
+        fetch("/api/products"),
+        fetch("/api/categories"),
+      ]);
 
-      if (
-        !productsResponse.ok ||
-        !categoriesResponse.ok ||
-        !configResponse.ok
-      ) {
-        throw new Error("KhĂ´ng thá»ƒ táº£i dá»¯ liá»‡u POS.");
+      if (!productsResponse.ok || !categoriesResponse.ok) {
+        throw new Error("Không thể tải dữ liệu POS.");
       }
 
       setProducts((await productsResponse.json()) as Product[]);
       setCategories((await categoriesResponse.json()) as Category[]);
-      const config = (await configResponse.json()) as { payosEnabled: boolean };
-      setIsPayOSEnabled(config.payosEnabled);
       setError(null);
     } catch (loadError) {
       console.error("Failed to load POS catalog:", loadError);
-      setError("KhĂ´ng thá»ƒ táº£i dá»¯ liá»‡u POS.");
+      setError("Không thể tải dữ liệu POS.");
     } finally {
       setIsLoading(false);
     }
   }
-
-  useEffect(() => {
-    if (!isPayOSEnabled && paymentMethod === "bank_transfer") {
-      setPaymentMethod("cash");
-    }
-  }, [isPayOSEnabled, paymentMethod]);
 
   const filteredProducts = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -432,7 +417,6 @@ export default function POSPage() {
           paymentMethod={paymentMethod}
           canSubmit={items.length > 0}
           isSubmitting={isSubmitting}
-          isPayOSEnabled={isPayOSEnabled}
           onPaymentMethodChange={setPaymentMethod}
           onSubmit={submitOrder}
         >

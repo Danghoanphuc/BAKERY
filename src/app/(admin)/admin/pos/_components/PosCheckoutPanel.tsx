@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { Banknote, QrCode, RefreshCw } from "lucide-react";
 import { clsx } from "clsx";
 import type { SelectedVoucher, VoucherPricing } from "@/types/voucher";
@@ -19,7 +18,6 @@ type PosCheckoutPanelProps = {
   paymentMethod: PosPaymentMethod;
   canSubmit: boolean;
   isSubmitting: boolean;
-  isPayOSEnabled: boolean;
   onPaymentMethodChange: (method: PosPaymentMethod) => void;
   onSubmit: () => void;
   children?: React.ReactNode;
@@ -31,7 +29,6 @@ export function PosCheckoutPanel({
   paymentMethod,
   canSubmit,
   isSubmitting,
-  isPayOSEnabled,
   onPaymentMethodChange,
   onSubmit,
   children,
@@ -41,18 +38,12 @@ export function PosCheckoutPanel({
       ? voucherPricing.totalAfterDiscount
       : voucherPricing.subtotal;
 
-  const availablePaymentMethods = useMemo(() => {
-    return paymentMethods.filter(
-      (method) => method.value !== "bank_transfer" || isPayOSEnabled,
-    );
-  }, [isPayOSEnabled]);
-
   return (
     <section className="flex min-h-full flex-col gap-3 p-4">
       {children}
 
       <div className="grid grid-cols-2 gap-2">
-        {availablePaymentMethods.map((method) => {
+        {paymentMethods.map((method) => {
           const Icon = method.icon;
           const active = paymentMethod === method.value;
 

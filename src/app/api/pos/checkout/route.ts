@@ -97,7 +97,10 @@ function getRepricedCartItem(
   } satisfies Omit<CartItem, "cartItemId">;
 }
 
-async function decrementStock(items: Array<Omit<CartItem, "cartItemId">>, products: Product[]) {
+async function decrementStock(
+  items: Array<Omit<CartItem, "cartItemId">>,
+  products: Product[],
+) {
   const quantityByProductId = new Map<string, number>();
 
   for (const item of items) {
@@ -135,8 +138,12 @@ export async function POST(request: Request) {
       getAllProducts(),
       getMarketingCampaigns(),
     ]);
-    const productById = new Map(products.map((product) => [product.id, product]));
-    const items = rawItems.map((item) => getRepricedCartItem(item, productById));
+    const productById = new Map(
+      products.map((product) => [product.id, product]),
+    );
+    const items = rawItems.map((item) =>
+      getRepricedCartItem(item, productById),
+    );
     const draftOrder = {
       items,
       productSubtotal: items.reduce(
@@ -178,15 +185,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const discountAmount =
-      voucherValidation?.ok ? voucherValidation.pricing.discountAmount : 0;
+    const discountAmount = voucherValidation?.ok
+      ? voucherValidation.pricing.discountAmount
+      : 0;
     const totalAmount = Math.max(0, productSubtotal - discountAmount);
     const selectedCustomer = payload.customerId
       ? await getCustomerById(payload.customerId)
       : null;
     const customer =
       selectedCustomer ??
-      ((payload.customerPhone?.trim() || payload.customerName?.trim())
+      (payload.customerPhone?.trim() || payload.customerName?.trim()
         ? await createOrUpdateCustomerFromPurchase({
             name: payload.customerName?.trim() || "Khách lẻ",
             phone: payload.customerPhone?.trim() || "0000000000",
@@ -200,7 +208,9 @@ export async function POST(request: Request) {
       customer && totalAmount > 0
         ? Math.max(
             1,
-            Math.floor(totalAmount / Math.max(1, marketingSettings.pointsPerAmount)),
+            Math.floor(
+              totalAmount / Math.max(1, marketingSettings.pointsPerAmount),
+            ),
           )
         : 0;
 
@@ -219,11 +229,13 @@ export async function POST(request: Request) {
       productById,
     );
     const paymentMethod = payload.paymentMethod ?? "cash";
-    const isPayOSPayment = paymentMethod === "bank_transfer";
+    const isBankTransfer = paymentMethod === "bank_transfer";
+    const isPayOSPayment = isBankTransfer && isPayOSEnabled();
     const orderPayload = stripUndefinedDeep({
       orderNumber: generateOrderNumber(),
       customerId: customer?.id,
-      customerName: customer?.name ?? payload.customerName?.trim() ?? "Khách lẻ",
+      customerName:
+        customer?.name ?? payload.customerName?.trim() ?? "Khách lẻ",
       customerPhone:
         customer?.phone ?? payload.customerPhone?.trim() ?? "0000000000",
       items,
@@ -235,8 +247,8 @@ export async function POST(request: Request) {
       voucherUseMode: requestedVoucher ? "pos_pickup_now" : undefined,
       voucherCode: requestedVoucher?.code,
       voucherId: requestedVoucher?.id,
-      status: isPayOSPayment ? "pending" : "completed",
-      paymentStatus: isPayOSPayment ? "pending" : "paid",
+      status: isBankTransfer ? "pending" : "completed",
+      paymentStatus: isBankTransfer ? "pending" : "paid",
       paymentMethod,
       payosOrderCode: isPayOSPayment ? createPayOSOrderCode() : undefined,
       estimatedCostOfGoods,
@@ -244,10 +256,10 @@ export async function POST(request: Request) {
       loyaltyPointsEarned,
       statusHistory: [
         {
-          status: "completed",
+          status: isBankTransfer ? "pending" : "completed",
           at: new Date().toISOString(),
           actor: "pos",
-          note: "Thanh toán POS",
+          note: isBankTransfer ? "Chờ chuyển khoản" : "Thanh toán POS",
         },
       ],
     });
@@ -263,13 +275,6 @@ export async function POST(request: Request) {
       | undefined;
 
     if (isPayOSPayment) {
-      if (!isPayOSEnabled()) {
-        return NextResponse.json(
-          { error: "PayOS chÆ°a Ä‘Æ°á»£c cáº¥u hĂ¬nh." },
-          { status: 500 },
-        );
-      }
-
       const paymentLink = await createOrderPaymentLink({
         order,
         orderCode: order.payosOrderCode ?? createPayOSOrderCode(),

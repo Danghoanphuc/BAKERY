@@ -1,6 +1,5 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
-import { Award, ChevronRight, Lock, Star, Trophy } from "lucide-react";
+import { Award, Lock, Star, Trophy } from "lucide-react";
 
 import { currentYear, formatCurrency, formatNumber } from "./rewards-format";
 import type { MyRewardsData } from "./types";
@@ -76,7 +75,7 @@ export function JourneyView({
           <MetricCard
             icon={<Award className="h-7 w-7" />}
             label="Lần ghé tiệm"
-            value={formatNumber(data.totals.orderCount)}
+            value={formatNumber(unlockedVoucherCount)}
             detail="Lần mua"
           />
           <MetricCard
@@ -99,14 +98,6 @@ export function JourneyView({
           ))}
         </div>
       </section>
-
-      <Link
-        href="/rewards?public=1"
-        className="mt-4 flex h-11 items-center justify-center gap-2 rounded-lg border border-[#ead0a2] bg-white text-sm font-black text-[#74351f]"
-      >
-        Xem thêm {unlockedVoucherCount} ưu đãi công khai
-        <ChevronRight className="h-4 w-4" />
-      </Link>
     </>
   );
 }
@@ -179,11 +170,7 @@ function MetricCard({
   );
 }
 
-function BadgeCard({
-  badge,
-}: {
-  badge: MyRewardsData["badges"][number];
-}) {
+function BadgeCard({ badge }: { badge: MyRewardsData["badges"][number] }) {
   return (
     <div
       className={`rounded-md border bg-white p-2 text-center ${

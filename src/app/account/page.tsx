@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { ArrowLeft, KeyRound, Loader2, Save, ShieldCheck } from "lucide-react";
+
 import type { Customer } from "@/types";
 
 type AccountForm = {
@@ -21,13 +22,10 @@ function toForm(customer: Customer): AccountForm {
   return {
     name: customer.name,
     email: customer.email ?? "",
-    birthday: customer.personalization.birthday ?? "",
-    defaultDeliveryAddress:
-      customer.personalization.defaultDeliveryAddress ?? "",
+    birthday: customer.personalization.birthday ?? customer.birthday ?? "",
+    defaultDeliveryAddress: customer.personalization.defaultDeliveryAddress ?? "",
     favoriteFlavors: (customer.personalization.favoriteFlavors ?? []).join(", "),
-    favoriteProducts: (customer.personalization.favoriteProducts ?? []).join(
-      ", ",
-    ),
+    favoriteProducts: (customer.personalization.favoriteProducts ?? []).join(", "),
     dietaryNotes: customer.personalization.dietaryNotes ?? "",
     specialOccasions: customer.personalization.specialOccasions ?? "",
     notes: customer.personalization.notes ?? "",
@@ -87,8 +85,7 @@ export default function AccountPage() {
           email: form.email || undefined,
           personalization: {
             birthday: form.birthday || undefined,
-            defaultDeliveryAddress:
-              form.defaultDeliveryAddress || undefined,
+            defaultDeliveryAddress: form.defaultDeliveryAddress || undefined,
             favoriteFlavors: splitTags(form.favoriteFlavors),
             favoriteProducts: splitTags(form.favoriteProducts),
             dietaryNotes: form.dietaryNotes || undefined,
@@ -98,18 +95,16 @@ export default function AccountPage() {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("save_failed");
-      }
+      if (!response.ok) throw new Error("save_failed");
 
       const updatedCustomer: Customer = {
         ...customer,
         name: form.name,
         email: form.email || undefined,
         personalization: {
+          ...customer.personalization,
           birthday: form.birthday || undefined,
-          defaultDeliveryAddress:
-            form.defaultDeliveryAddress || undefined,
+          defaultDeliveryAddress: form.defaultDeliveryAddress || undefined,
           favoriteFlavors: splitTags(form.favoriteFlavors),
           favoriteProducts: splitTags(form.favoriteProducts),
           dietaryNotes: form.dietaryNotes || undefined,
@@ -170,18 +165,32 @@ export default function AccountPage() {
                 .join("")}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-[17px] font-black">
-                {customer.name}
-              </p>
+              <p className="truncate text-[17px] font-black">{customer.name}</p>
               <p className="text-[13px] font-semibold text-[#7b6a60]">
                 {customer.phone}
               </p>
             </div>
             <ShieldCheck
               className={`h-6 w-6 ${
-                customer.zaloUserId ? "text-[#34802f]" : "text-[#b69a89]"
+                customer.phoneVerifiedAt ? "text-[#34802f]" : "text-[#b69a89]"
               }`}
             />
+          </div>
+          <div className="mt-4 rounded-[14px] bg-[#fffaf6] p-3">
+            <p
+              className={`text-[13px] font-black ${
+                customer.phoneVerifiedAt ? "text-[#34802f]" : "text-[#a05a2c]"
+              }`}
+            >
+              {customer.phoneVerifiedAt
+                ? "Số điện thoại đã được xác nhận"
+                : "Số điện thoại chưa xác nhận"}
+            </p>
+            <p className="mt-1 text-[12px] font-semibold text-[#7b6a60]">
+              {customer.phoneVerifiedAt
+                ? "Số này đã được nhân viên xác nhận trong quá trình chăm sóc đơn hàng."
+                : "Tiệm sẽ xác nhận số điện thoại khi gọi chăm sóc hoặc đơn hàng cần kiểm tra."}
+            </p>
           </div>
         </section>
 
@@ -190,7 +199,7 @@ export default function AccountPage() {
           className="mt-4 flex h-12 items-center justify-center gap-2 rounded-[14px] border border-[#edd8ca] bg-white text-[14px] font-black text-[#7a4b31] shadow-sm"
         >
           <KeyRound className="h-4 w-4" />
-          Doi mat khau
+          Đổi mã PIN
         </Link>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
@@ -253,9 +262,7 @@ export default function AccountPage() {
               <TextArea
                 label="Ghi chú ăn uống"
                 value={form.dietaryNotes}
-                onChange={(value) =>
-                  setForm({ ...form, dietaryNotes: value })
-                }
+                onChange={(value) => setForm({ ...form, dietaryNotes: value })}
               />
               <TextArea
                 label="Dịp đặc biệt"

@@ -1,8 +1,21 @@
 import { NextResponse } from "next/server";
-import { createOrder, generateOrderNumber, getAllProducts } from "@/lib/db";
-import { createCustomerSessionCookie } from "@/lib/auth/customer-session";
+import {
+  createOrder,
+  generateOrderNumber,
+  getAllProducts,
+  getOrdersByCustomer,
+  getOrdersByPhone,
+} from "@/lib/db";
+import {
+  CUSTOMER_SESSION_COOKIE,
+  createCustomerSessionCookie,
+  parseCustomerSessionValue,
+  readCookie,
+} from "@/lib/auth/customer-session";
 import {
   createOrUpdateCustomerFromPurchase,
+  getCustomerById,
+  getMarketingCampaigns,
   getMarketingSettings,
   recordVoucherRedemption,
 } from "@/lib/firebase";
@@ -13,6 +26,12 @@ import {
 } from "@/lib/finance";
 import type { Order } from "@/types";
 import type { VoucherUseChannel } from "@/types";
+import {
+  getPublicVouchers,
+  getPublicVouchersFromCampaigns,
+  getVoucherByCodeFromCampaigns,
+} from "@/lib/vouchers";
+import { validateVoucherRedemption } from "@/lib/voucher-redemption-policy";
 
 function stripUndefinedDeep<T>(value: T): T {
   if (Array.isArray(value)) {
@@ -36,24 +55,34 @@ export async function GET(request: Request) {
   try {
     // Check authentication
     const cookieHeader = request.headers.get("cookie") || "";
-    const sessionCookie = cookieHeader
-      .split(";")
-      .find((c) => c.trim().startsWith("customer_session="));
+    const sessionValue = readCookie(cookieHeader, CUSTOMER_SESSION_COOKIE);
+    const session = parseCustomerSessionValue(sessionValue);
 
-    if (!sessionCookie) {
+    if (!session) {
       return NextResponse.json(
         { error: "Unauthorized - Please login to view orders" },
         { status: 401 },
       );
     }
 
-    // TODO: Ideally, decode the session cookie to get customerId
-    // For now, return empty array since we need customer filtering
-    // This prevents unauthorized access to all orders
+    const [customerOrders, customer] = await Promise.all([
+      getOrdersByCustomer(session.customerId),
+      getCustomerById(session.customerId),
+    ]);
+    const phoneOrders = customer?.phone
+      ? await getOrdersByPhone(customer.phone)
+      : [];
+    const ordersById = new Map<string, Order>();
 
-    // Return empty array for now - should filter by customer in production
-    // TODO: Add customer filtering when customer session decoding is implemented
-    return NextResponse.json([]);
+    [...customerOrders, ...phoneOrders].forEach((order) => {
+      ordersById.set(order.id, order);
+    });
+
+    const orders = Array.from(ordersById.values()).sort(
+      (a, b) => getOrderTime(b.createdAt) - getOrderTime(a.createdAt),
+    );
+
+    return NextResponse.json(orders);
   } catch (error) {
     console.error("Error fetching orders:", error);
     return NextResponse.json(
@@ -63,14 +92,42 @@ export async function GET(request: Request) {
   }
 }
 
+function getOrderTime(value: unknown) {
+  if (!value) return 0;
+  if (value instanceof Date) return value.getTime();
+
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+
+  if (
+    typeof value === "object" &&
+    "seconds" in value &&
+    typeof value.seconds === "number"
+  ) {
+    return value.seconds * 1000;
+  }
+
+  return 0;
+}
+
 export async function POST(request: Request) {
   try {
     const data = stripUndefinedDeep(await request.json()) as Partial<Order> & {
       customerBirthday?: string;
       customerGender?: "male" | "female" | "other";
     };
+    const sessionValue = readCookie(
+      request.headers.get("cookie"),
+      CUSTOMER_SESSION_COOKIE,
+    );
+    const session = parseCustomerSessionValue(sessionValue);
     const orderNumber = generateOrderNumber();
-    const products = await getAllProducts();
+    const [products, campaigns] = await Promise.all([
+      getAllProducts(),
+      getMarketingCampaigns(),
+    ]);
     const productById = new Map(
       products.map((product) => [product.id, product]),
     );
@@ -93,9 +150,47 @@ export async function POST(request: Request) {
     );
     const safeProductSubtotal =
       productSubtotal > 0 ? productSubtotal : fallbackProductSubtotal;
+    const requestedVoucher =
+      data.voucherId || data.voucherCode
+        ? data.voucherCode
+          ? getVoucherByCodeFromCampaigns(data.voucherCode, campaigns)
+          : [
+              ...getPublicVouchers(),
+              ...getPublicVouchersFromCampaigns(campaigns),
+            ].find((voucher) => voucher.id === data.voucherId)
+        : null;
+    const voucherValidation = requestedVoucher
+      ? await validateVoucherRedemption({
+          voucher: requestedVoucher,
+          subtotal: safeProductSubtotal,
+          channel: data.voucherUseMode as VoucherUseChannel | undefined,
+          customerId: session?.customerId ?? data.customerId,
+          phone: data.customerPhone,
+        })
+      : null;
+
+    if (requestedVoucher && voucherValidation && !voucherValidation.ok) {
+      return NextResponse.json(
+        { error: voucherValidation.error },
+        { status: 409 },
+      );
+    }
+
+    if ((data.discountAmount ?? 0) > 0 && !requestedVoucher) {
+      return NextResponse.json(
+        { error: "Voucher không hợp lệ hoặc đã hết hiệu lực." },
+        { status: 400 },
+      );
+    }
+
+    const serverDiscountAmount =
+      voucherValidation?.ok ? voucherValidation.pricing.discountAmount : 0;
+    const serverTotalAmount =
+      Math.max(0, safeProductSubtotal - serverDiscountAmount) +
+      (data.deliveryFee ?? 0);
     const netProductRevenue = Math.max(
       0,
-      safeProductSubtotal - (data.discountAmount ?? 0),
+      safeProductSubtotal - serverDiscountAmount,
     );
     const marketingSettings = await getMarketingSettings();
     const rawLoyaltyPoints = Math.floor(
@@ -119,6 +214,8 @@ export async function POST(request: Request) {
     const orderPayload = stripUndefinedDeep({
       ...data,
       orderNumber,
+      customerId: customer?.id ?? data.customerId,
+      totalAmount: serverTotalAmount,
       status: "pending",
       paymentStatus: data.paymentStatus ?? "unpaid",
       paymentMethod: data.paymentMethod,
@@ -127,26 +224,26 @@ export async function POST(request: Request) {
       estimatedCostOfGoods,
       estimatedGrossProfit: netProductRevenue - estimatedCostOfGoods,
       loyaltyPointsEarned,
+      discountAmount: serverDiscountAmount,
+      voucherCode: requestedVoucher?.code,
+      voucherId: requestedVoucher?.id,
     });
     const order = await createOrder(orderPayload);
     const postOrderTasks: Array<Promise<void>> = [];
 
-    if (
-      (data.voucherId || data.voucherCode) &&
-      (data.discountAmount ?? 0) > 0
-    ) {
+    if (requestedVoucher && serverDiscountAmount > 0) {
       postOrderTasks.push(
         recordVoucherRedemption({
-          voucherId: data.voucherId,
-          voucherCode: data.voucherCode,
+          voucherId: requestedVoucher.id,
+          voucherCode: requestedVoucher.code,
           orderId: order.id,
           orderNumber: order.orderNumber,
           customerId: customer?.id,
           phone: customer?.phone ?? data.customerPhone,
           channel: data.voucherUseMode as VoucherUseChannel | undefined,
           subtotal: safeProductSubtotal,
-          discountAmount: data.discountAmount ?? 0,
-          totalAfterDiscount: Math.max(0, data.totalAmount ?? 0),
+          discountAmount: serverDiscountAmount,
+          totalAfterDiscount: serverTotalAmount,
           source: "checkout",
         }),
       );

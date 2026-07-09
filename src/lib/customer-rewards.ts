@@ -160,7 +160,8 @@ export function buildCustomerRewards(
     : 100;
   const activeVoucherCampaigns = campaigns
     .filter((campaign) => campaign.type === "voucher")
-    .filter((campaign) => isCampaignActive(campaign));
+    .filter((campaign) => isCampaignActive(campaign))
+    .filter((campaign) => campaign.publishing?.isPublic);
 
   return {
     customer: {
@@ -196,34 +197,74 @@ export function buildCustomerRewards(
     vouchers: [
       {
         id: "welcome",
+        code: "WELCOME10",
         title: "Giảm 10% cho đơn tiếp theo",
         description: "Dành cho khách đã có hồ sơ tích điểm",
         unlocked: currentPoints >= 0,
+        discountType: "percent" as const,
+        discountValue: 10,
+        channels: ["pos_pickup_now", "web_pickup_later", "web_delivery"],
+        maxUsesPerPhone: 1,
       },
       {
         id: "sweet-20",
+        code: "SWEET20",
         title: "Giảm 20% khi lên Bếp trưởng",
         description: nextTier
           ? `Cần thêm ${neededPoints} điểm`
           : "Bạn đã mở khóa hạng cao nhất",
         unlocked: currentTier.id === "chef",
+        discountType: "percent" as const,
+        discountValue: 20,
+        channels: ["pos_pickup_now", "web_pickup_later", "web_delivery"],
+        maxUsesPerPhone: 1,
       },
       ...(settings.birthdayVoucherEnabled
         ? [
             {
               id: "birthday",
+              code: "BIRTHDAY",
               title: settings.birthdayVoucherTitle,
               description: settings.birthdayVoucherDescription,
               unlocked: Boolean(customer.personalization.birthday),
+              discountType: "percent" as const,
+              discountValue: 15,
+              channels: [
+                "pos_pickup_now",
+                "web_pickup_later",
+                "web_delivery",
+              ],
+              maxUsesPerPhone: 1,
             },
           ]
         : []),
-      ...activeVoucherCampaigns.map((campaign) => ({
-        id: campaign.id,
-        title: campaign.title || campaign.name,
-        description: getCampaignDescription(campaign),
-        unlocked: true,
-      })),
+      ...activeVoucherCampaigns
+        .filter(
+          (campaign) =>
+            campaign.discountType === "percent" ||
+            campaign.discountType === "amount",
+        )
+        .map((campaign) => ({
+          id: campaign.id,
+          code: campaign.code ?? campaign.codePrefix ?? campaign.id,
+          title: campaign.title || campaign.name,
+          description: getCampaignDescription(campaign),
+          unlocked: true,
+          discountType:
+            campaign.discountType === "amount"
+              ? ("fixed" as const)
+              : ("percent" as const),
+          discountValue: campaign.discountValue,
+          minOrderValue: campaign.minOrderValue ?? campaign.rules?.minOrderValue,
+          maxDiscountAmount:
+            campaign.maxDiscountAmount ?? campaign.rules?.maxDiscountAmount,
+          channels: campaign.channels ?? [
+            "pos_pickup_now",
+            "web_pickup_later",
+            "web_delivery",
+          ],
+          maxUsesPerPhone: campaign.rules?.maxUsesPerCustomer ?? 1,
+        })),
     ],
     badges: getUnlockedBadges(completedOrders, totalValue),
   };

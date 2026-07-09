@@ -76,7 +76,9 @@ export function getVoucherByCodeFromCampaigns(
     .filter((campaign) => campaign.type === "voucher")
     .filter((campaign) => campaign.status === "active")
     .map(toPublicVoucherFromCampaign)
-    .find((item) => item?.code.toUpperCase() === normalizedCode);
+    .find(
+      (item) => item?.isPublic && item.code.toUpperCase() === normalizedCode,
+    );
 
   return voucher ?? getVoucherByCode(code);
 }
@@ -146,6 +148,19 @@ function toPublicVoucherFromCampaign(
   if (campaign.discountType !== "percent" && campaign.discountType !== "amount") {
     return null;
   }
+  if (campaign.status !== "active") return null;
+  if (campaign.startDate && campaign.startDate.getTime() > Date.now()) {
+    return null;
+  }
+  if (campaign.endDate && campaign.endDate.getTime() < Date.now()) {
+    return null;
+  }
+  if (
+    campaign.usageLimit !== undefined &&
+    campaign.usedCount >= campaign.usageLimit
+  ) {
+    return null;
+  }
 
   return {
     id: campaign.id,
@@ -165,6 +180,12 @@ function toPublicVoucherFromCampaign(
       "web_delivery",
     ],
     maxUsesPerPhone: campaign.rules?.maxUsesPerCustomer ?? 1,
+    usageLimit: campaign.usageLimit ?? campaign.voucherBudget?.issuedLimit,
+    usedCount: campaign.usedCount,
+    maxDiscountBudget: campaign.voucherBudget?.maxBudget ?? campaign.budget,
+    discountSpent:
+      campaign.metrics?.discountSpent ??
+      (typeof campaign.usedCount === "number" ? 0 : undefined),
     requiresPhone: true,
     isPublic: Boolean(campaign.publishing?.isPublic),
   };

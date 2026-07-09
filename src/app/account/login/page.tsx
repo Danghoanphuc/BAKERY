@@ -2,10 +2,15 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { FormEvent, Suspense, useState } from "react";
-import { ArrowRight, KeyRound, Loader2, MessageCircle, Phone } from "lucide-react";
+import { FormEvent, Suspense, useState, useRef } from "react";
+import { ArrowRight, KeyRound, Loader2, Phone } from "lucide-react";
+import {
+  getPhoneError,
+  sanitizePhone,
+  sanitizePin,
+} from "@/features/auth/pin-ui";
 
-type LoginStep = "phone" | "profile" | "otp" | "password";
+type LoginStep = "pin" | "link";
 
 export default function AccountLoginPage() {
   return (
@@ -18,101 +23,79 @@ export default function AccountLoginPage() {
 function AccountLoginContent() {
   const searchParams = useSearchParams();
   const nextPath = searchParams.get("next") || "/profile";
-  const [step, setStep] = useState<LoginStep>("phone");
+  const [step, setStep] = useState<LoginStep>("pin");
+
   const [phone, setPhone] = useState("");
-  const [name, setName] = useState("");
-  const [birthday, setBirthday] = useState("");
-  const [gender, setGender] = useState("");
-  const [otp, setOtp] = useState("");
-  const [password, setPassword] = useState("");
+  const [pin, setPin] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [devOtp, setDevOtp] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  async function requestOtp(event?: FormEvent<HTMLFormElement>) {
-    event?.preventDefault();
+  async function loginWithPin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setIsSubmitting(true);
     setError(null);
     setNotice(null);
-    setDevOtp(null);
 
-    try {
-      const response = await fetch("/api/auth/otp/request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, name, birthday, gender }),
-      });
-      const data = await response.json();
-
-      if (data.requiresProfile) {
-        setStep("profile");
-        setNotice(data.message);
-        return;
-      }
-
-      if (!response.ok) {
-        setError(data.error || "Không thể gửi OTP.");
-        return;
-      }
-
-      setNotice(data.message || "Mã OTP đã được gửi.");
-      setDevOtp(data.devOtp || null);
-      setStep("otp");
-    } catch (err) {
-      console.error("Request OTP failed:", err);
-      setError("Không thể gửi OTP. Vui lòng thử lại.");
-    } finally {
+    const phoneError = getPhoneError(phone);
+    if (phoneError) {
+      setError(phoneError);
       setIsSubmitting(false);
+      return;
     }
-  }
 
-  async function verifyOtp(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsSubmitting(true);
-    setError(null);
-
-    try {
-      const response = await fetch("/api/auth/otp/verify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, otp }),
-      });
-      const data = await response.json();
-
-      if (!response.ok) {
-        setError(data.error || "OTP không đúng.");
-        return;
-      }
-
-      window.location.href = nextPath;
-    } catch (err) {
-      console.error("Verify OTP failed:", err);
-      setError("Không thể xác thực OTP.");
-    } finally {
+    if (pin.length !== 4) {
+      setError("Vui lòng nhập đủ mã PIN 4 số.");
       setIsSubmitting(false);
+      return;
     }
-  }
-
-  async function loginWithPassword(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsSubmitting(true);
-    setError(null);
 
     try {
       const response = await fetch("/api/auth/password-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, password }),
+        body: JSON.stringify({ phone, pin }),
       });
       const data = await response.json();
-
       if (!response.ok) {
-        setError(data.error || "Đăng nhập chưa thành công.");
+        setError(data.error || "Mã PIN hoặc số điện thoại không chính xác.");
         return;
       }
-
       window.location.href = nextPath;
+    } catch (err) {
+      setError("Lỗi kết nối. Vui lòng thử lại.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function requestMagicLink(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+    setNotice(null);
+
+    const phoneError = getPhoneError(phone);
+    if (phoneError) {
+      setError(phoneError);
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/auth/phone-login-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || "Không thể tạo link đăng nhập.");
+        return;
+      }
+      setNotice(data.message || "Đã gửi link đăng nhập qua tin nhắn Zalo/SMS.");
+    } catch (err) {
+      setError("Lỗi kết nối. Vui lòng thử lại.");
     } finally {
       setIsSubmitting(false);
     }
@@ -126,171 +109,204 @@ function AccountLoginContent() {
             <Phone className="h-7 w-7" />
           </div>
           <h1 className="mt-4 text-[30px] font-black leading-tight">
-            Nhập số điện thoại
+            Đăng nhập tài khoản
           </h1>
           <p className="mt-2 text-[15px] font-semibold leading-6 text-[#7b6254]">
-            Tiệm sẽ gửi OTP để mở voucher, điểm tích lũy và đơn hàng của bạn.
+            Nhập số điện thoại và mã PIN để tích lũy
           </p>
         </div>
 
         <section className="rounded-lg border border-[#f0e1d2] bg-white p-5 shadow-[0_14px_30px_rgba(83,38,12,0.08)]">
-          {notice && <Notice tone="success" text={notice} />}
-          {error && <Notice tone="error" text={error} />}
-          {devOtp && (
-            <Notice tone="warning" text={`Mã test local: ${devOtp}`} />
+          {notice && (
+            <p className="mb-4 rounded-lg bg-green-50 px-3 py-2 text-sm font-semibold text-green-700">
+              {notice}
+            </p>
+          )}
+          {error && (
+            <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm font-semibold text-red-700 animate-shake">
+              {error}
+            </p>
           )}
 
-          {step === "phone" && (
-            <form onSubmit={requestOtp} className="mt-4 space-y-4">
-              <Field label="Số điện thoại" type="tel" value={phone} onChange={setPhone} />
-              <button
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#d85d6c] text-sm font-black text-white disabled:opacity-70"
-                disabled={isSubmitting}
-              >
-                {isSubmitting && <Loader2 className="h-5 w-5 animate-spin" />}
-                Nhận mã OTP
-              </button>
-            </form>
-          )}
-
-          {step === "profile" && (
-            <form onSubmit={requestOtp} className="mt-4 space-y-4">
-              <Field label="Số điện thoại" type="tel" value={phone} onChange={setPhone} />
-              <Field label="Tên của bạn" value={name} onChange={setName} />
-              <Field label="Ngày sinh" type="date" value={birthday} onChange={setBirthday} />
+          {step === "pin" ? (
+            <form onSubmit={loginWithPin} className="space-y-5">
               <label className="block">
-                <span className="text-xs font-black uppercase text-[#7b4b34]">
-                  Giới tính
+                <span className="mb-2 block text-xs font-black uppercase text-[#7b4b34]">
+                  Số điện thoại
                 </span>
-                <select
-                  value={gender}
-                  onChange={(event) => setGender(event.target.value)}
-                  className="mt-1 h-12 w-full rounded-lg border border-[#eadbcc] bg-[#fffaf6] px-3 text-[15px] font-semibold outline-none focus:border-[#d85d6c]"
-                >
-                  <option value="">Chưa chọn</option>
-                  <option value="female">Nữ</option>
-                  <option value="male">Nam</option>
-                  <option value="other">Khác</option>
-                </select>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  autoFocus
+                  required
+                  value={phone}
+                  onChange={(event) =>
+                    setPhone(sanitizePhone(event.target.value))
+                  }
+                  className="h-14 w-full rounded-xl border-2 border-[#eadbcc] bg-[#fffaf6] px-4 text-[16px] font-bold outline-none focus:border-[#d85d6c] transition-colors"
+                  placeholder="Ví dụ: 0901234567"
+                />
               </label>
-              <button
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#d85d6c] text-sm font-black text-white disabled:opacity-70"
-                disabled={isSubmitting}
-              >
-                {isSubmitting && <Loader2 className="h-5 w-5 animate-spin" />}
-                Gửi OTP
-              </button>
-            </form>
-          )}
 
-          {step === "otp" && (
-            <form onSubmit={verifyOtp} className="mt-4 space-y-4">
-              <Field label="Mã OTP" inputMode="numeric" value={otp} onChange={setOtp} />
-              <button
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#d85d6c] text-sm font-black text-white disabled:opacity-70"
+              <PinField
+                label="Mã PIN 4 số"
+                value={pin}
+                onChange={setPin}
+                onForgotPin={() => setStep("link")}
                 disabled={isSubmitting}
-              >
-                {isSubmitting && <Loader2 className="h-5 w-5 animate-spin" />}
-                Xác nhận
-              </button>
-              <button
-                type="button"
-                onClick={() => requestOtp()}
-                className="flex h-11 w-full items-center justify-center rounded-lg border border-[#eadbcc] text-sm font-black text-[#3d2417]"
-              >
-                Gửi lại OTP
-              </button>
-            </form>
-          )}
+              />
 
-          {step === "password" && (
-            <form onSubmit={loginWithPassword} className="mt-4 space-y-4">
-              <Field label="Số điện thoại" type="tel" value={phone} onChange={setPhone} />
-              <Field label="Mật khẩu" type="password" value={password} onChange={setPassword} />
               <button
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-lg bg-[#d85d6c] text-sm font-black text-white disabled:opacity-70"
+                type="submit"
+                className="mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#d85d6c] text-[15px] font-black text-white shadow-[0_8px_16px_rgba(216,93,108,0.2)] disabled:opacity-70 transition-all active:scale-[0.98]"
                 disabled={isSubmitting}
               >
-                <KeyRound className="h-5 w-5" />
+                {isSubmitting ? (
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                ) : (
+                  <KeyRound className="h-5 w-5" />
+                )}
                 Đăng nhập
               </button>
             </form>
-          )}
+          ) : (
+            <form onSubmit={requestMagicLink} className="space-y-5">
+              <label className="block">
+                <span className="mb-2 block text-xs font-black uppercase text-[#7b4b34]">
+                  Số điện thoại
+                </span>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  required
+                  autoFocus
+                  value={phone}
+                  onChange={(event) =>
+                    setPhone(sanitizePhone(event.target.value))
+                  }
+                  className="h-14 w-full rounded-xl border-2 border-[#eadbcc] bg-[#fffaf6] px-4 text-[16px] font-bold outline-none focus:border-[#d85d6c] transition-colors"
+                  placeholder="Ví dụ: 0901234567"
+                />
+              </label>
 
-          <div className="mt-4 grid gap-2">
-            <button
-              type="button"
-              onClick={() => setStep(step === "password" ? "phone" : "password")}
-              className="flex h-11 w-full items-center justify-center rounded-lg border border-[#eadbcc] text-sm font-black text-[#3d2417]"
-            >
-              {step === "password" ? "Dùng OTP" : "Tôi có mật khẩu"}
-            </button>
-            <a
-              href="/auth/zalo"
-              className="flex h-11 items-center justify-center gap-2 rounded-lg border border-[#0068ff] text-sm font-black text-[#0068ff]"
-            >
-              <MessageCircle className="h-5 w-5" />
-              Zalo
-            </a>
-          </div>
+              <button
+                type="submit"
+                className="mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#d85d6c] text-[15px] font-black text-white shadow-[0_8px_16px_rgba(216,93,108,0.2)] disabled:opacity-70 transition-all active:scale-[0.98]"
+                disabled={isSubmitting}
+              >
+                {isSubmitting && <Loader2 className="h-5 w-5 animate-spin" />}
+                Gửi link đăng nhập (Không cần PIN)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStep("pin")}
+                className="mt-2 flex h-12 w-full items-center justify-center rounded-xl text-[14px] font-bold text-[#7b6254] hover:bg-orange-50 transition-colors"
+              >
+                Quay lại đăng nhập bằng PIN
+              </button>
+            </form>
+          )}
         </section>
 
-        <div className="mt-4 grid gap-2 text-center text-sm font-bold text-[#7b6254]">
-          <Link href="/rewards" className="inline-flex items-center justify-center gap-1">
-            Xem voucher công khai <ArrowRight className="h-4 w-4" />
+        <div className="mt-6 grid gap-2 text-center text-[14px] font-bold text-[#7b6254]">
+          <Link
+            href="/account/register"
+            className="inline-flex items-center justify-center gap-1 hover:text-[#d85d6c] transition-colors"
+          >
+            Chưa có tài khoản? Đăng ký ngay <ArrowRight className="h-4 w-4" />
           </Link>
-          <Link href="/">Xem bánh trước</Link>
         </div>
       </div>
     </main>
   );
 }
 
-function Field({
+/**
+ * Component PinField chuyên biệt cho màn hình Đăng nhập
+ * Có tích hợp sẵn nút "Quên mã PIN" và chia 4 ô dàn đều
+ */
+function PinField({
   label,
   value,
   onChange,
-  type = "text",
-  inputMode,
+  onForgotPin,
+  disabled,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
-  type?: string;
-  inputMode?: "numeric";
+  onForgotPin: () => void;
+  disabled?: boolean;
 }) {
-  return (
-    <label className="block">
-      <span className="text-xs font-black uppercase text-[#7b4b34]">{label}</span>
-      <input
-        type={type}
-        inputMode={inputMode}
-        required
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="mt-1 h-12 w-full rounded-lg border border-[#eadbcc] bg-[#fffaf6] px-3 text-[15px] font-semibold outline-none focus:border-[#d85d6c]"
-      />
-    </label>
-  );
-}
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-function Notice({
-  text,
-  tone,
-}: {
-  text: string;
-  tone: "success" | "error" | "warning";
-}) {
-  const className =
-    tone === "success"
-      ? "bg-green-50 text-green-700"
-      : tone === "error"
-        ? "bg-red-50 text-red-700"
-        : "bg-amber-50 text-amber-800";
+  const renderFakeBoxes = () => {
+    return Array.from({ length: 4 }).map((_, index) => {
+      const char = value[index];
+      const isActive = isFocused && index === value.length;
+
+      return (
+        <div
+          key={index}
+          className={`relative flex h-14 flex-1 items-center justify-center rounded-xl border-2 bg-[#fffaf6] transition-all ${
+            isActive
+              ? "border-[#d85d6c] shadow-[0_0_0_3px_rgba(216,93,108,0.15)]"
+              : "border-[#eadbcc] text-[#3d2417]"
+          }`}
+        >
+          {char ? (
+            <span className="h-3.5 w-3.5 rounded-full bg-current"></span>
+          ) : (
+            isActive && (
+              <span className="h-6 w-[2px] bg-[#d85d6c] animate-blink"></span>
+            )
+          )}
+        </div>
+      );
+    });
+  };
 
   return (
-    <p className={`mt-4 rounded-lg px-3 py-2 text-sm font-semibold ${className}`}>
-      {text}
-    </p>
+    <div className="block relative">
+      <div className="mb-2 flex items-end justify-between">
+        <span className="text-xs font-black uppercase text-[#7b4b34]">
+          {label}
+        </span>
+        <button
+          type="button"
+          onClick={onForgotPin}
+          className="text-[12px] font-bold text-[#d85d6c] hover:underline"
+        >
+          Quên mã PIN?
+        </button>
+      </div>
+
+      <div
+        className="relative flex justify-between gap-3 cursor-text"
+        onClick={() => inputRef.current?.focus()}
+      >
+        {/* Render 4 ô UI giả mạo */}
+        {renderFakeBoxes()}
+
+        {/* Lớp logic: Input vô hình đè lên toàn bộ */}
+        <input
+          ref={inputRef}
+          type="tel"
+          inputMode="numeric"
+          maxLength={4}
+          required
+          disabled={disabled}
+          value={value}
+          onChange={(event) => onChange(sanitizePin(event.target.value))}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          className="absolute inset-0 h-full w-full opacity-0 outline-none cursor-text"
+        />
+      </div>
+    </div>
   );
 }

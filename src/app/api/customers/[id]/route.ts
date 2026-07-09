@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { updateCustomer } from "@/lib/firebase";
+import { deleteCustomer, getCustomerById, updateCustomer } from "@/lib/firebase";
 import {
   CUSTOMER_SESSION_COOKIE,
   parseCustomerSessionValue,
@@ -33,6 +33,57 @@ export async function PUT(
     console.error("Error updating customer:", error);
     return NextResponse.json(
       { error: "Failed to update customer" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await context.params;
+    const customer = await getCustomerById(id);
+
+    if (!customer) {
+      return NextResponse.json(
+        { error: "Không tìm thấy khách hàng" },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json(customer);
+  } catch (error) {
+    console.error("Error fetching customer:", error);
+    return NextResponse.json(
+      { error: "Không thể tải khách hàng" },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await context.params;
+    const customer = await getCustomerById(id);
+
+    if (!customer) {
+      return NextResponse.json(
+        { error: "Không tìm thấy khách hàng" },
+        { status: 404 },
+      );
+    }
+
+    await deleteCustomer(id);
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("Error deleting customer:", error);
+    return NextResponse.json(
+      { error: "Không thể xoá khách hàng" },
       { status: 500 },
     );
   }

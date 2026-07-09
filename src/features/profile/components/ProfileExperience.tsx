@@ -53,6 +53,7 @@ type ProfileExperienceData = {
     hasBirthday: boolean;
     hasDeliveryAddress: boolean;
     isZaloLinked: boolean;
+    isPhoneVerified: boolean;
     unlockedVoucherCount: number;
   };
 };
@@ -67,7 +68,10 @@ export function ProfileExperience({ data }: ProfileExperienceProps) {
   return (
     <main className="min-h-screen bg-[#fff8ef] text-[#3b170c]">
       <div className="mx-auto min-h-screen w-full max-w-[480px] bg-[linear-gradient(180deg,#fff3e5_0%,#fff9f0_42%,#fffdf8_100%)] pb-28 shadow-[0_0_50px_rgba(96,42,12,0.08)]">
-        <ProfileHero customer={customer} isZaloLinked={profile.isZaloLinked} />
+        <ProfileHero
+          customer={customer}
+          isPhoneVerified={profile.isPhoneVerified}
+        />
         <div className="-mt-3 space-y-4 px-4">
           <MemberCard rewards={rewards} />
           <ShortcutGrid data={data} />
@@ -84,10 +88,10 @@ export function ProfileExperience({ data }: ProfileExperienceProps) {
 
 function ProfileHero({
   customer,
-  isZaloLinked,
+  isPhoneVerified,
 }: {
   customer: Customer;
-  isZaloLinked: boolean;
+  isPhoneVerified: boolean;
 }) {
   const birthday = customer.personalization.birthday;
 
@@ -126,19 +130,21 @@ function ProfileHero({
               {maskPhone(customer.phone)}
             </p>
             <Link
-              href={isZaloLinked ? "/profile" : "/auth/zalo"}
+              href={isPhoneVerified ? "/profile" : "/account"}
               className={`mt-1.5 inline-flex items-center gap-1 rounded-full bg-white/78 px-2 py-0.5 text-[11px] font-semibold ${
-                isZaloLinked ? "text-[#34802f]" : "text-[#a35421]"
+                isPhoneVerified ? "text-[#34802f]" : "text-[#a35421]"
               }`}
             >
               <ShieldCheck
                 className={`h-3 w-3 ${
-                  isZaloLinked
+                  isPhoneVerified
                     ? "fill-[#4a9c3d] text-[#4a9c3d]"
                     : "text-[#a35421]"
                 }`}
               />
-              {isZaloLinked ? "Đã liên kết Zalo" : "Liên kết Zalo"}
+              {isPhoneVerified
+                ? "Số điện thoại đã xác minh"
+                : "Xác minh số điện thoại"}
             </Link>
             <p className="mt-2 text-[13px] font-medium text-[#3b170c]">
               {birthday ? `Ngày sinh ${birthday}` : "Chưa cập nhật ngày sinh"}

@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { getCustomerByPhone } from "@/lib/firebase";
-import { requestCustomerOtp } from "@/lib/firebase/customer-otp";
+import {
+  buildMagicLinkUrl,
+  createMagicLinkForCustomer,
+  getCustomerByPhone,
+} from "@/lib/firebase";
 
 export async function POST(request: Request) {
   try {
@@ -9,7 +12,7 @@ export async function POST(request: Request) {
 
     if (typeof phone !== "string" || !phone.trim()) {
       return NextResponse.json(
-        { error: "Vui lòng nhập số điện thoại." },
+        { error: "Vui long nhap so dien thoai." },
         { status: 400 },
       );
     }
@@ -19,29 +22,22 @@ export async function POST(request: Request) {
       return NextResponse.json({
         ok: true,
         message:
-          "Nếu số điện thoại đã có hồ sơ, tiệm sẽ gửi OTP để đặt lại mật khẩu.",
+          "Nếu số điện thoại đã có hồ sơ, nhân viên sẽ hỗ trợ gửi link đăng nhập.",
       });
     }
 
-    const result = await requestCustomerOtp({
-      name: customer.name,
-      phone: customer.phone,
-      email: customer.email,
-      birthday: customer.birthday,
-      gender: customer.gender,
-      personalization: customer.personalization,
-    });
+    const result = await createMagicLinkForCustomer(customer.id);
 
     return NextResponse.json({
       ok: true,
-      message: "OTP đặt lại mật khẩu đã được gửi về số điện thoại.",
-      next: "/account/password?reset=1",
-      devOtp: process.env.NODE_ENV === "production" ? undefined : result.otp,
+      message:
+        "Đã tạo link đăng nhập mới. Nhân viên có thể gửi link này cho khách để đặt lại mật khẩu.",
+      magicLinkUrl: buildMagicLinkUrl(result.urlPath),
     });
   } catch (error) {
     console.error("Forgot password failed:", error);
     return NextResponse.json(
-      { error: "Không thể gửi OTP đặt lại mật khẩu." },
+      { error: "Không thể tạo link hỗ trợ đăng nhập." },
       { status: 500 },
     );
   }

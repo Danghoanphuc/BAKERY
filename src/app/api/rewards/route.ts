@@ -4,6 +4,7 @@ import {
   getCustomerById,
   getMarketingCampaigns,
   getMarketingSettings,
+  getVoucherRedemptionUsage,
 } from "@/lib/firebase";
 import { buildCustomerRewards } from "@/lib/customer-rewards";
 import {
@@ -35,7 +36,25 @@ export async function GET(request: Request) {
     getMarketingCampaigns(),
   ]);
 
-  return NextResponse.json(
-    buildCustomerRewards(customer, allOrders, settings, campaigns),
+  const rewards = buildCustomerRewards(customer, allOrders, settings, campaigns);
+  const vouchers = await Promise.all(
+    rewards.vouchers.map(async (voucher) => {
+      const maxUsesPerPhone = Math.max(0, voucher.maxUsesPerPhone ?? 1);
+      if (!voucher.code || maxUsesPerPhone === 0) return voucher;
+
+      const usageCount = await getVoucherRedemptionUsage({
+        voucherId: voucher.id,
+        voucherCode: voucher.code,
+        customerId: customer.id,
+        phone: customer.phone,
+      });
+
+      return usageCount >= maxUsesPerPhone ? null : voucher;
+    }),
   );
+
+  return NextResponse.json({
+    ...rewards,
+    vouchers: vouchers.filter((voucher) => voucher !== null),
+  });
 }

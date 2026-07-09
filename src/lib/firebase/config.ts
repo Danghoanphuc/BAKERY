@@ -12,6 +12,28 @@ import {
   Timestamp,
   writeBatch,
 } from "firebase/firestore";
+
+function stripUndefined(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+  if (Array.isArray(obj)) {
+    return obj.map((item) => stripUndefined(item));
+  }
+  if (typeof obj === "object") {
+    const newObj: any = {};
+    for (const key in obj) {
+      const value = stripUndefined(obj[key]);
+      if (value !== undefined) {
+        newObj[key] = value;
+      } else {
+        console.log("Removing undefined field:", key, "from object:", obj);
+      }
+    }
+    return newObj;
+  }
+  return obj;
+}
 import { db } from "./app";
 import type { Category, Product, Order } from "@/types";
 
@@ -252,14 +274,74 @@ export async function getOrders(): Promise<Order[]> {
   try {
     const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Order[];
+    return mapOrdersSorted(snapshot.docs);
   } catch (error) {
     console.error("Error fetching orders:", error);
     return [];
   }
+}
+
+export async function getOrdersByCustomer(
+  customerId: string,
+): Promise<Order[]> {
+  try {
+    const q = query(
+      collection(db, "orders"),
+      where("customerId", "==", customerId),
+    );
+    const snapshot = await getDocs(q);
+    return mapOrdersSorted(snapshot.docs);
+  } catch (error) {
+    console.error("Error fetching customer orders:", error);
+    return [];
+  }
+}
+
+export async function getOrdersByPhone(phone: string): Promise<Order[]> {
+  try {
+    const q = query(
+      collection(db, "orders"),
+      where("customerPhone", "==", phone),
+    );
+    const snapshot = await getDocs(q);
+    return mapOrdersSorted(snapshot.docs);
+  } catch (error) {
+    console.error("Error fetching orders by phone:", error);
+    return [];
+  }
+}
+
+function mapOrdersSorted(
+  docs: Array<{ id: string; data: () => Record<string, unknown> }>,
+) {
+  const orders = docs.map((doc) => ({
+    id: doc.id,
+    ...doc.data(),
+  })) as Array<Order & { createdAt?: unknown }>;
+
+  return orders.sort(
+    (a, b) => getOrderTimestamp(b.createdAt) - getOrderTimestamp(a.createdAt),
+  );
+}
+
+function getOrderTimestamp(value: unknown) {
+  if (!value) return 0;
+  if (value instanceof Date) return value.getTime();
+
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value).getTime();
+    return Number.isNaN(parsed) ? 0 : parsed;
+  }
+
+  if (
+    typeof value === "object" &&
+    "seconds" in value &&
+    typeof value.seconds === "number"
+  ) {
+    return value.seconds * 1000;
+  }
+
+  return 0;
 }
 
 export async function getOrderById(id: string): Promise<Order | null> {
@@ -277,8 +359,11 @@ export async function getOrderById(id: string): Promise<Order | null> {
 }
 
 export async function createOrder(data: any): Promise<Order> {
+  console.log("createOrder data (raw):", data);
+  const cleanedData = stripUndefined(data);
+  console.log("createOrder cleanedData:", cleanedData);
   const docRef = await addDoc(collection(db, "orders"), {
-    ...data,
+    ...cleanedData,
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
   });

@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from "crypto";
 
 export const CUSTOMER_SESSION_COOKIE = "bakery_customer_session";
 
-const SESSION_TTL_SECONDS = 60 * 60 * 24 * 30;
+const SESSION_TTL_SECONDS = 60 * 60 * 24 * 365;
 
 type SessionPayload = {
   customerId: string;

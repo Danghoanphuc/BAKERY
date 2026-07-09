@@ -18,6 +18,10 @@ export async function setCustomerPassword(customerId: string, password: string) 
   });
 }
 
+export async function setCustomerPin(customerId: string, pin: string) {
+  return setCustomerPassword(customerId, pin);
+}
+
 export async function verifyCustomerPassword(
   phone: string,
   password: string,
@@ -58,4 +62,11 @@ export async function verifyCustomerPassword(
     status: "active",
     lastLoginAt: new Date(),
   };
+}
+
+export async function verifyCustomerPin(
+  phone: string,
+  pin: string,
+): Promise<Customer | null> {
+  return verifyCustomerPassword(phone, pin);
 }

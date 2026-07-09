@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, Gift, Lock, TicketPercent } from "lucide-react";
+import { Gift, Lock, TicketPercent } from "lucide-react";
 
 import type { MyRewardsData } from "./types";
 
@@ -64,7 +64,7 @@ export function OffersView({
                 </p>
                 {voucher.unlocked && (
                   <Link
-                    href="/rewards?public=1"
+                    href="/account/rewards"
                     className="mt-3 flex h-9 items-center justify-center rounded-lg bg-[#7a351f] text-xs font-black text-white"
                   >
                     Sử dụng ngay
@@ -75,14 +75,6 @@ export function OffersView({
           </article>
         ))}
       </div>
-
-      <Link
-        href="/rewards?public=1"
-        className="mt-4 flex h-11 items-center justify-center gap-2 rounded-lg border border-[#d9b279] bg-white text-sm font-black text-[#74351f]"
-      >
-        Xem voucher công khai
-        <ChevronRight className="h-4 w-4" />
-      </Link>
     </section>
   );
 }

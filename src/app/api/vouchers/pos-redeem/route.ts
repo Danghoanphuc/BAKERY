@@ -1,11 +1,4 @@
 import { NextResponse } from "next/server";
-import {
-  collection,
-  getDocs,
-  limit,
-  query,
-  where,
-} from "firebase/firestore";
 
 import {
   createOrUpdateCustomerFromPurchase,
@@ -13,13 +6,8 @@ import {
   getMarketingCampaigns,
   recordVoucherRedemption,
 } from "@/lib/firebase";
-import { db } from "@/lib/firebase/config";
-import {
-  calculateVoucherPricing,
-  getVoucherByCodeFromCampaigns,
-} from "@/lib/vouchers";
-
-const VOUCHER_REDEMPTIONS_COLLECTION = "voucher_redemptions";
+import { getVoucherByCodeFromCampaigns } from "@/lib/vouchers";
+import { validateVoucherRedemption } from "@/lib/voucher-redemption-policy";
 
 export async function POST(request: Request) {
   try {
@@ -42,33 +30,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const numericSubtotal = Number(subtotal) || 0;
-    const pricing = calculateVoucherPricing(numericSubtotal, voucher);
-
-    if (!pricing.isEligible) {
-      return NextResponse.json(
-        { error: pricing.reason ?? "Đơn chưa đủ điều kiện dùng voucher." },
-        { status: 400 },
-      );
-    }
-
     const normalizedPhone = phone.replace(/\s+/g, "").trim();
     const existingCustomer = await getCustomerByPhone(phone);
-    const redemptionSnapshot = await getDocs(
-      query(
-        collection(db, VOUCHER_REDEMPTIONS_COLLECTION),
-        where("voucherId", "==", voucher.id),
-        where("phone", "==", normalizedPhone),
-        limit(voucher.maxUsesPerPhone ?? 1),
-      ),
-    );
+    const numericSubtotal = Number(subtotal) || 0;
+    const validation = await validateVoucherRedemption({
+      voucher,
+      subtotal: numericSubtotal,
+      channel: "pos_pickup_now",
+      customerId: existingCustomer?.id,
+      phone: normalizedPhone,
+    });
 
-    if (
-      voucher.maxUsesPerPhone &&
-      redemptionSnapshot.size >= voucher.maxUsesPerPhone
-    ) {
+    if (!validation.ok) {
       return NextResponse.json(
-        { error: "Số điện thoại này đã dùng voucher này rồi." },
+        { error: validation.error },
         { status: 409 },
       );
     }
@@ -96,9 +71,9 @@ export async function POST(request: Request) {
       phone: customer.phone,
       customerId: customer.id,
       channel: "pos_pickup_now",
-      subtotal: pricing.subtotal,
-      discountAmount: pricing.discountAmount,
-      totalAfterDiscount: pricing.totalAfterDiscount,
+      subtotal: validation.pricing.subtotal,
+      discountAmount: validation.pricing.discountAmount,
+      totalAfterDiscount: validation.pricing.totalAfterDiscount,
       source: "pos",
     });
 
@@ -110,7 +85,7 @@ export async function POST(request: Request) {
         name: customer.name,
         phone: customer.phone,
       },
-      pricing,
+      pricing: validation.pricing,
     });
   } catch (error) {
     console.error("POS voucher redeem failed:", error);

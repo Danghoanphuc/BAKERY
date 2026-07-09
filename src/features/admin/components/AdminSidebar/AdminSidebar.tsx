@@ -1,8 +1,11 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  ChevronLeft,
+  ChevronRight,
   CircleDollarSign,
   Home,
   Layers,
@@ -10,12 +13,19 @@ import {
   Package,
   ScanLine,
   ShoppingBag,
+  ShoppingCart,
   TicketPercent,
   Users,
 } from "lucide-react";
 import { clsx } from "clsx";
 
 const menuItems = [
+  {
+    id: "pos",
+    label: "POS - Bán hàng",
+    icon: ShoppingCart,
+    href: "/admin/pos",
+  },
   {
     id: "dashboard",
     label: "Tổng quan",
@@ -66,7 +76,7 @@ const menuItems = [
   },
   {
     id: "marketing",
-    label: "Khuyến mãi",
+    label: "Marketing",
     icon: Megaphone,
     href: "/admin/marketing",
   },
@@ -74,15 +84,62 @@ const menuItems = [
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  useEffect(() => {
+    setIsExpanded(false);
+  }, [pathname]);
 
   return (
-    <aside className="sticky top-0 flex h-screen w-64 flex-col border-r border-neutral-200 bg-white">
-      <div className="flex h-16 items-center border-b border-neutral-200 px-6">
-        <h1 className="text-xl font-bold text-primary-600">Bakery Admin</h1>
+    <aside
+      className={clsx(
+        "sticky top-0 flex h-screen shrink-0 flex-col border-r border-[#eadbcc] bg-[#fffaf6] shadow-[8px_0_24px_rgba(61,36,23,0.06)] transition-[width] duration-200",
+        isExpanded ? "w-64" : "w-[76px]",
+      )}
+    >
+      <div
+        className={clsx(
+          "flex h-20 items-center border-b border-[#f0e1d2] px-3",
+          isExpanded ? "justify-between" : "justify-center",
+        )}
+      >
+        <Link
+          href="/admin"
+          className={clsx(
+            "min-w-0 items-center gap-3",
+            isExpanded ? "flex" : "hidden",
+          )}
+        >
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#d85d6c] text-sm font-black text-white shadow-[0_10px_20px_rgba(216,93,108,0.22)]">
+            B
+          </span>
+          <span className="min-w-0">
+            <span className="block truncate text-base font-black text-[#3d2417]">
+              Bakery Admin
+            </span>
+            <span className="block truncate text-xs font-semibold text-[#9b8171]">
+              Tiệm bánh & vận hành
+            </span>
+          </span>
+        </Link>
+
+        <button
+          type="button"
+          onClick={() => setIsExpanded((current) => !current)}
+          className="grid h-10 w-10 place-items-center rounded-2xl border border-[#eadbcc] bg-white text-[#65483a] transition hover:border-[#d85d6c]/40 hover:text-[#d85d6c]"
+          aria-label={isExpanded ? "Thu gọn sidebar" : "Mở rộng sidebar"}
+          title={isExpanded ? "Thu gọn" : "Mở rộng"}
+        >
+          {isExpanded ? (
+            <ChevronLeft className="h-4 w-4" />
+          ) : (
+            <ChevronRight className="h-4 w-4" />
+          )}
+        </button>
       </div>
 
       <nav className="flex-1 px-3 py-4">
-        <ul className="space-y-1">
+        <ul className="space-y-2">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive =
@@ -93,16 +150,20 @@ export function AdminSidebar() {
               <li key={item.id}>
                 <Link
                   href={item.href}
+                  title={!isExpanded ? item.label : undefined}
                   className={clsx(
-                    "flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors",
-                    "text-sm font-medium",
+                    "group relative flex h-12 items-center rounded-2xl text-sm font-bold transition",
+                    isExpanded ? "gap-3 px-3" : "justify-center px-0",
                     isActive
-                      ? "bg-primary-50 text-primary-700"
-                      : "text-neutral-700 hover:bg-neutral-50 hover:text-neutral-900",
+                      ? "bg-white text-[#d85d6c] shadow-sm ring-1 ring-[#f0e1d2]"
+                      : "text-[#7b6254] hover:bg-white/80 hover:text-[#3d2417]",
                   )}
                 >
-                  <Icon className="h-5 w-5" />
-                  <span>{item.label}</span>
+                  {isActive && (
+                    <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-[#d85d6c]" />
+                  )}
+                  <Icon className="h-5 w-5 shrink-0" />
+                  {isExpanded && <span className="truncate">{item.label}</span>}
                 </Link>
               </li>
             );
@@ -110,9 +171,22 @@ export function AdminSidebar() {
         </ul>
       </nav>
 
-      <div className="border-t border-neutral-200 p-4 text-xs text-neutral-500">
-        <p>Version 1.0.0</p>
-        <p className="mt-1">© 2026 Bakery Admin</p>
+      <div
+        className={clsx(
+          "border-t border-[#f0e1d2] p-3",
+          isExpanded ? "text-left" : "text-center",
+        )}
+      >
+        <div className="rounded-2xl bg-white px-3 py-3 text-xs font-semibold text-[#9b8171] ring-1 ring-[#f0e1d2]">
+          {isExpanded ? (
+            <>
+              <p className="text-[#3d2417]">Bakery POS</p>
+              <p className="mt-1">Version 1.0.0</p>
+            </>
+          ) : (
+            <span>v1</span>
+          )}
+        </div>
       </div>
     </aside>
   );

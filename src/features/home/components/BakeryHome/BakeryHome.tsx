@@ -18,6 +18,7 @@ import {
 import { clsx } from "clsx";
 
 import { ProductDetailModal } from "@/features/product/components/ProductDetailModal";
+import { CustomerVoucherPicker } from "@/features/vouchers";
 import { Toast } from "@/components/common";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import { useToast } from "@/hooks/useToast";
@@ -52,6 +53,7 @@ export function BakeryHome({ categories, favoriteProducts }: BakeryHomeProps) {
   const { config } = useOrderConfigStore();
   const { toast, showToast, hideToast } = useToast();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [isVoucherPickerOpen, setIsVoucherPickerOpen] = useState(false);
   const [profileSummary, setProfileSummary] = useState<HomeProfileSummary>({
     points: 0,
   });
@@ -205,6 +207,7 @@ export function BakeryHome({ categories, favoriteProducts }: BakeryHomeProps) {
           favoriteIds={favoriteIds}
           onToggleFavorite={toggleFavorite}
           onProductClick={setSelectedProduct}
+          onVoucherClick={() => setIsVoucherPickerOpen(true)}
         />
         <ShippingOffer mode={config.deliveryMode} />
         <RewardHero name={profileSummary.name} points={profileSummary.points} />
@@ -218,6 +221,11 @@ export function BakeryHome({ categories, favoriteProducts }: BakeryHomeProps) {
           onAddToCart={handleAddToCart}
         />
       )}
+
+      <CustomerVoucherPicker
+        isOpen={isVoucherPickerOpen}
+        onClose={() => setIsVoucherPickerOpen(false)}
+      />
 
       <Toast
         message={toast.message}
@@ -564,11 +572,13 @@ function FavoriteSection({
   favoriteIds,
   onToggleFavorite,
   onProductClick,
+  onVoucherClick,
 }: {
   products: Product[];
   favoriteIds: string[];
   onToggleFavorite: (productId: string) => void;
   onProductClick: (product: Product) => void;
+  onVoucherClick: () => void;
 }) {
   return (
     <section className="pt-8">
@@ -595,6 +605,7 @@ function FavoriteSection({
               isFavorite={favoriteIds.includes(product.id)}
               onToggleFavorite={() => onToggleFavorite(product.id)}
               onClick={() => onProductClick(product)}
+              onVoucherClick={onVoucherClick}
             />
           ))}
         </div>
@@ -609,12 +620,14 @@ function ProductMiniCard({
   isFavorite,
   onToggleFavorite,
   onClick,
+  onVoucherClick,
 }: {
   product: Product;
   rating: string;
   isFavorite: boolean;
   onToggleFavorite: () => void;
   onClick: () => void;
+  onVoucherClick: () => void;
 }) {
   const { selectedVoucher } = useVoucherStore();
   const voucherPricing = calculateVoucherPricing(product.price, selectedVoucher);
@@ -672,23 +685,31 @@ function ProductMiniCard({
         </div>
       </button>
       <div className="px-2 pb-1">
-        <Link
-          href="/rewards?public=1"
-          className="block rounded-md border border-dashed border-[#f0c47e] bg-[#fffaf0] px-2 py-1 text-center text-[10px] font-black text-[#7a351f]"
+        <button
+          type="button"
+          onClick={onVoucherClick}
+          className="block w-full rounded-md border border-dashed border-[#f0c47e] bg-[#fffaf0] px-2 py-1 text-center text-[10px] font-black text-[#7a351f]"
         >
           {selectedVoucher
             ? `${selectedVoucher.code}: còn ${formatPrice(voucherPricing.totalAfterDiscount).replace(" ", "")}`
             : "Chọn voucher"}
-        </Link>
+        </button>
       </div>
       <div className="mt-auto px-2 pb-2 pt-1">
         <button
           type="button"
           onClick={onClick}
-          className="flex h-8 w-full items-center justify-center gap-1 rounded-full bg-[#d85d6c] text-[11px] font-bold text-white shadow-sm transition active:scale-95"
+          className="flex min-h-8 w-full items-center justify-center gap-1 rounded-full bg-[#d85d6c] px-2 py-1 text-center text-[11px] font-bold leading-tight text-white shadow-sm transition active:scale-95"
         >
           <Plus className="h-3.5 w-3.5" />
-          Thêm
+          {selectedVoucher && voucherPricing.isEligible ? (
+            <span>
+              Thêm -{" "}
+              {formatPrice(voucherPricing.totalAfterDiscount).replace(" ", "")}
+            </span>
+          ) : (
+            "Thêm"
+          )}
         </button>
       </div>
     </article>

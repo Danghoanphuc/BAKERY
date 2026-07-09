@@ -13,6 +13,10 @@ export interface PublicVoucher {
   expiresAt?: string;
   channels: VoucherUseMode[];
   maxUsesPerPhone?: number;
+  usageLimit?: number;
+  usedCount?: number;
+  maxDiscountBudget?: number;
+  discountSpent?: number;
   requiresPhone: boolean;
   isPublic: boolean;
 }

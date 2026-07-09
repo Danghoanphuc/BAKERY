@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -9,15 +9,23 @@ import {
   Minus,
   Plus,
   ShoppingBag,
-  Sparkles,
+  TicketPercent,
   Trash2,
 } from "lucide-react";
 
+import { CustomerVoucherPicker } from "@/features/vouchers";
 import { useCartStore } from "@/store/cartStore";
 import { useOrderConfigStore } from "@/store/orderConfigStore";
 import { useVoucherStore } from "@/store/voucherStore";
-import { formatPrice } from "@/lib/utils";
 import { calculateVoucherPricing } from "@/lib/vouchers";
+import { formatPrice } from "@/lib/utils";
+import type { CartItem } from "@/types";
+
+type DiscountLine = {
+  id: string;
+  name: string;
+  amount: number;
+};
 
 export default function CartPage() {
   const router = useRouter();
@@ -31,7 +39,20 @@ export default function CartPage() {
   } = useCartStore();
   const { config } = useOrderConfigStore();
   const { selectedVoucher, clearSelectedVoucher } = useVoucherStore();
+  const [isVoucherPickerOpen, setIsVoucherPickerOpen] = useState(false);
+
   const voucherPricing = calculateVoucherPricing(totalPrice, selectedVoucher);
+  const voucherAllocations = getVoucherAllocations(
+    items,
+    voucherPricing.discountAmount,
+  );
+  const discountLines = items
+    .map((item) => ({
+      id: item.cartItemId,
+      name: item.productName,
+      amount: voucherAllocations.get(item.cartItemId) ?? 0,
+    }))
+    .filter((line) => line.amount > 0);
 
   const handleQuantityChange = (cartItemId: string, newQuantity: number) => {
     if (newQuantity <= 0) {
@@ -72,7 +93,7 @@ export default function CartPage() {
 
   return (
     <main className="min-h-screen bg-bg-main text-text-primary">
-      <div className="mx-auto min-h-screen w-full max-w-[480px] bg-[linear-gradient(180deg,#fff3e5_0%,#fffdf9_45%,#fff8ef_100%)] px-4 pb-56 pt-5 shadow-[0_0_50px_rgba(96,42,12,0.06)]">
+      <div className="mx-auto min-h-screen w-full max-w-[480px] bg-[linear-gradient(180deg,#fff3e5_0%,#fffdf9_45%,#fff8ef_100%)] px-4 pb-36 pt-5 shadow-[0_0_50px_rgba(96,42,12,0.06)]">
         <CartHeader
           title={`Giỏ hàng (${totalQuantity})`}
           onBack={() => router.back()}
@@ -88,138 +109,168 @@ export default function CartPage() {
           }
         />
 
-        <ModeNotice mode={config.deliveryMode} />
-
-        {selectedVoucher && (
-          <section className="mt-4 rounded-[18px] border border-[#f0b64d] bg-[#fff8ec] p-4 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[13px] font-black text-[#8a4a28]">
-                  Đang dùng voucher
-                </p>
-                <h2 className="mt-1 text-[16px] font-black text-[#3d2417]">
-                  {selectedVoucher.title}
-                </h2>
-                <p className="mt-1 text-[12px] font-semibold text-[#7b6254]">
-                  {voucherPricing.isEligible
-                    ? `Dự kiến giảm ${formatPrice(voucherPricing.discountAmount)}`
-                    : voucherPricing.reason}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={clearSelectedVoucher}
-                className="text-[12px] font-black text-[#d85d6c]"
-              >
-                Bỏ
-              </button>
-            </div>
-          </section>
-        )}
-
         <section className="mt-4 space-y-3">
-          {items.map((item) => (
-            <article
-              key={item.cartItemId}
-              className="rounded-[20px] border border-white bg-white/82 p-3 shadow-[0_10px_24px_rgba(83,38,12,0.08)]"
-            >
-              <div className="flex gap-3">
-                <div className="h-[88px] w-[88px] shrink-0 overflow-hidden rounded-[16px] bg-[#fff0df]">
-                  <img
-                    src={item.imageUrl}
-                    alt={item.productName}
-                    className="h-full w-full object-cover"
-                  />
-                </div>
+          {items.map((item) => {
+            const itemSubtotal = item.price * item.quantity;
+            const itemDiscount = voucherAllocations.get(item.cartItemId) ?? 0;
+            const itemTotalAfterDiscount = Math.max(
+              0,
+              itemSubtotal - itemDiscount,
+            );
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-start gap-2">
-                    <div className="min-w-0 flex-1">
-                      <h2 className="line-clamp-2 text-[15px] font-black leading-tight">
-                        {item.productName}
-                      </h2>
-                      <CustomizationSummary item={item} />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeItem(item.cartItemId)}
-                      className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#fff1f0] text-[#df5a67] transition active:scale-95"
-                      aria-label="Xóa sản phẩm"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-
-                  <div className="mt-3 flex items-end justify-between gap-3">
-                    <div>
-                      <p className="text-[16px] font-black text-[#d85d6c]">
-                        {formatPrice(item.price)}
-                      </p>
-                      <p className="mt-0.5 text-[11px] font-semibold text-text-muted">
-                        Thành tiền {formatPrice(item.price * item.quantity)}
-                      </p>
-                    </div>
-
-                    <QuantityStepper
-                      quantity={item.quantity}
-                      onDecrease={() =>
-                        handleQuantityChange(
-                          item.cartItemId,
-                          item.quantity - 1,
-                        )
-                      }
-                      onIncrease={() =>
-                        handleQuantityChange(
-                          item.cartItemId,
-                          item.quantity + 1,
-                        )
-                      }
+            return (
+              <article
+                key={item.cartItemId}
+                className="rounded-[20px] border border-white bg-white/82 p-3 shadow-[0_10px_24px_rgba(83,38,12,0.08)]"
+              >
+                <div className="flex gap-3">
+                  <div className="h-[88px] w-[88px] shrink-0 overflow-hidden rounded-[16px] bg-[#fff0df]">
+                    <img
+                      src={item.imageUrl}
+                      alt={item.productName}
+                      className="h-full w-full object-cover"
                     />
                   </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <h2 className="line-clamp-2 text-[15px] font-black leading-tight">
+                          {item.productName}
+                        </h2>
+                        <CustomizationSummary item={item} />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeItem(item.cartItemId)}
+                        className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#fff1f0] text-[#df5a67] transition active:scale-95"
+                        aria-label="Xóa sản phẩm"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    <div className="mt-3 flex items-end justify-between gap-3">
+                      <div>
+                        <p className="text-[16px] font-black text-[#d85d6c]">
+                          {formatPrice(item.price)}
+                        </p>
+                        <p className="mt-0.5 text-[11px] font-semibold text-text-muted">
+                          Thành tiền {formatPrice(itemTotalAfterDiscount)}
+                        </p>
+                        {itemDiscount > 0 && selectedVoucher && (
+                          <p className="mt-0.5 text-[11px] font-black text-[#34802f]">
+                            Tiết kiệm {formatPrice(itemDiscount)} với{" "}
+                            {selectedVoucher.code}
+                          </p>
+                        )}
+                      </div>
+
+                      <QuantityStepper
+                        quantity={item.quantity}
+                        onDecrease={() =>
+                          handleQuantityChange(
+                            item.cartItemId,
+                            item.quantity - 1,
+                          )
+                        }
+                        onIncrease={() =>
+                          handleQuantityChange(
+                            item.cartItemId,
+                            item.quantity + 1,
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
+
+                <div className="mt-3 rounded-[14px] border border-dashed border-[#f0c47e] bg-[#fffaf0] px-3 py-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-[12px] font-black text-[#7a351f]">
+                        {selectedVoucher
+                          ? `Đang áp ${selectedVoucher.code}`
+                          : "Áp voucher cho giỏ hàng"}
+                      </p>
+                      <p className="mt-0.5 truncate text-[11px] font-semibold text-[#7b6254]">
+                        {selectedVoucher
+                          ? voucherPricing.isEligible
+                            ? "Có thể đổi hoặc bỏ mã này."
+                            : voucherPricing.reason
+                          : "Chọn voucher của bạn để giảm giá ngay."}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {selectedVoucher && (
+                        <button
+                          type="button"
+                          onClick={clearSelectedVoucher}
+                          className="text-[11px] font-black text-[#9b8171]"
+                        >
+                          Bỏ
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setIsVoucherPickerOpen(true)}
+                        className="rounded-full bg-[#7a351f] px-3 py-1.5 text-[11px] font-black text-white"
+                      >
+                        {selectedVoucher ? "Đổi" : "Chọn"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
         </section>
 
-        <section className="mt-4 rounded-[18px] border border-[#f4d6bd] bg-[#fff8ec] p-4">
-          <div className="flex items-center gap-2 text-[13px] font-bold text-[#8a4a28]">
-            <Sparkles className="h-4 w-4 text-accent-star" />
-            Mẹo nhỏ cho đơn bánh
-          </div>
-          <p className="mt-1.5 text-[12px] leading-5 text-text-muted">
-            Bạn có thể thêm lời chúc, chọn vị hoặc ghi chú thời gian nhận ở
-            bước thanh toán.
-          </p>
-        </section>
+        <CheckoutSummary
+          totalQuantity={totalQuantity}
+          totalPrice={totalPrice}
+          discountAmount={voucherPricing.discountAmount}
+          voucherCode={selectedVoucher?.code}
+          discountLines={discountLines}
+          mode={config.deliveryMode}
+          onCheckout={() => router.push("/checkout")}
+        />
       </div>
 
-      <CheckoutSummary
-        totalQuantity={totalQuantity}
-        totalPrice={totalPrice}
-        discountAmount={voucherPricing.discountAmount}
-        mode={config.deliveryMode}
-        onCheckout={() => router.push("/checkout")}
+      <CustomerVoucherPicker
+        isOpen={isVoucherPickerOpen}
+        onClose={() => setIsVoucherPickerOpen(false)}
       />
     </main>
   );
 }
 
-function ModeNotice({ mode }: { mode: "delivery" | "pickup" }) {
-  const isPickup = mode === "pickup";
+function getVoucherAllocations(items: CartItem[], discountAmount: number) {
+  const allocations = new Map<string, number>();
+  if (discountAmount <= 0 || items.length === 0) return allocations;
 
-  return (
-    <section className="mt-4 rounded-[18px] border border-[#f0dfcc] bg-white/82 p-3 shadow-sm">
-      <p className="text-[13px] font-black text-[#3d2417]">
-        {isPickup ? "Đến lấy tại quán" : "Giao tận nơi"}
-      </p>
-      <p className="mt-1 text-[12px] leading-5 text-text-muted">
-        {isPickup
-          ? "Đơn hàng sẽ không tính phí giao. Bạn chọn giờ nhận ở bước thanh toán."
-          : "Đơn hàng sẽ cần địa chỉ giao bánh và có thể áp dụng freeship theo giá trị đơn."}
-      </p>
-    </section>
+  const subtotal = items.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0,
   );
+  if (subtotal <= 0) return allocations;
+
+  let allocated = 0;
+  items.forEach((item, index) => {
+    const lineSubtotal = item.price * item.quantity;
+    const amount =
+      index === items.length - 1
+        ? discountAmount - allocated
+        : Math.min(
+            lineSubtotal,
+            Math.floor((discountAmount * lineSubtotal) / subtotal),
+          );
+    const safeAmount = Math.max(0, amount);
+    allocations.set(item.cartItemId, safeAmount);
+    allocated += safeAmount;
+  });
+
+  return allocations;
 }
 
 function CartHeader({
@@ -249,16 +300,7 @@ function CartHeader({
   );
 }
 
-function CustomizationSummary({
-  item,
-}: {
-  item: {
-    selectedSize?: string;
-    selectedFlavor?: string;
-    customMessage?: string;
-    candles?: number;
-  };
-}) {
+function CustomizationSummary({ item }: { item: CartItem }) {
   const details = [
     item.selectedSize && `Size ${item.selectedSize}`,
     item.selectedFlavor && `Vị ${item.selectedFlavor}`,
@@ -324,12 +366,16 @@ function CheckoutSummary({
   totalQuantity,
   totalPrice,
   discountAmount,
+  voucherCode,
+  discountLines,
   mode,
   onCheckout,
 }: {
   totalQuantity: number;
   totalPrice: number;
   discountAmount: number;
+  voucherCode?: string;
+  discountLines: DiscountLine[];
   mode: "delivery" | "pickup";
   onCheckout: () => void;
 }) {
@@ -339,10 +385,10 @@ function CheckoutSummary({
 
   return (
     <div
-      className="fixed bottom-[92px] left-0 right-0 z-[90] mx-auto w-full max-w-[480px] px-4 md:bottom-6"
+      className="mt-4 w-full"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <section className="rounded-[22px] border border-white bg-white/92 p-4 shadow-[0_14px_34px_rgba(83,38,12,0.16)] backdrop-blur-xl">
+      <section className="rounded-[22px] border border-white bg-white/92 p-4 shadow-[0_14px_34px_rgba(83,38,12,0.12)]">
         <div className="mb-3 space-y-2">
           <div className="flex items-center justify-between text-[13px] font-semibold text-text-muted">
             <span>Tạm tính</span>
@@ -355,9 +401,22 @@ function CheckoutSummary({
             </span>
           </div>
           {discountAmount > 0 && (
-            <div className="flex items-center justify-between text-[13px] font-semibold text-text-muted">
-              <span>Voucher</span>
-              <span className="text-[#34802f]">-{formatPrice(discountAmount)}</span>
+            <div className="space-y-1.5 rounded-[14px] bg-[#eff8ea] px-3 py-2 text-[12px] font-semibold text-[#34802f]">
+              <div className="flex items-center justify-between gap-3">
+                <span className="inline-flex min-w-0 items-center gap-1.5">
+                  <TicketPercent className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Voucher {voucherCode}</span>
+                </span>
+              </div>
+              {discountLines.map((line) => (
+                <div
+                  key={line.id}
+                  className="flex items-center justify-between gap-3 text-[11px] text-[#3d7c37]"
+                >
+                  <span className="truncate">{line.name}</span>
+                  <span className="shrink-0">-{formatPrice(line.amount)}</span>
+                </div>
+              ))}
             </div>
           )}
           <div className="rounded-[14px] bg-[#fff8ec] px-3 py-2 text-[12px] font-semibold text-[#8a4a28]">
@@ -379,7 +438,8 @@ function CheckoutSummary({
           className="flex h-12 w-full items-center justify-center gap-2 rounded-[15px] bg-[#d85d6c] text-[15px] font-black text-white shadow-[0_8px_18px_rgba(216,93,108,0.26)] transition active:scale-[0.99]"
         >
           <CakeSlice className="h-5 w-5" />
-          {isPickup ? "Đặt để đến lấy" : "Đặt giao tận nơi"} ({totalQuantity} món)
+          {isPickup ? "Đặt để đến lấy" : "Đặt giao tận nơi"} ({totalQuantity}{" "}
+          món)
         </button>
       </section>
     </div>

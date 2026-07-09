@@ -1,10 +1,11 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { clsx } from "clsx";
 import { Button } from "@/components/common";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import { ProductShareButton } from "@/features/product/components/ProductShareButton";
+import { CustomerVoucherPicker } from "@/features/vouchers";
 import { getProductPath } from "@/lib/product-path";
 import { calculateVoucherPricing } from "@/lib/vouchers";
 import { useVoucherStore } from "@/store/voucherStore";
@@ -20,6 +21,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onAddToCart,
 }) => {
   const { selectedVoucher } = useVoucherStore();
+  const [isVoucherPickerOpen, setIsVoucherPickerOpen] = useState(false);
   const voucherPricing = calculateVoucherPricing(product.price, selectedVoucher);
 
   const formatPrice = (price: number): string => {
@@ -75,11 +77,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             />
             <Button
               variant="primary"
-              className="touch-target h-8 w-full min-w-[48px] rounded-md px-2 py-1 text-[12px] font-bold lg:h-10 lg:w-auto lg:min-w-[80px] lg:px-4 lg:py-2 lg:text-sm"
+              className="touch-target min-h-8 w-full min-w-[48px] rounded-md px-2 py-1 text-[12px] font-bold leading-tight lg:min-h-10 lg:w-auto lg:min-w-[96px] lg:px-4 lg:py-2 lg:text-sm"
               onClick={handleAddToCart}
               data-testid="add-to-cart-btn"
             >
-              Thêm
+              {selectedVoucher && voucherPricing.isEligible ? (
+                `Thêm ${formatPrice(voucherPricing.totalAfterDiscount)}`
+              ) : (
+                "Thêm"
+              )}
             </Button>
           </div>
         </div>
@@ -97,23 +103,30 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                     : voucherPricing.reason}
                 </p>
               </div>
-              <a
-                href="/rewards?public=1"
+              <button
+                type="button"
+                onClick={() => setIsVoucherPickerOpen(true)}
                 className="shrink-0 text-[11px] font-black text-[#d85d6c]"
               >
                 Đổi
-              </a>
+              </button>
             </div>
           ) : (
-            <a
-              href="/rewards?public=1"
+            <button
+              type="button"
+              onClick={() => setIsVoucherPickerOpen(true)}
               className="block text-center text-[11px] font-black text-[#7a351f]"
             >
               Chọn voucher
-            </a>
+            </button>
           )}
         </div>
       </div>
+
+      <CustomerVoucherPicker
+        isOpen={isVoucherPickerOpen}
+        onClose={() => setIsVoucherPickerOpen(false)}
+      />
     </div>
   );
 };

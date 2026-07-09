@@ -5,12 +5,12 @@ import {
   parseCustomerSessionValue,
   readCookie,
 } from "@/lib/auth/customer-session";
-import { validatePassword, verifyPassword } from "@/lib/auth/password";
+import { validatePin, verifyPassword } from "@/lib/auth/password";
 import {
   getCustomerAuthByPhone,
   getCustomerById,
 } from "@/lib/firebase/customers";
-import { setCustomerPassword } from "@/lib/firebase/customer-auth";
+import { setCustomerPin } from "@/lib/firebase/customer-auth";
 
 export async function POST(request: Request) {
   try {
@@ -29,43 +29,49 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Customer not found" }, { status: 404 });
     }
 
-    const { currentPassword, newPassword } = await request.json();
+    const { currentPin, currentPassword, newPin, newPassword } =
+      await request.json();
+    const nextPin =
+      typeof newPin === "string"
+        ? newPin
+        : typeof newPassword === "string"
+          ? newPassword
+          : "";
+    const oldPin =
+      typeof currentPin === "string"
+        ? currentPin
+        : typeof currentPassword === "string"
+          ? currentPassword
+          : "";
 
-    if (typeof newPassword !== "string") {
-      return NextResponse.json(
-        { error: "Mat khau moi khong hop le." },
-        { status: 400 },
-      );
-    }
-
-    const passwordError = validatePassword(newPassword);
-    if (passwordError) {
-      return NextResponse.json({ error: passwordError }, { status: 400 });
+    const pinError = validatePin(nextPin);
+    if (pinError) {
+      return NextResponse.json({ error: pinError }, { status: 400 });
     }
 
     if (customer.hasPassword) {
-      if (typeof currentPassword !== "string") {
+      if (!oldPin) {
         return NextResponse.json(
-          { error: "Vui long nhap mat khau hien tai." },
+          { error: "Vui lòng nhập mã PIN hiện tại." },
           { status: 400 },
         );
       }
 
       const authCustomer = await getCustomerAuthByPhone(customer.phone);
-      if (!verifyPassword(currentPassword, authCustomer?.passwordHash)) {
+      if (!verifyPassword(oldPin, authCustomer?.passwordHash)) {
         return NextResponse.json(
-          { error: "Mat khau hien tai khong dung." },
+          { error: "Mã PIN hiện tại không đúng." },
           { status: 401 },
         );
       }
     }
 
-    await setCustomerPassword(customer.id, newPassword);
+    await setCustomerPin(customer.id, nextPin);
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error("Set password failed:", error);
+    console.error("Set PIN failed:", error);
     return NextResponse.json(
-      { error: "Khong the cap nhat mat khau." },
+      { error: "Không thể cập nhật mã PIN." },
       { status: 500 },
     );
   }

@@ -4,11 +4,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 
 import { RewardsScreen } from "./_components/RewardsScreen";
-import type { MyRewardsData, RewardsTab } from "./_components/types";
+import type { MyRewardsData } from "./_components/types";
 
 export default function MyRewardsPage() {
   const [data, setData] = useState<MyRewardsData | null>(null);
-  const [activeTab, setActiveTab] = useState<RewardsTab>("journey");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,11 +63,6 @@ export default function MyRewardsPage() {
   }
 
   return (
-    <RewardsScreen
-      data={data}
-      activeTab={activeTab}
-      unlockedVoucherCount={unlockedVoucherCount}
-      onTabChange={setActiveTab}
-    />
+    <RewardsScreen data={data} unlockedVoucherCount={unlockedVoucherCount} />
   );
 }

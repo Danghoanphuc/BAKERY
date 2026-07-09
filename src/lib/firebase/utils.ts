@@ -2,8 +2,11 @@ import type {
   CartItem,
   Category,
   Customer,
+  CustomerCareLog,
   CustomerMagicLink,
   CustomerPersonalization,
+  CustomerPointAdjustment,
+  CustomerVoucherIssue,
   Order,
   OrderType,
   Product,
@@ -270,6 +273,64 @@ function normalizeStringArray(value: unknown): string[] | undefined {
   return value.filter((item): item is string => typeof item === "string");
 }
 
+function normalizeCareLogs(value: unknown): CustomerCareLog[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+    .map((item) => ({
+      id: String(item.id ?? ""),
+      type:
+        item.type === "call" ||
+        item.type === "note" ||
+        item.type === "phone_verified" ||
+        item.type === "risk" ||
+        item.type === "voucher" ||
+        item.type === "points"
+          ? item.type
+          : "note",
+      title: String(item.title ?? ""),
+      note: typeof item.note === "string" ? item.note : undefined,
+      outcome:
+        item.outcome === "confirmed" ||
+        item.outcome === "no_answer" ||
+        item.outcome === "wrong_number" ||
+        item.outcome === "callback" ||
+        item.outcome === "note"
+          ? item.outcome
+          : undefined,
+      actor: typeof item.actor === "string" ? item.actor : undefined,
+      createdAt: toDate(item.createdAt as FirestoreDateValue) ?? new Date(),
+    }));
+}
+
+function normalizePointAdjustments(value: unknown): CustomerPointAdjustment[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+    .map((item) => ({
+      id: String(item.id ?? ""),
+      points: typeof item.points === "number" ? item.points : 0,
+      reason: String(item.reason ?? ""),
+      actor: typeof item.actor === "string" ? item.actor : undefined,
+      createdAt: toDate(item.createdAt as FirestoreDateValue) ?? new Date(),
+    }));
+}
+
+function normalizeVoucherIssues(value: unknown): CustomerVoucherIssue[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  return value
+    .filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object")
+    .map((item) => ({
+      id: String(item.id ?? ""),
+      voucherId: typeof item.voucherId === "string" ? item.voucherId : undefined,
+      voucherCode: typeof item.voucherCode === "string" ? item.voucherCode : undefined,
+      title: String(item.title ?? ""),
+      note: typeof item.note === "string" ? item.note : undefined,
+      actor: typeof item.actor === "string" ? item.actor : undefined,
+      createdAt: toDate(item.createdAt as FirestoreDateValue) ?? new Date(),
+    }));
+}
+
 function normalizeCustomerPersonalization(
   value: unknown,
 ): CustomerPersonalization {
@@ -329,10 +390,40 @@ export function normalizeCustomer(
     inviteSentAt: toDate(data.inviteSentAt as FirestoreDateValue),
     lastOrderAt: toDate(data.lastOrderAt as FirestoreDateValue),
     lastLoginAt: toDate(data.lastLoginAt as FirestoreDateValue),
+    phoneVerifiedAt: toDate(data.phoneVerifiedAt as FirestoreDateValue),
+    phoneVerificationMethod:
+      data.phoneVerificationMethod === "admin" ||
+      data.phoneVerificationMethod === "zalo"
+        ? data.phoneVerificationMethod
+        : undefined,
+    phoneVerificationNote:
+      typeof data.phoneVerificationNote === "string"
+        ? data.phoneVerificationNote
+        : undefined,
     zaloUserId:
       typeof data.zaloUserId === "string" ? data.zaloUserId : undefined,
     hasPassword: typeof data.passwordHash === "string" && data.passwordHash.length > 0,
     passwordSetAt: toDate(data.passwordSetAt as FirestoreDateValue),
+    tags: normalizeStringArray(data.tags),
+    internalNotes:
+      typeof data.internalNotes === "string" ? data.internalNotes : undefined,
+    riskLevel:
+      data.riskLevel === "green" ||
+      data.riskLevel === "yellow" ||
+      data.riskLevel === "red"
+        ? data.riskLevel
+        : undefined,
+    riskReason: typeof data.riskReason === "string" ? data.riskReason : undefined,
+    preferredChannel:
+      data.preferredChannel === "phone" ||
+      data.preferredChannel === "zalo" ||
+      data.preferredChannel === "sms" ||
+      data.preferredChannel === "email"
+        ? data.preferredChannel
+        : undefined,
+    careLogs: normalizeCareLogs(data.careLogs),
+    pointAdjustments: normalizePointAdjustments(data.pointAdjustments),
+    issuedVouchers: normalizeVoucherIssues(data.issuedVouchers),
     personalization: normalizeCustomerPersonalization(data.personalization),
     createdAt,
     updatedAt,

@@ -45,6 +45,7 @@ export async function GET(request: Request) {
         customer.personalization.defaultDeliveryAddress,
       ),
       isZaloLinked: Boolean(customer.zaloUserId),
+      isPhoneVerified: Boolean(customer.phoneVerifiedAt),
       unlockedVoucherCount: rewards.vouchers.filter(
         (voucher) => voucher.unlocked,
       ).length,

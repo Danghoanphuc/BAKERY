@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   Bike,
   Gift,
@@ -17,6 +17,7 @@ import { useOrderConfigStore } from "@/store/orderConfigStore";
 import { useVoucherStore } from "@/store/voucherStore";
 import type { PublicVoucher, VoucherUseMode } from "@/types/voucher";
 import { toSelectedVoucher } from "@/lib/vouchers";
+import { createPosVoucherToken } from "@/lib/pos-voucher-token";
 
 type RewardsData = {
   customer?: {
@@ -35,8 +36,6 @@ type RewardsData = {
 
 function RewardsContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const forcePublic = searchParams.get("public") === "1";
   const { setDeliveryMode, setOrderTiming } = useOrderConfigStore();
   const { setSelectedVoucher } = useVoucherStore();
   const [publicVouchers, setPublicVouchers] = useState<PublicVoucher[]>([]);
@@ -59,13 +58,11 @@ function RewardsContent() {
           setPublicVouchers(data.vouchers ?? []);
         }
 
-        if (privateRes.ok && !forcePublic) {
-          router.replace("/account/rewards");
-          return;
-        }
-
+        // If logged in, always redirect to account rewards (ignore forcePublic)
         if (privateRes.ok) {
           setRewardsData(await privateRes.json());
+          router.replace("/account/rewards");
+          return;
         }
       } finally {
         setIsLoading(false);
@@ -73,7 +70,7 @@ function RewardsContent() {
     }
 
     loadRewards();
-  }, [forcePublic, router]);
+  }, [router]);
 
   const heroVoucher = useMemo(
     () => publicVouchers[0] ?? null,
@@ -343,7 +340,9 @@ function PosVoucherModal({
   voucher: PublicVoucher;
   onClose: () => void;
 }) {
-  const qrData = `BAKERY-VOUCHER:${voucher.code}`;
+  const [qrData] = useState(() =>
+    createPosVoucherToken({ voucherId: voucher.id, code: voucher.code }),
+  );
 
   return (
     <div className="fixed inset-0 z-[130] flex items-center justify-center bg-[#fff8ef] p-4">

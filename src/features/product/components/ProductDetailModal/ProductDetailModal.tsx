@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { Minus, Plus, ShoppingCart, TicketPercent } from "lucide-react";
 import { clsx } from "clsx";
 
 import { Modal } from "@/components/common";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import { ProductShareButton } from "@/features/product/components/ProductShareButton";
+import { CustomerVoucherPicker } from "@/features/vouchers";
 import { useOrderConfigStore } from "@/store/orderConfigStore";
 import { useVoucherStore } from "@/store/voucherStore";
 import { calculateVoucherPricing } from "@/lib/vouchers";
@@ -43,6 +43,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   );
   const [customMessage, setCustomMessage] = useState("");
   const [candles, setCandles] = useState<number>(0);
+  const [isVoucherPickerOpen, setIsVoucherPickerOpen] = useState(false);
   const galleryImages = useMemo(
     () =>
       Array.from(
@@ -72,6 +73,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
   const totalPrice = finalPrice * quantity;
   const voucherPricing = calculateVoucherPricing(totalPrice, selectedVoucher);
+  const addToCartTotal =
+    selectedVoucher && voucherPricing.isEligible
+      ? voucherPricing.totalAfterDiscount
+      : totalPrice;
   const isPickup = config.deliveryMode === "pickup";
   const isUnavailableForMode = isPickup
     ? product.availableForPickup === false
@@ -155,8 +160,9 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <p className="mt-3 text-xl font-black text-[#d85d6c]">
               {formatCurrency(finalPrice)}
             </p>
-            <Link
-              href="/rewards?public=1"
+            <button
+              type="button"
+              onClick={() => setIsVoucherPickerOpen(true)}
               className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-dashed border-[#f0c47e] bg-[#fffaf0] px-3 py-2 text-left"
             >
               <span className="flex min-w-0 items-center gap-2">
@@ -179,7 +185,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               <span className="shrink-0 text-xs font-black text-[#d85d6c]">
                 {selectedVoucher ? "Đổi" : "Chọn"}
               </span>
-            </Link>
+            </button>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <span
                 className={clsx(
@@ -326,9 +332,16 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           <ShoppingCart className="h-4 w-4" />
           {isUnavailableForMode
             ? `Không hỗ trợ ${modeLabel}`
-            : `Thêm vào giỏ - ${formatCurrency(totalPrice)}`}
+            : selectedVoucher && voucherPricing.isEligible
+              ? `Thêm vào giỏ - ${formatCurrency(addToCartTotal)} · tiết kiệm ${formatCurrency(voucherPricing.discountAmount)}`
+              : `Thêm vào giỏ - ${formatCurrency(totalPrice)}`}
         </button>
       </div>
+
+      <CustomerVoucherPicker
+        isOpen={isVoucherPickerOpen}
+        onClose={() => setIsVoucherPickerOpen(false)}
+      />
     </Modal>
   );
 };

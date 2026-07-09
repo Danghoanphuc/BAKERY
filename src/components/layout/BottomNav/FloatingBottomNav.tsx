@@ -2,57 +2,78 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { CakeSlice, Clock3, Gift, Home, UserRound } from "lucide-react";
 import { clsx } from "clsx";
 
-const profileNavItems = [
-  {
-    label: "Trang chủ",
-    href: "/",
-    icon: Home,
-  },
-  {
-    label: "Đơn hàng",
-    href: "/order",
-    icon: Clock3,
-  },
-  {
-    label: "Đặt bánh",
-    href: "/cart",
-    icon: CakeSlice,
-    featured: true,
-  },
-  {
-    label: "Ưu đãi",
-    href: "/rewards",
-    icon: Gift,
-  },
-  {
-    label: "Tài khoản",
-    href: "/profile",
-    icon: UserRound,
-  },
-];
-
 export default function FloatingBottomNav() {
   const pathname = usePathname();
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    // Check if user is logged in
+    fetch("/api/auth/me")
+      .then((res) => setIsLoggedIn(res.ok))
+      .catch(() => setIsLoggedIn(false));
+  }, []);
 
   // Use the profile nav with 5 items (including featured "Đặt bánh") for ALL pages
-  return <ProfileBottomNav pathname={pathname} />;
+  return <ProfileBottomNav pathname={pathname} isLoggedIn={isLoggedIn} />;
 }
 
-function ProfileBottomNav({ pathname }: { pathname: string }) {
+function ProfileBottomNav({
+  pathname,
+  isLoggedIn,
+}: {
+  pathname: string;
+  isLoggedIn: boolean | null;
+}) {
+  // Determine rewards href based on login status
+  const rewardsHref = isLoggedIn === true ? "/account/rewards" : "/rewards";
+
+  const navItems = [
+    {
+      label: "Trang chủ",
+      href: "/",
+      icon: Home,
+    },
+    {
+      label: "Đơn hàng",
+      href: "/order",
+      icon: Clock3,
+    },
+    {
+      label: "Đặt bánh",
+      href: "/cart",
+      icon: CakeSlice,
+      featured: true,
+    },
+    {
+      label: "Ưu đãi",
+      href: rewardsHref,
+      icon: Gift,
+    },
+    {
+      label: "Tài khoản",
+      href: "/profile",
+      icon: UserRound,
+    },
+  ];
+
   return (
     <div
       className="pointer-events-none fixed bottom-0 left-0 right-0 z-[100] flex items-center justify-center px-4 pb-4 md:hidden"
       style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
     >
       <nav className="pointer-events-auto grid h-[72px] w-full max-w-[440px] grid-cols-5 items-center rounded-[24px] border border-[#efe0d4] bg-white/82 px-2 shadow-[0_12px_30px_rgba(83,38,12,0.14)] backdrop-blur-xl">
-        {profileNavItems.map((item) => {
+        {navItems.map((item) => {
           const isActive =
             item.href === "/"
               ? pathname === item.href
-              : pathname.startsWith(item.href);
+              : pathname.startsWith(item.href) ||
+                // Also mark rewards as active on /account/rewards
+                (item.href === rewardsHref &&
+                  (pathname === "/rewards" || pathname === "/account/rewards"));
           const Icon = item.icon;
 
           return (

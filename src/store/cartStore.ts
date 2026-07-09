@@ -8,6 +8,7 @@ interface CartState {
   removeItem: (cartItemId: string) => void;
   updateQuantity: (cartItemId: string, quantity: number) => void;
   clearCart: () => void;
+  setItems: (items: CartItem[]) => void;
   totalQuantity: number;
   totalPrice: number;
 }
@@ -201,6 +202,27 @@ export const useCartStore = create<CartState>()(
           });
         } catch (error) {
           console.error("Failed to clear cart:", error);
+          set({
+            items: previousState.items,
+            totalQuantity: previousState.totalQuantity,
+            totalPrice: previousState.totalPrice,
+          });
+          throw error;
+        }
+      },
+
+      setItems: (items: CartItem[]) => {
+        const previousState = get();
+
+        try {
+          const { totalQuantity, totalPrice } = computeTotals(items);
+          set({
+            items,
+            totalQuantity,
+            totalPrice,
+          });
+        } catch (error) {
+          console.error("Failed to set items:", error);
           set({
             items: previousState.items,
             totalQuantity: previousState.totalQuantity,

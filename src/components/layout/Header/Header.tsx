@@ -107,10 +107,8 @@ export const Header: React.FC<HeaderProps> = ({ className }) => {
     return `${street}, ${district}`;
   };
 
-  // Hide header on all main pages except admin
-  if (!pathname.startsWith("/admin")) {
-    return null;
-  }
+  // Header disabled - not used in current design
+  return null;
 
   return (
     <>

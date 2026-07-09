@@ -20,6 +20,8 @@ export {
   deleteProduct,
   // Orders
   getOrders,
+  getOrdersByCustomer,
+  getOrdersByPhone,
   getOrderById,
   createOrder,
   updateOrder,

@@ -17,6 +17,7 @@ export interface OrderStatusHistoryItem {
 export interface Order {
   id: string;
   orderNumber: string;
+  customerId?: string;
   customerName: string;
   customerPhone: string;
   customerEmail?: string;

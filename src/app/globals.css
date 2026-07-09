@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap");
 @import "tailwindcss";
 
 @theme {
@@ -50,6 +51,32 @@
   --breakpoint-md: 768px;
   --breakpoint-lg: 1024px;
   --breakpoint-xl: 1280px;
+
+  /* Shake animation */
+  --animate-shake: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  
+  /* Blink animation */
+  --animate-blink: blink 1s step-end infinite;
+
+  @keyframes shake {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    20%,
+    60% {
+      transform: translateX(-6px);
+    }
+    40%,
+    80% {
+      transform: translateX(6px);
+    }
+  }
+  
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
 }
 
 @layer base {
@@ -128,5 +155,9 @@
 
   .pb-safe-bottom {
     padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .font-dancing-script {
+    font-family: "Dancing Script", cursive;
   }
 }

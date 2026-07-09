@@ -35,9 +35,15 @@ export type MyRewardsData = {
   };
   vouchers: Array<{
     id: string;
+    code?: string;
     title: string;
     description: string;
     unlocked: boolean;
+    discountType?: "percent" | "fixed";
+    discountValue?: number;
+    minOrderValue?: number;
+    maxDiscountAmount?: number;
+    channels?: Array<"pos_pickup_now" | "web_pickup_later" | "web_delivery">;
   }>;
   badges: Array<{
     id: string;

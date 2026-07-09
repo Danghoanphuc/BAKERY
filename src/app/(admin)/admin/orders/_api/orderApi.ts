@@ -4,7 +4,7 @@ export async function updateOrderApi(
   orderId: string,
   payload: Partial<Order>,
 ): Promise<Order> {
-  const response = await fetch(`/api/orders/${orderId}`, {
+  const response = await fetch(`/api/admin/orders/${orderId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -37,7 +37,7 @@ export async function bulkUpdateOrderStatusApi(
 
   const results = await Promise.allSettled(
     targets.map((order) =>
-      fetch(`/api/orders/${order.id}`, {
+      fetch(`/api/admin/orders/${order.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),

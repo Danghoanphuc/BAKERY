@@ -448,6 +448,44 @@ export async function recordVoucherRedemption(
   });
 }
 
+export async function getVoucherRedemptionUsage({
+  voucherId,
+  voucherCode,
+  customerId,
+  phone,
+}: {
+  voucherId?: string;
+  voucherCode?: string;
+  customerId?: string;
+  phone?: string;
+}) {
+  if (!voucherId && !voucherCode) return 0;
+  if (!customerId && !phone) return 0;
+
+  const redemptionsRef = collection(db, VOUCHER_REDEMPTIONS_COLLECTION);
+  const redemptionsQuery = query(
+    redemptionsRef,
+    voucherId
+      ? where("voucherId", "==", voucherId)
+      : where("voucherCode", "==", voucherCode),
+  );
+  const normalizedPhone = phone?.replace(/\s+/g, "").trim();
+  const snapshot = await getDocs(redemptionsQuery);
+
+  return snapshot.docs.filter((redemptionDoc) => {
+    const data = redemptionDoc.data();
+    const redemptionPhone =
+      typeof data.phone === "string"
+        ? data.phone.replace(/\s+/g, "").trim()
+        : undefined;
+
+    return (
+      (customerId && data.customerId === customerId) ||
+      Boolean(normalizedPhone && redemptionPhone === normalizedPhone)
+    );
+  }).length;
+}
+
 function normalizeVoucherRedemption(
   id: string,
   data: Record<string, unknown>,

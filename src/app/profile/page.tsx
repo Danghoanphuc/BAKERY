@@ -39,6 +39,7 @@ type ProfilePageData = {
     hasBirthday: boolean;
     hasDeliveryAddress: boolean;
     isZaloLinked: boolean;
+    isPhoneVerified: boolean;
     unlockedVoucherCount: number;
   };
 };

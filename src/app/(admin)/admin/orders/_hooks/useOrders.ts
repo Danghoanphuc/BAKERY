@@ -16,7 +16,7 @@ export function useOrders() {
   async function loadOrders() {
     try {
       setIsLoading(true);
-      const res = await fetch("/api/orders");
+      const res = await fetch("/api/admin/orders");
       if (!res.ok) throw new Error("load_failed");
       const data = await res.json();
       setOrders(data);

@@ -1,27 +1,37 @@
 import { NextResponse } from "next/server";
+
 import {
   buildMagicLinkUrl,
   createMagicLinkForCustomer,
   getCustomerByPhone,
 } from "@/lib/firebase";
+import {
+  getVietnamPhoneValidationError,
+  normalizePhoneInput,
+} from "@/lib/auth/phone";
 
 export async function POST(request: Request) {
   try {
     const { phone } = await request.json();
+    const normalizedPhone =
+      typeof phone === "string" ? normalizePhoneInput(phone) : "";
 
-    if (typeof phone === "string" && phone.trim()) {
-      const customer = await getCustomerByPhone(phone);
+    const phoneError = getVietnamPhoneValidationError(normalizedPhone);
+    if (phoneError) {
+      return NextResponse.json({ error: phoneError }, { status: 400 });
+    }
 
-      if (customer) {
-        const result = await createMagicLinkForCustomer(customer.id);
+    const customer = await getCustomerByPhone(normalizedPhone);
 
-        return NextResponse.json({
-          ok: true,
-          message:
-            "He thong da tao link dang nhap moi. Neu chua co kenh SMS/Zalo tu dong, nhan vien co the copy link nay de gui cho khach.",
-          magicLinkUrl: buildMagicLinkUrl(result.urlPath),
-        });
-      }
+    if (customer) {
+      const result = await createMagicLinkForCustomer(customer.id);
+
+      return NextResponse.json({
+        ok: true,
+        message:
+          "Hệ thống đã tạo link đăng nhập mới. Nhân viên có thể gửi link này cho khách.",
+        magicLinkUrl: buildMagicLinkUrl(result.urlPath),
+      });
     }
 
     return NextResponse.json({
@@ -32,7 +42,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error("Phone login request failed:", error);
     return NextResponse.json(
-      { error: "Không thể tạo yêu cầu đăng nhập" },
+      { error: "Không thể tạo yêu cầu đăng nhập." },
       { status: 500 },
     );
   }

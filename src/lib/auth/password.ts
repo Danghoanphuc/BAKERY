@@ -31,3 +31,11 @@ export function validatePassword(password: string) {
   }
   return null;
 }
+
+export function validatePin(pin: string) {
+  if (!/^\d{4}$/.test(pin)) {
+    return "Mã PIN cần đúng 4 chữ số.";
+  }
+
+  return null;
+}

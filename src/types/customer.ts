@@ -1,6 +1,48 @@
 export type CustomerStatus = "invited" | "active" | "paused";
 export type LoyaltyTier = "new" | "silver" | "gold" | "vip";
 export type MagicLinkStatus = "pending" | "used" | "expired";
+export type CustomerRiskLevel = "green" | "yellow" | "red";
+export type CustomerCareLogType =
+  | "call"
+  | "note"
+  | "phone_verified"
+  | "risk"
+  | "voucher"
+  | "points";
+export type CustomerCareLogOutcome =
+  | "confirmed"
+  | "no_answer"
+  | "wrong_number"
+  | "callback"
+  | "note";
+
+export interface CustomerCareLog {
+  id: string;
+  type: CustomerCareLogType;
+  title: string;
+  note?: string;
+  outcome?: CustomerCareLogOutcome;
+  actor?: string;
+  createdAt: Date;
+}
+
+export interface CustomerPointAdjustment {
+  id: string;
+  points: number;
+  reason: string;
+  actor?: string;
+  createdAt: Date;
+}
+
+export interface CustomerVoucherIssue {
+  id: string;
+  voucherId?: string;
+  voucherCode?: string;
+  title: string;
+  note?: string;
+  actor?: string;
+  createdAt: Date;
+}
 
 export interface CustomerPersonalization {
   birthday?: string;
@@ -27,9 +69,20 @@ export interface Customer {
   inviteSentAt?: Date;
   lastOrderAt?: Date;
   lastLoginAt?: Date;
+  phoneVerifiedAt?: Date;
+  phoneVerificationMethod?: "admin" | "zalo";
+  phoneVerificationNote?: string;
   zaloUserId?: string;
   hasPassword?: boolean;
   passwordSetAt?: Date;
+  tags?: string[];
+  internalNotes?: string;
+  riskLevel?: CustomerRiskLevel;
+  riskReason?: string;
+  preferredChannel?: "phone" | "zalo" | "sms" | "email";
+  careLogs?: CustomerCareLog[];
+  pointAdjustments?: CustomerPointAdjustment[];
+  issuedVouchers?: CustomerVoucherIssue[];
   personalization: CustomerPersonalization;
   createdAt: Date;
   updatedAt: Date;
@@ -59,7 +112,18 @@ export interface CustomerInput {
   tier?: LoyaltyTier;
   currentMagicLinkToken?: string;
   magicLinkExpiresAt?: Date;
+  phoneVerifiedAt?: Date;
+  phoneVerificationMethod?: "admin" | "zalo";
+  phoneVerificationNote?: string;
   zaloUserId?: string;
+  tags?: string[];
+  internalNotes?: string;
+  riskLevel?: CustomerRiskLevel;
+  riskReason?: string;
+  preferredChannel?: "phone" | "zalo" | "sms" | "email";
+  careLogs?: CustomerCareLog[];
+  pointAdjustments?: CustomerPointAdjustment[];
+  issuedVouchers?: CustomerVoucherIssue[];
   personalization?: CustomerPersonalization;
 }
 

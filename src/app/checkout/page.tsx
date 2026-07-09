@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Clock3, MapPin, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Clock3, MapPin, ShieldCheck, ShoppingBag } from "lucide-react";
 
 import { useCartStore } from "@/store/cartStore";
 import { useOrderConfigStore } from "@/store/orderConfigStore";
 import { useVoucherStore } from "@/store/voucherStore";
 import { formatPrice } from "@/lib/utils";
 import { calculateVoucherPricing } from "@/lib/vouchers";
+import { getPhoneError, sanitizePhone } from "@/features/auth/pin-ui";
 import type { Customer } from "@/types";
 
 export default function CheckoutPage() {
@@ -34,6 +35,7 @@ export default function CheckoutPage() {
   const voucherPricing = calculateVoucherPricing(totalPrice, selectedVoucher);
   const deliveryFee = isPickup || totalPrice >= 149000 ? 0 : 20000;
   const finalTotal = voucherPricing.totalAfterDiscount + deliveryFee;
+  const isPhoneVerified = Boolean(customer?.phoneVerifiedAt);
 
   const destinationLabel = useMemo(() => {
     if (isPickup) return "Nhận tại cửa hàng chính";
@@ -68,14 +70,9 @@ export default function CheckoutPage() {
         }));
 
         if (!config.deliveryAddress) {
-          const defaultAddress =
-            nextCustomer.personalization.defaultDeliveryAddress;
+          const defaultAddress = nextCustomer.personalization.defaultDeliveryAddress;
           if (defaultAddress) {
-            setDeliveryAddress({
-              street: defaultAddress,
-              district: "",
-              city: "",
-            });
+            setDeliveryAddress({ street: defaultAddress, district: "", city: "" });
           }
         }
       } catch (err) {
@@ -89,9 +86,7 @@ export default function CheckoutPage() {
   }, [config.deliveryAddress, setDeliveryAddress]);
 
   useEffect(() => {
-    if (isClient && items.length === 0) {
-      router.push("/cart");
-    }
+    if (isClient && items.length === 0) router.push("/cart");
   }, [isClient, items.length, router]);
 
   if (!isClient) {
@@ -110,6 +105,13 @@ export default function CheckoutPage() {
     setError(null);
 
     try {
+      const submittedPhone = formData.phone || customer?.phone || "";
+      const phoneError = getPhoneError(submittedPhone);
+      if (phoneError) {
+        setError(phoneError);
+        return;
+      }
+
       const deliveryAddressString =
         !isPickup && config.deliveryAddress
           ? `${config.deliveryAddress.street}, ${config.deliveryAddress.district}, ${config.deliveryAddress.city}`
@@ -119,9 +121,7 @@ export default function CheckoutPage() {
         config.orderTiming.type === "scheduled" &&
         config.orderTiming.scheduledDate &&
         config.orderTiming.scheduledTime
-          ? new Date(
-              `${config.orderTiming.scheduledDate}T${config.orderTiming.scheduledTime}`,
-            )
+          ? new Date(`${config.orderTiming.scheduledDate}T${config.orderTiming.scheduledTime}`)
           : undefined;
 
       const response = await fetch("/api/orders", {
@@ -129,7 +129,7 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customerName: formData.name || customer?.name,
-          customerPhone: formData.phone || customer?.phone,
+          customerPhone: submittedPhone,
           customerEmail: formData.email || customer?.email || undefined,
           totalAmount: finalTotal,
           orderType: config.deliveryMode,
@@ -165,7 +165,11 @@ export default function CheckoutPage() {
       router.push(`/order-success?orderNumber=${order.orderNumber}`);
     } catch (err) {
       console.error(err);
-      setError("Đã xảy ra lỗi khi đặt hàng. Vui lòng thử lại.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Đã xảy ra lỗi khi đặt hàng. Vui lòng thử lại.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -205,15 +209,23 @@ export default function CheckoutPage() {
             </h2>
             {customer ? (
               <div className="mt-3 rounded-[16px] border border-[#f1dfcf] bg-[#fffaf6] p-3">
-                <p className="text-sm font-black text-[#3d2417]">
-                  {customer.name}
-                </p>
+                <p className="text-sm font-black text-[#3d2417]">{customer.name}</p>
                 <p className="mt-1 text-sm font-semibold text-[#7b6254]">
                   {customer.phone}
                   {customer.email ? ` - ${customer.email}` : ""}
                 </p>
+                <p
+                  className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-black ${
+                    isPhoneVerified ? "bg-green-50 text-green-700" : "bg-amber-50 text-amber-800"
+                  }`}
+                >
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                  {isPhoneVerified ? "Số đã được tiệm xác nhận" : "Số chưa xác nhận"}
+                </p>
                 <p className="mt-2 text-xs font-semibold text-[#9a7a66]">
-                  Đang dùng thông tin từ tài khoản đã đăng nhập.
+                  {isPhoneVerified
+                    ? "Đơn có thể xử lý theo luồng xanh nếu không có rủi ro khác."
+                    : "Nếu đơn có giá trị cao, nhân viên sẽ gọi xác nhận trước khi làm."}
                 </p>
               </div>
             ) : !hasLoadedCustomer ? (
@@ -221,56 +233,57 @@ export default function CheckoutPage() {
                 Đang kiểm tra tài khoản...
               </p>
             ) : (
-            <div className="mt-4 space-y-3">
-              <Field
-                label="Họ tên"
-                required
-                value={formData.name}
-                onChange={(value) => setFormData({ ...formData, name: value })}
-              />
-              <Field
-                label="Số điện thoại"
-                required
-                type="tel"
-                value={formData.phone}
-                onChange={(value) => setFormData({ ...formData, phone: value })}
-              />
-              <Field
-                label="Email"
-                type="email"
-                value={formData.email}
-                onChange={(value) => setFormData({ ...formData, email: value })}
-              />
-              {selectedVoucher && (
-                <>
-                  <Field
-                    label="Ngày sinh"
-                    type="date"
-                    value={formData.birthday}
-                    onChange={(value) =>
-                      setFormData({ ...formData, birthday: value })
-                    }
-                  />
-                  <label className="block">
-                    <span className="text-sm font-bold text-[#65483a]">
-                      Giới tính
-                    </span>
-                    <select
-                      value={formData.gender}
-                      onChange={(event) =>
-                        setFormData({ ...formData, gender: event.target.value })
-                      }
-                      className="mt-1 h-11 w-full rounded-[14px] border border-[#eadbcc] px-3 text-sm outline-none focus:border-[#d85d6c] focus:ring-2 focus:ring-[#d85d6c]/15"
-                    >
-                      <option value="">Chưa chọn</option>
-                      <option value="female">Nữ</option>
-                      <option value="male">Nam</option>
-                      <option value="other">Khác</option>
-                    </select>
-                  </label>
-                </>
-              )}
-            </div>
+              <div className="mt-4 space-y-3">
+                <Field
+                  label="Họ tên"
+                  required
+                  value={formData.name}
+                  onChange={(value) => setFormData({ ...formData, name: value })}
+                />
+                <Field
+                  label="Số điện thoại"
+                  required
+                  type="tel"
+                  inputMode="numeric"
+                  maxLength={10}
+                  value={formData.phone}
+                  onChange={(value) => setFormData({ ...formData, phone: sanitizePhone(value) })}
+                />
+                <p className="text-xs font-semibold text-[#9a7a66]">
+                  Tiệm sẽ gọi xác nhận nếu đơn hàng cần kiểm tra thêm.
+                </p>
+                <Field
+                  label="Email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(value) => setFormData({ ...formData, email: value })}
+                />
+                {selectedVoucher && (
+                  <>
+                    <Field
+                      label="Ngày sinh"
+                      type="date"
+                      value={formData.birthday}
+                      onChange={(value) => setFormData({ ...formData, birthday: value })}
+                    />
+                    <label className="block">
+                      <span className="text-sm font-bold text-[#65483a]">Giới tính</span>
+                      <select
+                        value={formData.gender}
+                        onChange={(event) =>
+                          setFormData({ ...formData, gender: event.target.value })
+                        }
+                        className="mt-1 h-11 w-full rounded-[14px] border border-[#eadbcc] px-3 text-sm outline-none focus:border-[#d85d6c] focus:ring-2 focus:ring-[#d85d6c]/15"
+                      >
+                        <option value="">Chưa chọn</option>
+                        <option value="female">Nữ</option>
+                        <option value="male">Nam</option>
+                        <option value="other">Khác</option>
+                      </select>
+                    </label>
+                  </>
+                )}
+              </div>
             )}
           </section>
 
@@ -296,11 +309,7 @@ export default function CheckoutPage() {
           <section className="rounded-[20px] border border-[#f0dfcc] bg-white p-4 shadow-sm">
             <div className="flex items-start gap-3">
               <span className="grid h-10 w-10 place-items-center rounded-full bg-[#fff4ec] text-[#d85d6c]">
-                {isPickup ? (
-                  <Clock3 className="h-5 w-5" />
-                ) : (
-                  <MapPin className="h-5 w-5" />
-                )}
+                {isPickup ? <Clock3 className="h-5 w-5" /> : <MapPin className="h-5 w-5" />}
               </span>
               <div className="min-w-0 flex-1">
                 <h2 className="text-base font-black text-[#3d2417]">
@@ -308,11 +317,6 @@ export default function CheckoutPage() {
                 </h2>
                 <p className="mt-1 text-sm font-semibold leading-5 text-[#7b6254]">
                   {destinationLabel}
-                </p>
-                <p className="mt-2 text-xs leading-5 text-text-muted">
-                  {isPickup
-                    ? "Bạn có thể ghi giờ muốn nhận trong phần ghi chú nếu chưa đặt lịch."
-                    : "Nếu chưa chọn địa chỉ, tiệm sẽ liên hệ xác nhận trước khi giao."}
                 </p>
               </div>
             </div>
@@ -322,9 +326,7 @@ export default function CheckoutPage() {
             <h2 className="text-base font-black text-[#3d2417]">Ghi chú</h2>
             <textarea
               value={formData.notes}
-              onChange={(event) =>
-                setFormData({ ...formData, notes: event.target.value })
-              }
+              onChange={(event) => setFormData({ ...formData, notes: event.target.value })}
               rows={3}
               className="mt-3 w-full resize-none rounded-[14px] border border-[#eadbcc] px-3 py-2 text-sm outline-none focus:border-[#d85d6c] focus:ring-2 focus:ring-[#d85d6c]/15"
               placeholder={
@@ -409,12 +411,16 @@ function Field({
   value,
   onChange,
   type = "text",
+  inputMode,
+  maxLength,
   required = false,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
+  inputMode?: "numeric";
+  maxLength?: number;
   required?: boolean;
 }) {
   return (
@@ -425,6 +431,8 @@ function Field({
       </span>
       <input
         type={type}
+        inputMode={inputMode}
+        maxLength={maxLength}
         required={required}
         value={value}
         onChange={(event) => onChange(event.target.value)}

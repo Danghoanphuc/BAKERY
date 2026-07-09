@@ -23,6 +23,7 @@ export {
   getOrdersByCustomer,
   getOrdersByPhone,
   getOrderById,
+  getOrderByPayOSOrderCode,
   createOrder,
   updateOrder,
   updateOrderStatus,

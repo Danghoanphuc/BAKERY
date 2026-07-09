@@ -5,6 +5,7 @@ import {
   getAllProducts,
   getOrdersByCustomer,
   getOrdersByPhone,
+  updateOrder,
 } from "@/lib/db";
 import {
   CUSTOMER_SESSION_COOKIE,
@@ -32,6 +33,11 @@ import {
   getVoucherByCodeFromCampaigns,
 } from "@/lib/vouchers";
 import { validateVoucherRedemption } from "@/lib/voucher-redemption-policy";
+import {
+  createOrderPaymentLink,
+  createPayOSOrderCode,
+  isPayOSEnabled,
+} from "@/lib/payos";
 
 function stripUndefinedDeep<T>(value: T): T {
   if (Array.isArray(value)) {
@@ -217,8 +223,11 @@ export async function POST(request: Request) {
       customerId: customer?.id ?? data.customerId,
       totalAmount: serverTotalAmount,
       status: "pending",
-      paymentStatus: data.paymentStatus ?? "unpaid",
-      paymentMethod: data.paymentMethod,
+      paymentStatus:
+        data.paymentMethod === "bank_transfer" ? "pending" : data.paymentStatus ?? "unpaid",
+      paymentMethod: data.paymentMethod ?? "cod",
+      payosOrderCode:
+        data.paymentMethod === "bank_transfer" ? createPayOSOrderCode() : undefined,
       salesChannel: data.salesChannel ?? inferSalesChannel(draftOrder),
       productSubtotal: safeProductSubtotal,
       estimatedCostOfGoods,
@@ -229,6 +238,37 @@ export async function POST(request: Request) {
       voucherId: requestedVoucher?.id,
     });
     const order = await createOrder(orderPayload);
+    let payosPayment:
+      | {
+          checkoutUrl: string;
+          qrCode: string;
+          paymentLinkId: string;
+          orderCode: number;
+        }
+      | undefined;
+
+    if (order.paymentMethod === "bank_transfer") {
+      if (!isPayOSEnabled()) {
+        return NextResponse.json(
+          { error: "PayOS chÆ°a Ä‘Æ°á»£c cáº¥u hĂ¬nh." },
+          { status: 500 },
+        );
+      }
+
+      const paymentLink = await createOrderPaymentLink({
+        order,
+        orderCode: order.payosOrderCode ?? createPayOSOrderCode(),
+      });
+
+      await updateOrder(order.id, {
+        payosOrderCode: paymentLink.orderCode,
+        payosPaymentLinkId: paymentLink.paymentLinkId,
+        payosCheckoutUrl: paymentLink.checkoutUrl,
+        payosQrCode: paymentLink.qrCode,
+      });
+
+      payosPayment = paymentLink;
+    }
     const postOrderTasks: Array<Promise<void>> = [];
 
     if (requestedVoucher && serverDiscountAmount > 0) {
@@ -264,6 +304,9 @@ export async function POST(request: Request) {
         orderNumber: order.orderNumber,
         status: order.status,
         totalAmount: order.totalAmount,
+        paymentStatus: order.paymentStatus,
+        paymentMethod: order.paymentMethod,
+        payos: payosPayment,
         customerId: customer?.id,
         loyaltyPointsEarned,
       },

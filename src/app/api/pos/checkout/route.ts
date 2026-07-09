@@ -3,6 +3,7 @@ import {
   createOrder,
   generateOrderNumber,
   getAllProducts,
+  updateOrder,
   updateProduct,
 } from "@/lib/db";
 import {
@@ -25,6 +26,11 @@ import { validateVoucherRedemption } from "@/lib/voucher-redemption-policy";
 import type { CartItem, Order, Product } from "@/types";
 import type { PaymentMethod } from "@/types/finance";
 import type { VoucherUseChannel } from "@/types";
+import {
+  createOrderPaymentLink,
+  createPayOSOrderCode,
+  isPayOSEnabled,
+} from "@/lib/payos";
 
 type PosCheckoutPayload = {
   customerId?: string;
@@ -212,6 +218,8 @@ export async function POST(request: Request) {
       { items } as Order,
       productById,
     );
+    const paymentMethod = payload.paymentMethod ?? "cash";
+    const isPayOSPayment = paymentMethod === "bank_transfer";
     const orderPayload = stripUndefinedDeep({
       orderNumber: generateOrderNumber(),
       customerId: customer?.id,
@@ -227,9 +235,10 @@ export async function POST(request: Request) {
       voucherUseMode: requestedVoucher ? "pos_pickup_now" : undefined,
       voucherCode: requestedVoucher?.code,
       voucherId: requestedVoucher?.id,
-      status: "completed",
-      paymentStatus: "paid",
-      paymentMethod: payload.paymentMethod ?? "cash",
+      status: isPayOSPayment ? "pending" : "completed",
+      paymentStatus: isPayOSPayment ? "pending" : "paid",
+      paymentMethod,
+      payosOrderCode: isPayOSPayment ? createPayOSOrderCode() : undefined,
       estimatedCostOfGoods,
       estimatedGrossProfit: totalAmount - estimatedCostOfGoods,
       loyaltyPointsEarned,
@@ -244,6 +253,37 @@ export async function POST(request: Request) {
     });
 
     const order = await createOrder(orderPayload);
+    let payosPayment:
+      | {
+          checkoutUrl: string;
+          qrCode: string;
+          paymentLinkId: string;
+          orderCode: number;
+        }
+      | undefined;
+
+    if (isPayOSPayment) {
+      if (!isPayOSEnabled()) {
+        return NextResponse.json(
+          { error: "PayOS chÆ°a Ä‘Æ°á»£c cáº¥u hĂ¬nh." },
+          { status: 500 },
+        );
+      }
+
+      const paymentLink = await createOrderPaymentLink({
+        order,
+        orderCode: order.payosOrderCode ?? createPayOSOrderCode(),
+      });
+
+      await updateOrder(order.id, {
+        payosOrderCode: paymentLink.orderCode,
+        payosPaymentLinkId: paymentLink.paymentLinkId,
+        payosCheckoutUrl: paymentLink.checkoutUrl,
+        payosQrCode: paymentLink.qrCode,
+      });
+
+      payosPayment = paymentLink;
+    }
 
     if (requestedVoucher && discountAmount > 0) {
       await recordVoucherRedemption({
@@ -261,7 +301,9 @@ export async function POST(request: Request) {
       });
     }
 
-    await decrementStock(items, products);
+    if (!isPayOSPayment) {
+      await decrementStock(items, products);
+    }
 
     return NextResponse.json(
       {
@@ -270,6 +312,9 @@ export async function POST(request: Request) {
         totalAmount,
         discountAmount,
         loyaltyPointsEarned,
+        paymentStatus: order.paymentStatus,
+        paymentMethod: order.paymentMethod,
+        payos: payosPayment,
       },
       { status: 201 },
     );

@@ -5,7 +5,7 @@ import type { PaymentMethod, SalesChannel } from "./finance";
 
 export type OrderStatus = "pending" | "confirmed" | "preparing" | "ready" | "processing" | "completed" | "delivered" | "cancelled";
 export type OrderType = "delivery" | "pickup" | "preorder";
-export type PaymentStatus = "unpaid" | "paid" | "refunded";
+export type PaymentStatus = "unpaid" | "pending" | "paid" | "refunded";
 
 export interface OrderStatusHistoryItem {
   status: OrderStatus;
@@ -27,6 +27,13 @@ export interface Order {
   status: OrderStatus;
   paymentStatus?: PaymentStatus;
   paymentMethod?: PaymentMethod;
+  paidAt?: Date;
+  payosOrderCode?: number;
+  payosPaymentLinkId?: string;
+  payosCheckoutUrl?: string;
+  payosQrCode?: string;
+  payosReference?: string;
+  payosTransactionDateTime?: string;
   salesChannel?: SalesChannel;
   deliveryAddress?: string;
   pickupTime?: string;

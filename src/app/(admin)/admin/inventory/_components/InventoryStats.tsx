@@ -25,11 +25,11 @@ export function InventoryStats({
 
 function StatBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3">
-      <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+    <div className="rounded-3xl border border-[#f0e1d2] bg-[#fffaf6] px-4 py-3 shadow-[0_14px_34px_rgba(61,36,23,0.06)]">
+      <div className="text-xs font-black uppercase text-[#9b8171]">
         {label}
       </div>
-      <div className="mt-1 text-xl font-bold text-neutral-950">{value}</div>
+      <div className="mt-1 text-xl font-black text-[#3d2417]">{value}</div>
     </div>
   );
 }

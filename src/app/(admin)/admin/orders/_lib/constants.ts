@@ -30,6 +30,7 @@ export const orderTypeLabel: Record<OrderType, string> = {
 
 export const paymentLabels: Record<PaymentStatus, string> = {
   unpaid: "Chưa thanh toán",
+  pending: "Chờ chuyển khoản",
   paid: "Đã thanh toán",
   refunded: "Đã hoàn tiền",
 };

@@ -16,6 +16,7 @@ type InventoryTableProps = {
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
   onToggleAvailability: (product: Product) => void;
+  savingProductId?: string | null;
 };
 
 export function InventoryTable({
@@ -29,6 +30,7 @@ export function InventoryTable({
   onEdit,
   onDelete,
   onToggleAvailability,
+  savingProductId,
 }: InventoryTableProps) {
   return (
     <div className="rounded-lg border border-neutral-200 bg-white">
@@ -83,6 +85,7 @@ export function InventoryTable({
                   onEdit={onEdit}
                   onDelete={onDelete}
                   onToggleAvailability={onToggleAvailability}
+                  isSaving={savingProductId === product.id}
                 />
               ))}
             {!isLoading && products.length === 0 && <EmptyRow />}
@@ -99,12 +102,14 @@ function InventoryTableRow({
   onEdit,
   onDelete,
   onToggleAvailability,
+  isSaving,
 }: {
   product: Product;
   categoryName: string;
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
   onToggleAvailability: (product: Product) => void;
+  isSaving: boolean;
 }) {
   const stockStatus = getStockStatus(product.stock ?? 0);
   const StockIcon = stockStatus.icon;
@@ -166,18 +171,24 @@ function InventoryTableRow({
         <button
           type="button"
           onClick={() => onToggleAvailability(product)}
+          disabled={isSaving}
           className={clsx(
             "inline-flex h-7 w-12 items-center rounded-full px-1 transition focus:outline-none focus:ring-2 focus:ring-brand-200",
             product.isAvailable ? "bg-emerald-500" : "bg-neutral-300",
+            isSaving && "cursor-wait opacity-70",
           )}
           aria-label="Đổi trạng thái bán"
         >
-          <span
-            className={clsx(
-              "h-5 w-5 rounded-full bg-white shadow transition",
-              product.isAvailable ? "translate-x-5" : "translate-x-0",
-            )}
-          />
+          {isSaving ? (
+            <Loader2 className="mx-auto h-4 w-4 animate-spin text-white" />
+          ) : (
+            <span
+              className={clsx(
+                "h-5 w-5 rounded-full bg-white shadow transition",
+                product.isAvailable ? "translate-x-5" : "translate-x-0",
+              )}
+            />
+          )}
         </button>
         <div className="mt-1 text-xs text-neutral-500">
           {product.isAvailable ? "Đang bán" : "Ngừng bán"}

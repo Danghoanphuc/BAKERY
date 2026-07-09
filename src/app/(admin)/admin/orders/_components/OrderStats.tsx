@@ -66,31 +66,30 @@ function StatCard({
   tone?: "default" | "danger" | "warn";
   wide?: boolean;
 }) {
+  const toneClass =
+    tone === "danger"
+      ? "bg-red-50 text-red-700 ring-red-100"
+      : tone === "warn"
+        ? "bg-amber-50 text-amber-700 ring-amber-100"
+        : "bg-white text-[#d85d6c] ring-[#f0e1d2]";
+
   return (
-    <div className="rounded-lg border border-neutral-200 bg-white p-4 shadow-sm">
+    <div className="rounded-3xl border border-[#f0e1d2] bg-[#fffaf6] p-4 shadow-[0_14px_34px_rgba(61,36,23,0.06)]">
       <div className={`flex items-center gap-3 ${!wide ? "mb-3" : ""}`}>
-        <div
-          className={`rounded-lg p-2 ${
-            tone === "danger"
-              ? "bg-red-50 text-red-600"
-              : tone === "warn"
-                ? "bg-amber-50 text-amber-600"
-                : "bg-brand-50 text-brand-600"
-          }`}
-        >
+        <div className={`rounded-2xl p-2.5 ring-1 ${toneClass}`}>
           {icon}
         </div>
         {wide && (
           <div className="flex-1">
-            <p className="text-sm text-neutral-600">{label}</p>
-            <p className="text-xl font-bold text-neutral-900">{value}</p>
+            <p className="text-sm font-bold text-[#7b6254]">{label}</p>
+            <p className="text-xl font-black text-[#3d2417]">{value}</p>
           </div>
         )}
       </div>
       {!wide && (
         <>
-          <p className="text-sm text-neutral-600">{label}</p>
-          <p className="mt-1 text-2xl font-bold text-neutral-900">{value}</p>
+          <p className="text-sm font-bold text-[#7b6254]">{label}</p>
+          <p className="mt-1 text-2xl font-black text-[#3d2417]">{value}</p>
         </>
       )}
     </div>

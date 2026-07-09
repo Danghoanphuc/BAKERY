@@ -2,6 +2,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocFromServer,
   getDocs,
   addDoc,
   updateDoc,
@@ -10,6 +11,7 @@ import {
   where,
   orderBy,
   Timestamp,
+  waitForPendingWrites,
   writeBatch,
 } from "firebase/firestore";
 
@@ -243,23 +245,34 @@ export async function getProductByIdAdmin(id: string): Promise<Product | null> {
 
 export async function createProduct(data: any): Promise<Product> {
   const docRef = await addDoc(collection(db, "products"), {
-    ...data,
+    ...stripUndefined(data),
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
   });
-  const docSnap = await getDoc(docRef);
+  await waitForPendingWrites(db);
+  const docSnap = await getDocFromServer(docRef);
   return { id: docRef.id, ...docSnap.data() } as Product;
 }
 
 export async function updateProduct(
   id: string,
   data: Partial<Product>,
-): Promise<void> {
+): Promise<Product> {
   const docRef = doc(db, "products", id);
+  const { id: _ignoredId, createdAt: _ignoredCreatedAt, ...productData } = data;
+
   await updateDoc(docRef, {
-    ...data,
+    ...stripUndefined(productData),
     updatedAt: Timestamp.now(),
   });
+
+  await waitForPendingWrites(db);
+  const docSnap = await getDocFromServer(docRef);
+  if (!docSnap.exists()) {
+    throw new Error("PRODUCT_NOT_FOUND");
+  }
+
+  return { id: docSnap.id, ...docSnap.data() } as Product;
 }
 
 export async function deleteProduct(id: string): Promise<void> {
@@ -354,6 +367,25 @@ export async function getOrderById(id: string): Promise<Order | null> {
     return null;
   } catch (error) {
     console.error("Error fetching order:", error);
+    return null;
+  }
+}
+
+export async function getOrderByPayOSOrderCode(
+  payosOrderCode: number,
+): Promise<Order | null> {
+  try {
+    const q = query(
+      collection(db, "orders"),
+      where("payosOrderCode", "==", payosOrderCode),
+    );
+    const snapshot = await getDocs(q);
+    const orderDoc = snapshot.docs[0];
+
+    if (!orderDoc) return null;
+    return { id: orderDoc.id, ...orderDoc.data() } as Order;
+  } catch (error) {
+    console.error("Error fetching order by payOS order code:", error);
     return null;
   }
 }

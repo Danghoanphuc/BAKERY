@@ -2,7 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Clock3, MapPin, ShieldCheck, ShoppingBag } from "lucide-react";
+import {
+  ArrowLeft,
+  Clock3,
+  CreditCard,
+  MapPin,
+  QrCode,
+  ShieldCheck,
+  ShoppingBag,
+} from "lucide-react";
 
 import { useCartStore } from "@/store/cartStore";
 import { useOrderConfigStore } from "@/store/orderConfigStore";
@@ -27,6 +35,9 @@ export default function CheckoutPage() {
     gender: "",
     notes: "",
   });
+  const [paymentMethod, setPaymentMethod] = useState<"cod" | "bank_transfer">(
+    "cod",
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
@@ -150,6 +161,7 @@ export default function CheckoutPage() {
             customer?.gender ||
             undefined,
           notes: formData.notes || undefined,
+          paymentMethod,
           items,
         }),
       });
@@ -162,6 +174,10 @@ export default function CheckoutPage() {
       const order = await response.json();
       clearCart();
       clearSelectedVoucher();
+      if (order.payos?.checkoutUrl) {
+        window.location.assign(order.payos.checkoutUrl);
+        return;
+      }
       router.push(`/order-success?orderNumber=${order.orderNumber}`);
     } catch (err) {
       console.error(err);
@@ -389,6 +405,28 @@ export default function CheckoutPage() {
             </div>
           </section>
 
+          <section className="rounded-[20px] border border-[#f0dfcc] bg-white p-4 shadow-sm">
+            <h2 className="text-base font-black text-[#3d2417]">
+              PhÆ°Æ¡ng thá»©c thanh toĂ¡n
+            </h2>
+            <div className="mt-3 grid gap-2">
+              <PaymentMethodButton
+                active={paymentMethod === "cod"}
+                icon={<CreditCard className="h-5 w-5" />}
+                title={isPickup ? "Thanh toĂ¡n táº¡i quáº§y" : "Thanh toĂ¡n khi nháº­n bĂ¡nh"}
+                description="Tiá»‡m xĂ¡c nháº­n Ä‘Æ¡n trÆ°á»›c, báº¡n thanh toĂ¡n sau."
+                onClick={() => setPaymentMethod("cod")}
+              />
+              <PaymentMethodButton
+                active={paymentMethod === "bank_transfer"}
+                icon={<QrCode className="h-5 w-5" />}
+                title="Chuyá»ƒn khoáº£n PayOS"
+                description="QuĂ©t QR/chuyá»ƒn khoáº£n qua PayOS, há»‡ thá»‘ng tá»± Ä‘á»‘i soĂ¡t."
+                onClick={() => setPaymentMethod("bank_transfer")}
+              />
+            </div>
+          </section>
+
           <button
             type="submit"
             disabled={isSubmitting}
@@ -439,6 +477,46 @@ function Field({
         className="mt-1 h-11 w-full rounded-[14px] border border-[#eadbcc] px-3 text-sm outline-none focus:border-[#d85d6c] focus:ring-2 focus:ring-[#d85d6c]/15"
       />
     </label>
+  );
+}
+
+function PaymentMethodButton({
+  active,
+  icon,
+  title,
+  description,
+  onClick,
+}: {
+  active: boolean;
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center gap-3 rounded-[16px] border p-3 text-left transition ${
+        active
+          ? "border-[#d85d6c] bg-[#fff1f0]"
+          : "border-[#eadbcc] bg-[#fffaf6] hover:border-[#d85d6c]/40"
+      }`}
+    >
+      <span
+        className={`grid h-11 w-11 shrink-0 place-items-center rounded-[14px] ${
+          active ? "bg-white text-[#d85d6c]" : "bg-white text-[#7b6254]"
+        }`}
+      >
+        {icon}
+      </span>
+      <span className="min-w-0">
+        <span className="block text-sm font-black text-[#3d2417]">{title}</span>
+        <span className="mt-0.5 block text-xs font-semibold leading-5 text-[#7b6254]">
+          {description}
+        </span>
+      </span>
+    </button>
   );
 }
 

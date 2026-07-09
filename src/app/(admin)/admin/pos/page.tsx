@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import type { Category, Product } from "@/types";
@@ -47,18 +47,23 @@ export default function POSPage() {
   );
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [customer, setCustomer] = useState<PosCustomer>({ name: "", phone: "" });
+  const [customer, setCustomer] = useState<PosCustomer>({
+    name: "",
+    phone: "",
+  });
   const [voucherCode, setVoucherCode] = useState("");
   const [selectedVoucher, setSelectedVoucher] = useState<SelectedVoucher>();
-  const [paymentMethod, setPaymentMethod] =
-    useState<PosPaymentMethod>("cash");
+  const [paymentMethod, setPaymentMethod] = useState<PosPaymentMethod>("cash");
   const [heldOrders, setHeldOrders] = useState<HeldPosOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [completedDisplay, setCompletedDisplay] =
-    useState<Omit<PosDisplaySnapshot, "updatedAt"> | null>(null);
+  const [completedDisplay, setCompletedDisplay] = useState<Omit<
+    PosDisplaySnapshot,
+    "updatedAt"
+  > | null>(null);
+  const [isPayOSEnabled, setIsPayOSEnabled] = useState(false);
 
   useEffect(() => {
     loadCatalog();
@@ -77,10 +82,7 @@ export default function POSPage() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(
-        HELD_ORDERS_STORAGE_KEY,
-        JSON.stringify(heldOrders),
-      );
+      localStorage.setItem(HELD_ORDERS_STORAGE_KEY, JSON.stringify(heldOrders));
     } catch (storageError) {
       console.error("Failed to save held POS orders:", storageError);
     }
@@ -103,7 +105,11 @@ export default function POSPage() {
         : 0;
 
     publishPosDisplaySnapshot({
-      status: isSubmitting ? "awaiting_payment" : items.length > 0 ? "editing" : "idle",
+      status: isSubmitting
+        ? "awaiting_payment"
+        : items.length > 0
+          ? "editing"
+          : "idle",
       items,
       subtotal: totalPrice,
       discountAmount,
@@ -130,17 +136,25 @@ export default function POSPage() {
   async function loadCatalog() {
     try {
       setIsLoading(true);
-      const [productsResponse, categoriesResponse] = await Promise.all([
-        fetch("/api/products"),
-        fetch("/api/categories"),
-      ]);
+      const [productsResponse, categoriesResponse, configResponse] =
+        await Promise.all([
+          fetch("/api/products"),
+          fetch("/api/categories"),
+          fetch("/api/pos/config"),
+        ]);
 
-      if (!productsResponse.ok || !categoriesResponse.ok) {
+      if (
+        !productsResponse.ok ||
+        !categoriesResponse.ok ||
+        !configResponse.ok
+      ) {
         throw new Error("KhĂ´ng thá»ƒ táº£i dá»¯ liá»‡u POS.");
       }
 
       setProducts((await productsResponse.json()) as Product[]);
       setCategories((await categoriesResponse.json()) as Category[]);
+      const config = (await configResponse.json()) as { payosEnabled: boolean };
+      setIsPayOSEnabled(config.payosEnabled);
       setError(null);
     } catch (loadError) {
       console.error("Failed to load POS catalog:", loadError);
@@ -149,6 +163,12 @@ export default function POSPage() {
       setIsLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (!isPayOSEnabled && paymentMethod === "bank_transfer") {
+      setPaymentMethod("cash");
+    }
+  }, [isPayOSEnabled, paymentMethod]);
 
   const filteredProducts = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -286,7 +306,9 @@ export default function POSPage() {
         | { error?: string };
 
       if (!response.ok) {
-        throw new Error("error" in data ? data.error : "KhĂ´ng thá»ƒ thanh toĂ¡n.");
+        throw new Error(
+          "error" in data ? data.error : "KhĂ´ng thá»ƒ thanh toĂ¡n.",
+        );
       }
 
       const order = data as PosCheckoutResult;
@@ -410,6 +432,7 @@ export default function POSPage() {
           paymentMethod={paymentMethod}
           canSubmit={items.length > 0}
           isSubmitting={isSubmitting}
+          isPayOSEnabled={isPayOSEnabled}
           onPaymentMethodChange={setPaymentMethod}
           onSubmit={submitOrder}
         >

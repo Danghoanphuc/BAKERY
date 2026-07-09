@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Banknote, QrCode, RefreshCw } from "lucide-react";
 import { clsx } from "clsx";
 import type { SelectedVoucher, VoucherPricing } from "@/types/voucher";
@@ -18,6 +19,7 @@ type PosCheckoutPanelProps = {
   paymentMethod: PosPaymentMethod;
   canSubmit: boolean;
   isSubmitting: boolean;
+  isPayOSEnabled: boolean;
   onPaymentMethodChange: (method: PosPaymentMethod) => void;
   onSubmit: () => void;
   children?: React.ReactNode;
@@ -29,6 +31,7 @@ export function PosCheckoutPanel({
   paymentMethod,
   canSubmit,
   isSubmitting,
+  isPayOSEnabled,
   onPaymentMethodChange,
   onSubmit,
   children,
@@ -38,12 +41,18 @@ export function PosCheckoutPanel({
       ? voucherPricing.totalAfterDiscount
       : voucherPricing.subtotal;
 
+  const availablePaymentMethods = useMemo(() => {
+    return paymentMethods.filter(
+      (method) => method.value !== "bank_transfer" || isPayOSEnabled,
+    );
+  }, [isPayOSEnabled]);
+
   return (
     <section className="flex min-h-full flex-col gap-3 p-4">
       {children}
 
       <div className="grid grid-cols-2 gap-2">
-        {paymentMethods.map((method) => {
+        {availablePaymentMethods.map((method) => {
           const Icon = method.icon;
           const active = paymentMethod === method.value;
 
@@ -70,7 +79,11 @@ export function PosCheckoutPanel({
         {selectedVoucher && voucherPricing.isEligible && (
           <>
             <PriceRow label="Tạm tính" value={voucherPricing.subtotal} muted />
-            <PriceRow label="Giảm giá" value={-voucherPricing.discountAmount} muted />
+            <PriceRow
+              label="Giảm giá"
+              value={-voucherPricing.discountAmount}
+              muted
+            />
           </>
         )}
         <div className="flex items-center justify-between text-xl font-black text-[#3d2417]">

@@ -25,6 +25,7 @@ export default function InventoryPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [savingProductId, setSavingProductId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [assistantNote, setAssistantNote] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -39,12 +40,14 @@ export default function InventoryPage() {
     loadInventory();
   }, []);
 
-  async function loadInventory() {
+  async function loadInventory({ showLoading = true }: { showLoading?: boolean } = {}) {
     try {
-      setIsLoading(true);
+      if (showLoading) {
+        setIsLoading(true);
+      }
       const [productsRes, categoriesRes] = await Promise.all([
-        fetch("/api/products"),
-        fetch("/api/categories"),
+        fetch("/api/products", { cache: "no-store" }),
+        fetch("/api/categories", { cache: "no-store" }),
       ]);
 
       if (!productsRes.ok || !categoriesRes.ok) {
@@ -58,7 +61,9 @@ export default function InventoryPage() {
       console.error("Failed to load inventory:", err);
       setError("Không thể tải dữ liệu kho. Vui lòng thử lại sau.");
     } finally {
-      setIsLoading(false);
+      if (showLoading) {
+        setIsLoading(false);
+      }
     }
   }
 
@@ -111,8 +116,18 @@ export default function InventoryPage() {
         throw new Error(await response.text());
       }
 
+      const savedProduct = (await response.json()) as Product;
+      setProducts((currentProducts) => {
+        if (editingProduct) {
+          return currentProducts.map((product) =>
+            product.id === savedProduct.id ? savedProduct : product,
+          );
+        }
+
+        return [savedProduct, ...currentProducts];
+      });
       setIsModalOpen(false);
-      await loadInventory();
+      void loadInventory({ showLoading: false });
     } catch (err) {
       console.error("Failed to save product:", err);
       setError("Không thể lưu sản phẩm. Kiểm tra lại thông tin rồi thử lại.");
@@ -141,21 +156,43 @@ export default function InventoryPage() {
   };
 
   const toggleProductAvailability = async (product: Product) => {
+    const nextIsAvailable = !product.isAvailable;
+    setSavingProductId(product.id);
+    setProducts((currentProducts) =>
+      currentProducts.map((currentProduct) =>
+        currentProduct.id === product.id
+          ? { ...currentProduct, isAvailable: nextIsAvailable }
+          : currentProduct,
+      ),
+    );
+
     try {
       const response = await fetch(`/api/products/${product.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isAvailable: !product.isAvailable }),
+        body: JSON.stringify({ isAvailable: nextIsAvailable }),
       });
 
       if (!response.ok) {
         throw new Error(await response.text());
       }
 
-      await loadInventory();
+      const savedProduct = (await response.json()) as Product;
+      setProducts((currentProducts) =>
+        currentProducts.map((currentProduct) =>
+          currentProduct.id === savedProduct.id ? savedProduct : currentProduct,
+        ),
+      );
     } catch (err) {
       console.error("Failed to update product availability:", err);
+      setProducts((currentProducts) =>
+        currentProducts.map((currentProduct) =>
+          currentProduct.id === product.id ? product : currentProduct,
+        ),
+      );
       setError("Không thể cập nhật trạng thái bán.");
+    } finally {
+      setSavingProductId(null);
     }
   };
 
@@ -213,6 +250,7 @@ export default function InventoryPage() {
         onEdit={openEditModal}
         onDelete={deleteProduct}
         onToggleAvailability={toggleProductAvailability}
+        savingProductId={savingProductId}
       />
 
       {isModalOpen && (

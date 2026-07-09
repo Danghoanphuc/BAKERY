@@ -161,3 +161,61 @@
     font-family: "Dancing Script", cursive;
   }
 }
+
+.admin-ui-frame {
+  color: #3d2417;
+}
+
+.admin-ui-frame h1,
+.admin-ui-frame h2,
+.admin-ui-frame h3 {
+  color: #3d2417;
+  letter-spacing: 0;
+}
+
+.admin-ui-frame :where(.bg-white) {
+  background-color: #fffaf6;
+}
+
+.admin-ui-frame :where(.bg-neutral-50) {
+  background-color: #f9f2eb;
+}
+
+.admin-ui-frame :where(.border-neutral-100, .border-neutral-200, .border-neutral-300) {
+  border-color: #f0e1d2;
+}
+
+.admin-ui-frame :where(.text-neutral-950, .text-neutral-900) {
+  color: #3d2417;
+}
+
+.admin-ui-frame :where(.text-neutral-800, .text-neutral-700) {
+  color: #65483a;
+}
+
+.admin-ui-frame :where(.text-neutral-600, .text-neutral-500) {
+  color: #8a6f60;
+}
+
+.admin-ui-frame :where(.rounded-lg) {
+  border-radius: 1rem;
+}
+
+.admin-ui-frame :where(.shadow-sm) {
+  box-shadow: 0 14px 34px rgba(61, 36, 23, 0.06);
+}
+
+.admin-ui-frame :where(input, select, textarea) {
+  background-color: #fffaf6;
+  border-color: #eadbcc;
+  color: #3d2417;
+}
+
+.admin-ui-frame :where(input:focus, select:focus, textarea:focus) {
+  border-color: #d85d6c;
+  box-shadow: 0 0 0 3px rgba(216, 93, 108, 0.12);
+}
+
+.admin-ui-frame :where(table) {
+  color: #3d2417;
+}

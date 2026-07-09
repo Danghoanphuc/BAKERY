@@ -225,6 +225,7 @@ export function OrderDetailModal({
                   className="mt-1 h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:border-brand-500"
                 >
                   <option value="unpaid">Chưa thanh toán</option>
+                  <option value="pending">Chờ chuyển khoản</option>
                   <option value="paid">Đã thanh toán</option>
                   <option value="refunded">Đã hoàn tiền</option>
                 </select>

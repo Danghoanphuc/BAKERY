@@ -212,12 +212,31 @@ export function normalizeOrder(id: string, data: FirestoreDocument): Order {
       ? data.status
       : "pending") as Order["status"],
     paymentStatus:
-      data.paymentStatus === "paid" || data.paymentStatus === "refunded"
+      data.paymentStatus === "paid" ||
+      data.paymentStatus === "pending" ||
+      data.paymentStatus === "refunded"
         ? data.paymentStatus
         : "unpaid",
     paymentMethod:
       typeof data.paymentMethod === "string"
         ? (data.paymentMethod as Order["paymentMethod"])
+        : undefined,
+    paidAt: toDate(data.paidAt as FirestoreDateValue),
+    payosOrderCode:
+      typeof data.payosOrderCode === "number" ? data.payosOrderCode : undefined,
+    payosPaymentLinkId:
+      typeof data.payosPaymentLinkId === "string"
+        ? data.payosPaymentLinkId
+        : undefined,
+    payosCheckoutUrl:
+      typeof data.payosCheckoutUrl === "string" ? data.payosCheckoutUrl : undefined,
+    payosQrCode:
+      typeof data.payosQrCode === "string" ? data.payosQrCode : undefined,
+    payosReference:
+      typeof data.payosReference === "string" ? data.payosReference : undefined,
+    payosTransactionDateTime:
+      typeof data.payosTransactionDateTime === "string"
+        ? data.payosTransactionDateTime
         : undefined,
     salesChannel:
       typeof data.salesChannel === "string"

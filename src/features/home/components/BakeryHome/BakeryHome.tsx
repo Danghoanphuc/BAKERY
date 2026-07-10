@@ -367,58 +367,6 @@ function RewardHero({ name, points }: { name?: string; points: number }) {
   );
 }
 
-function DeliverySwitch({
-  onModeChange,
-}: {
-  onModeChange?: (mode: "delivery" | "pickup") => void;
-}) {
-  const { config, setDeliveryMode } = useOrderConfigStore();
-  const mode = config.deliveryMode;
-  const handleModeChange = (nextMode: "delivery" | "pickup") => {
-    setDeliveryMode(nextMode);
-    if (nextMode !== mode) onModeChange?.(nextMode);
-  };
-
-  return (
-    <div className="mb-4 grid h-9 grid-cols-2 rounded-full border border-[#efdfd1] bg-white p-1 shadow-[0_2px_8px_rgba(139,75,31,0.04)]">
-      <DeliveryOption
-        active={mode === "delivery"}
-        title="Giao tận nơi"
-        onClick={() => handleModeChange("delivery")}
-      />
-      <DeliveryOption
-        active={mode === "pickup"}
-        title="Đến lấy tại quán"
-        onClick={() => handleModeChange("pickup")}
-      />
-    </div>
-  );
-}
-
-function DeliveryOption({
-  active,
-  title,
-  onClick,
-}: {
-  active: boolean;
-  title: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={clsx(
-        "flex h-7 items-center justify-center rounded-full px-2 text-center text-[12px] font-bold transition",
-        active
-          ? "bg-[#3d2417] text-white shadow-sm"
-          : "text-[#7b6254] hover:bg-[#fff7f2]",
-      )}
-    >
-      {title}
-    </button>
-  );
-}
 
 function PromoTileGrid() {
   return (

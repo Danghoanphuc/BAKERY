@@ -1,261 +1,595 @@
 "use client";
 
-import React, { useState } from "react";
-import { clsx } from "clsx";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { LocateFixed, MapPin, Search } from "lucide-react";
 import { Modal } from "@/components/common/Modal";
 import { useOrderConfigStore } from "@/store/orderConfigStore";
+import type { OrderConfig } from "@/types";
 
 export interface AddressModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onConfirm?: (address: NonNullable<OrderConfig["deliveryAddress"]>) => void;
+}
+
+type GoongPrediction = {
+  description: string;
+  place_id: string;
+  structured_formatting?: {
+    main_text?: string;
+    secondary_text?: string;
+  };
+  compound?: {
+    district?: string;
+    commune?: string;
+    province?: string;
+  };
+};
+
+type GoongPlaceResult = {
+  formatted_address?: string;
+  name?: string;
+  place_id?: string;
+  geometry?: {
+    location?: {
+      lat?: number;
+      lng?: number;
+    };
+  };
+  compound?: {
+    district?: string;
+    commune?: string;
+    province?: string;
+  };
+};
+
+type GoongMap = {
+  on: (event: string, callback: (event: GoongMapEvent) => void) => void;
+  flyTo: (options: { center: [number, number]; zoom?: number }) => void;
+  remove: () => void;
+};
+
+type GoongMapEvent = {
+  lngLat?: { lng: number; lat: number };
+  error?: Error;
+};
+
+type GoongStyleLayer = {
+  id?: string;
+  source?: string;
+  "source-layer"?: string;
+};
+
+type GoongStyle = {
+  layers?: GoongStyleLayer[];
+  [key: string]: unknown;
+};
+
+type GoongMarker = {
+  setLngLat: (lngLat: [number, number]) => GoongMarker;
+  addTo: (map: GoongMap) => GoongMarker;
+  on: (event: string, callback: () => void) => void;
+  getLngLat: () => { lng: number; lat: number };
+  remove: () => void;
+};
+
+const DEFAULT_CENTER = { lat: 21.028, lng: 105.83991 };
+const GOONG_SCRIPT_ID = "goong-js-sdk";
+const GOONG_CSS_ID = "goong-js-css";
+const GOONG_STYLE_URL = "https://tiles.goong.io/assets/goong_light_v2.json";
+const UNSUPPORTED_GOONG_SOURCE_LAYERS = new Set(["trees"]);
+
+declare global {
+  interface Window {
+    goongjs?: {
+      accessToken: string;
+      Map: new (options: {
+        container: HTMLElement;
+        style: string | GoongStyle;
+        center: [number, number];
+        zoom: number;
+      }) => GoongMap;
+      Marker: new (options?: { draggable?: boolean; color?: string }) => GoongMarker;
+      NavigationControl: new () => unknown;
+    };
+  }
 }
 
 export const AddressModal: React.FC<AddressModalProps> = ({
   isOpen,
   onClose,
+  onConfirm,
 }) => {
   const { config, setDeliveryAddress } = useOrderConfigStore();
   const [street, setStreet] = useState(config.deliveryAddress?.street || "");
-  const [district, setDistrict] = useState(
-    config.deliveryAddress?.district || "",
-  );
+  const [district, setDistrict] = useState(config.deliveryAddress?.district || "");
   const [city, setCity] = useState(config.deliveryAddress?.city || "Hà Nội");
+  const [formattedAddress, setFormattedAddress] = useState(
+    config.deliveryAddress?.formattedAddress || "",
+  );
+  const [placeId, setPlaceId] = useState(config.deliveryAddress?.placeId || "");
+  const [coords, setCoords] = useState(
+    config.deliveryAddress?.lat && config.deliveryAddress?.lng
+      ? { lat: config.deliveryAddress.lat, lng: config.deliveryAddress.lng }
+      : DEFAULT_CENTER,
+  );
+  const [searchTerm, setSearchTerm] = useState("");
+  const [predictions, setPredictions] = useState<GoongPrediction[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
+  const [mapError, setMapError] = useState<string | null>(null);
+  const mapContainerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<GoongMap | null>(null);
+  const markerRef = useRef<GoongMarker | null>(null);
+  const sessionToken = useMemo(() => crypto.randomUUID(), [isOpen]);
 
-  // Reset form when modal opens
-  React.useEffect(() => {
-    if (isOpen) {
-      setStreet(config.deliveryAddress?.street || "");
-      setDistrict(config.deliveryAddress?.district || "");
-      setCity(config.deliveryAddress?.city || "Hà Nội");
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const currentAddress = config.deliveryAddress;
+    setStreet(currentAddress?.street || "");
+    setDistrict(currentAddress?.district || "");
+    setCity(currentAddress?.city || "Hà Nội");
+    setFormattedAddress(currentAddress?.formattedAddress || "");
+    setPlaceId(currentAddress?.placeId || "");
+    setSearchTerm(currentAddress?.formattedAddress || "");
+    setPredictions([]);
+    setMapError(null);
+
+    if (currentAddress?.lat && currentAddress?.lng) {
+      setCoords({ lat: currentAddress.lat, lng: currentAddress.lng });
+    } else {
+      setCoords(DEFAULT_CENTER);
     }
-  }, [isOpen, config.deliveryAddress]);
+  }, [config.deliveryAddress, isOpen]);
 
-  // Common districts in Hanoi for quick selection
-  const commonDistricts = [
-    "Ba Đình",
-    "Hoàn Kiếm",
-    "Tây Hồ",
-    "Long Biên",
-    "Cầu Giấy",
-    "Đống Đa",
-    "Hai Bà Trưng",
-    "Hoàng Mai",
-    "Thanh Xuân",
-    "Nam Từ Liêm",
-    "Bắc Từ Liêm",
-    "Hà Đông",
-  ];
-
-  const handleConfirm = () => {
-    // Validate required fields
-    if (!street.trim() || !district.trim() || !city.trim()) {
-      // Show validation error
+  useEffect(() => {
+    if (!isOpen) return;
+    if (searchTerm.trim().length < 2) {
+      setPredictions([]);
       return;
     }
 
-    const newAddress = {
+    const timer = window.setTimeout(async () => {
+      try {
+        setIsSearching(true);
+        const response = await fetch(
+          `/api/goong/autocomplete?input=${encodeURIComponent(
+            searchTerm,
+          )}&location=${coords.lat},${coords.lng}&sessionToken=${sessionToken}`,
+        );
+        const data = (await response.json()) as {
+          predictions?: GoongPrediction[];
+          error?: string;
+        };
+
+        if (!response.ok) throw new Error(data.error || "Không thể tìm địa chỉ.");
+        setPredictions(data.predictions ?? []);
+      } catch (error) {
+        console.error("Address autocomplete failed:", error);
+        setPredictions([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 260);
+
+    return () => window.clearTimeout(timer);
+  }, [coords.lat, coords.lng, isOpen, searchTerm, sessionToken]);
+
+  useEffect(() => {
+    if (!isOpen || !mapContainerRef.current || mapRef.current) return;
+
+    let isMounted = true;
+    Promise.all([loadGoongSdk(), loadGoongStyle()])
+      .then(([, style]) => {
+        if (!isMounted || !window.goongjs || !mapContainerRef.current) return;
+
+        const maptilesKey = process.env.NEXT_PUBLIC_GOONG_MAPTILES_KEY;
+        if (!maptilesKey) {
+          setMapError("Chưa cấu hình khóa bản đồ.");
+          return;
+        }
+
+        window.goongjs.accessToken = maptilesKey;
+        const map = new window.goongjs.Map({
+          container: mapContainerRef.current,
+          style,
+          center: [coords.lng, coords.lat],
+          zoom: 15,
+        });
+        map.on("error", (event) => {
+          const message = event.error?.message || "";
+          const isKnownGoongStyleWarning =
+            message.includes('Source layer "trees"') &&
+            message.includes('style layer "poi-tree"');
+
+          if (!isKnownGoongStyleWarning) {
+            console.error("Goong map error:", event.error);
+          }
+        });
+        const marker = new window.goongjs.Marker({
+          draggable: true,
+          color: "#d85d6c",
+        })
+          .setLngLat([coords.lng, coords.lat])
+          .addTo(map);
+
+        marker.on("dragend", () => {
+          const next = marker.getLngLat();
+          handleCoordinateChange(next.lat, next.lng, true);
+        });
+        map.on("click", (event) => {
+          if (!event.lngLat) return;
+          handleCoordinateChange(event.lngLat.lat, event.lngLat.lng, true);
+        });
+
+        mapRef.current = map;
+        markerRef.current = marker;
+      })
+      .catch((error) => {
+        console.error("Failed to load Goong map:", error);
+        setMapError("Không thể tải bản đồ. Bạn vẫn có thể nhập địa chỉ thủ công.");
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [coords.lat, coords.lng, isOpen]);
+
+  useEffect(() => {
+    markerRef.current?.setLngLat([coords.lng, coords.lat]);
+    mapRef.current?.flyTo({ center: [coords.lng, coords.lat], zoom: 16 });
+  }, [coords.lat, coords.lng]);
+
+  useEffect(() => {
+    if (isOpen) return;
+
+    markerRef.current?.remove();
+    mapRef.current?.remove();
+    markerRef.current = null;
+    mapRef.current = null;
+  }, [isOpen]);
+
+  async function selectPrediction(prediction: GoongPrediction) {
+    try {
+      setIsSearching(true);
+      const response = await fetch(
+        `/api/goong/place?placeId=${encodeURIComponent(
+          prediction.place_id,
+        )}&sessionToken=${sessionToken}`,
+      );
+      const data = (await response.json()) as {
+        result?: GoongPlaceResult | null;
+        error?: string;
+      };
+
+      if (!response.ok || !data.result) {
+        throw new Error(data.error || "Không thể lấy địa chỉ.");
+      }
+
+      applyGoongResult(data.result, prediction.description, prediction.place_id);
+      setPredictions([]);
+    } catch (error) {
+      console.error("Place detail failed:", error);
+    } finally {
+      setIsSearching(false);
+    }
+  }
+
+  async function handleCoordinateChange(lat: number, lng: number, shouldReverse = false) {
+    setCoords({ lat, lng });
+
+    if (!shouldReverse) return;
+
+    try {
+      const response = await fetch(`/api/goong/reverse?lat=${lat}&lng=${lng}`);
+      const data = (await response.json()) as {
+        result?: GoongPlaceResult | null;
+        error?: string;
+      };
+
+      if (!response.ok || !data.result) return;
+      applyGoongResult(data.result, data.result.formatted_address);
+    } catch (error) {
+      console.error("Reverse geocode failed:", error);
+    }
+  }
+
+  function applyGoongResult(
+    result: GoongPlaceResult,
+    fallbackAddress?: string,
+    placeId?: string,
+  ) {
+    const location = result.geometry?.location;
+    const nextAddress = result.formatted_address || fallbackAddress || "";
+    const parsed = parseAddress(nextAddress, result.compound);
+
+    setFormattedAddress(nextAddress);
+    setSearchTerm(nextAddress);
+    setStreet(result.name || parsed.street);
+    setDistrict(parsed.district);
+    setCity(parsed.city);
+    setPlaceId(placeId || result.place_id || "");
+
+    if (location?.lat && location?.lng) {
+      setCoords({ lat: location.lat, lng: location.lng });
+    }
+
+    if (placeId || result.place_id) {
+      // Store through the final confirm action.
+    }
+  }
+
+  function useCurrentLocation() {
+    if (!navigator.geolocation) {
+      setMapError("Trình duyệt chưa hỗ trợ lấy vị trí hiện tại.");
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        handleCoordinateChange(latitude, longitude, true).finally(() =>
+          setIsLocating(false),
+        );
+      },
+      (error) => {
+        console.warn("Cannot get current position:", error);
+        setMapError("Không thể lấy vị trí hiện tại. Vui lòng cho phép định vị.");
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
+    );
+  }
+
+  function handleConfirm() {
+    if (!street.trim() || !district.trim() || !city.trim()) return;
+
+    const nextAddress = {
       street: street.trim(),
       district: district.trim(),
       city: city.trim(),
+      lat: coords.lat,
+      lng: coords.lng,
+      formattedAddress: formattedAddress.trim() || undefined,
+      placeId: placeId.trim() || undefined,
     };
 
-    setDeliveryAddress(newAddress);
+    setDeliveryAddress(nextAddress);
+    onConfirm?.(nextAddress);
     onClose();
-  };
+  }
 
-  const handleCancel = () => {
-    // Reset to original values
-    setStreet(config.deliveryAddress?.street || "");
-    setDistrict(config.deliveryAddress?.district || "");
-    setCity(config.deliveryAddress?.city || "Hà Nội");
+  function handleCancel() {
     onClose();
-  };
-
-  const handleDistrictSelect = (selectedDistrict: string) => {
-    setDistrict(selectedDistrict);
-  };
+  }
 
   const isFormValid = street.trim() && district.trim() && city.trim();
 
   return (
     <Modal isOpen={isOpen} onClose={handleCancel} title="Địa chỉ giao hàng">
-      <div className="space-y-6">
-        {/* Current Address Display */}
-        {config.deliveryAddress && (
-          <div className="p-4 bg-primary-50 rounded-lg border border-primary-200">
-            <h3 className="font-medium text-primary-900 mb-2">
-              Địa chỉ hiện tại
-            </h3>
-            <p className="text-primary-700 text-sm">
-              {config.deliveryAddress.street}, {config.deliveryAddress.district}
-              , {config.deliveryAddress.city}
-            </p>
-          </div>
-        )}
-
-        {/* Address Form */}
-        <div className="space-y-4">
-          {/* Street Address */}
-          <div className="space-y-2">
-            <label
-              htmlFor="street-address"
-              className="block text-sm font-medium text-neutral-700"
-            >
-              Địa chỉ cụ thể <span className="text-red-500">*</span>
-            </label>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <label htmlFor="address-search" className="text-sm font-black text-[#3d2417]">
+            Tìm địa chỉ hoặc ghim trên bản đồ
+          </label>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9b8171]" />
             <input
-              id="street-address"
-              type="text"
-              value={street}
-              onChange={(e) => setStreet(e.target.value)}
-              placeholder="Số nhà, tên đường..."
-              className={clsx(
-                "w-full px-3 py-3 border border-neutral-300 rounded-lg",
-                "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent",
-                "text-base", // Prevent zoom on iOS
-                !street.trim() && "border-red-300",
-              )}
-              required
+              id="address-search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Nhập số nhà, tên đường, quận..."
+              className="h-11 w-full rounded-[14px] border border-[#eadbcc] bg-white pl-10 pr-3 text-sm font-semibold outline-none focus:border-[#d85d6c] focus:ring-2 focus:ring-[#d85d6c]/15"
             />
           </div>
-
-          {/* District Selection */}
-          <div className="space-y-2">
-            <label
-              htmlFor="district-input"
-              className="block text-sm font-medium text-neutral-700"
-            >
-              Quận/Huyện <span className="text-red-500">*</span>
-            </label>
-
-            {/* District Input */}
-            <input
-              id="district-input"
-              type="text"
-              value={district}
-              onChange={(e) => setDistrict(e.target.value)}
-              placeholder="Chọn hoặc nhập quận/huyện"
-              className={clsx(
-                "w-full px-3 py-3 border border-neutral-300 rounded-lg",
-                "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent",
-                "text-base", // Prevent zoom on iOS
-                !district.trim() && "border-red-300",
-              )}
-              required
-            />
-
-            {/* Quick District Selection */}
-            <div className="grid grid-cols-2 gap-2 mt-3">
-              {commonDistricts.map((districtName) => (
+          {predictions.length > 0 && (
+            <div className="max-h-48 overflow-y-auto rounded-[14px] border border-[#eadbcc] bg-white shadow-sm">
+              {predictions.map((prediction) => (
                 <button
-                  key={districtName}
+                  key={prediction.place_id}
                   type="button"
-                  onClick={() => handleDistrictSelect(districtName)}
-                  className={clsx(
-                    "px-3 py-2 text-sm rounded-lg border transition-colors text-left",
-                    district === districtName
-                      ? "border-primary-500 bg-primary-50 text-primary-700"
-                      : "border-neutral-300 text-neutral-700 hover:border-primary-300 hover:bg-primary-50",
-                  )}
+                  onClick={() => selectPrediction(prediction)}
+                  className="flex w-full gap-3 border-b border-[#f5eadf] px-3 py-3 text-left last:border-b-0 hover:bg-[#fff8ef]"
                 >
-                  {districtName}
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#d85d6c]" />
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-black text-[#3d2417]">
+                      {prediction.structured_formatting?.main_text ||
+                        prediction.description}
+                    </span>
+                    <span className="mt-0.5 block truncate text-xs font-semibold text-[#7b6254]">
+                      {prediction.structured_formatting?.secondary_text ||
+                        prediction.description}
+                    </span>
+                  </span>
                 </button>
               ))}
             </div>
-          </div>
-
-          {/* City */}
-          <div className="space-y-2">
-            <label
-              htmlFor="city-select"
-              className="block text-sm font-medium text-neutral-700"
-            >
-              Thành phố <span className="text-red-500">*</span>
-            </label>
-            <select
-              id="city-select"
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className={clsx(
-                "w-full px-3 py-3 border border-neutral-300 rounded-lg",
-                "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent",
-                "text-base", // Prevent zoom on iOS
-                !city.trim() && "border-red-300",
-              )}
-              required
-            >
-              <option value="Hà Nội">Hà Nội</option>
-              <option value="TP. Hồ Chí Minh">TP. Hồ Chí Minh</option>
-              <option value="Đà Nẵng">Đà Nẵng</option>
-              <option value="Hải Phòng">Hải Phòng</option>
-              <option value="Cần Thơ">Cần Thơ</option>
-            </select>
-          </div>
+          )}
+          {isSearching && (
+            <p className="text-xs font-bold text-[#9b8171]">Đang tìm địa chỉ...</p>
+          )}
         </div>
 
-        {/* Delivery Note */}
-        <div className="p-4 bg-amber-50 rounded-lg border border-amber-200">
-          <div className="flex items-start space-x-2">
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 20 20"
-              fill="none"
-              className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5"
-            >
-              <path
-                d="M10 2C5.58172 2 2 5.58172 2 10C2 14.4183 5.58172 18 10 18C14.4183 18 18 14.4183 18 10C18 5.58172 14.4183 2 10 2Z"
-                stroke="currentColor"
-                strokeWidth="2"
-              />
-              <path
-                d="M10 7V13M10 16H10.01"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <div>
-              <p className="text-sm font-medium text-amber-800">
-                Lưu ý giao hàng
-              </p>
-              <p className="text-xs text-amber-700 mt-1">
-                Vui lòng cung cấp địa chỉ chính xác để đảm bảo giao hàng nhanh
-                chóng. Phí giao hàng sẽ được tính dựa trên khoảng cách.
-              </p>
+        <div className="overflow-hidden rounded-[18px] border border-[#eadbcc] bg-[#fffaf6]">
+          <div ref={mapContainerRef} className="h-56 w-full" />
+          {mapError && (
+            <div className="border-t border-[#eadbcc] px-3 py-2 text-xs font-bold text-amber-800">
+              {mapError}
             </div>
+          )}
+          <div className="flex items-center justify-between gap-3 border-t border-[#eadbcc] bg-white px-3 py-2">
+            <p className="text-xs font-bold text-[#7b6254]">
+              Kéo pin hoặc chạm bản đồ để chỉnh vị trí.
+            </p>
+            <button
+              type="button"
+              onClick={useCurrentLocation}
+              disabled={isLocating}
+              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[12px] bg-[#3d2417] px-3 text-xs font-black text-white disabled:opacity-60"
+            >
+              <LocateFixed className="h-4 w-4" />
+              {isLocating ? "Đang lấy..." : "Vị trí của tôi"}
+            </button>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex space-x-3 pt-2">
+        <div className="grid gap-3">
+          <Field
+            label="Địa chỉ cụ thể"
+            value={street}
+            onChange={setStreet}
+            placeholder="Số nhà, tên đường..."
+            required
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <Field
+              label="Quận/Huyện"
+              value={district}
+              onChange={setDistrict}
+              placeholder="Quận/Huyện"
+              required
+            />
+            <Field
+              label="Tỉnh/Thành"
+              value={city}
+              onChange={setCity}
+              placeholder="Tỉnh/Thành"
+              required
+            />
+          </div>
+        </div>
+
+        {formattedAddress && (
+          <div className="rounded-[14px] bg-[#fff8ef] px-3 py-2 text-xs font-bold leading-5 text-[#7a4b12] ring-1 ring-[#f5ddb0]">
+            {formattedAddress}
+          </div>
+        )}
+
+        <div className="flex gap-3 pt-1">
           <button
+            type="button"
             onClick={handleCancel}
-            className={clsx(
-              "flex-1 px-6 py-3 border-2 border-neutral-300 rounded-lg",
-              "font-medium text-neutral-700",
-              "hover:bg-neutral-50 active:bg-neutral-100",
-              "transition-colors min-h-[48px]",
-            )}
+            className="h-11 flex-1 rounded-[14px] border border-[#eadbcc] bg-white text-sm font-black text-[#3d2417]"
           >
             Hủy
           </button>
           <button
+            type="button"
             onClick={handleConfirm}
             disabled={!isFormValid}
-            className={clsx(
-              "flex-1 px-6 py-3 rounded-lg font-medium min-h-[48px]",
-              "transition-colors",
-              !isFormValid
-                ? "bg-neutral-300 text-neutral-500 cursor-not-allowed"
-                : "bg-primary-500 text-white hover:bg-primary-600 active:bg-primary-700",
-            )}
+            className="h-11 flex-1 rounded-[14px] bg-[#d85d6c] text-sm font-black text-white shadow-[0_8px_18px_rgba(216,93,108,0.20)] disabled:cursor-not-allowed disabled:bg-[#d8c8bd]"
           >
-            Xác nhận
+            Lưu địa chỉ
           </button>
         </div>
       </div>
     </Modal>
   );
 };
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  required = false,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  required?: boolean;
+}) {
+  return (
+    <label className="block">
+      <span className="text-xs font-black uppercase tracking-[0.04em] text-[#7b6254]">
+        {label}
+        {required ? " *" : ""}
+      </span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="mt-1 h-11 w-full rounded-[14px] border border-[#eadbcc] px-3 text-sm font-semibold outline-none focus:border-[#d85d6c] focus:ring-2 focus:ring-[#d85d6c]/15"
+      />
+    </label>
+  );
+}
+
+function parseAddress(
+  formattedAddress: string,
+  compound?: GoongPlaceResult["compound"],
+) {
+  const parts = formattedAddress
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  return {
+    street: parts[0] || formattedAddress || "",
+    district: compound?.district || parts[Math.max(0, parts.length - 2)] || "",
+    city: compound?.province || parts[Math.max(0, parts.length - 1)] || "Hà Nội",
+  };
+}
+
+function loadGoongSdk() {
+  return new Promise<void>((resolve, reject) => {
+    if (typeof window === "undefined") return reject(new Error("NO_WINDOW"));
+    if (window.goongjs) return resolve();
+
+    if (!document.getElementById(GOONG_CSS_ID)) {
+      const link = document.createElement("link");
+      link.id = GOONG_CSS_ID;
+      link.rel = "stylesheet";
+      link.href =
+        "https://cdn.jsdelivr.net/npm/@goongmaps/goong-js@1.0.9/dist/goong-js.css";
+      document.head.appendChild(link);
+    }
+
+    const existingScript = document.getElementById(
+      GOONG_SCRIPT_ID,
+    ) as HTMLScriptElement | null;
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve(), { once: true });
+      existingScript.addEventListener("error", reject, { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = GOONG_SCRIPT_ID;
+    script.src =
+      "https://cdn.jsdelivr.net/npm/@goongmaps/goong-js@1.0.9/dist/goong-js.js";
+    script.async = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("GOONG_SCRIPT_LOAD_FAILED"));
+    document.head.appendChild(script);
+  });
+}
+
+async function loadGoongStyle(): Promise<string | GoongStyle> {
+  try {
+    const response = await fetch(GOONG_STYLE_URL);
+    if (!response.ok) return GOONG_STYLE_URL;
+
+    const style = (await response.json()) as GoongStyle;
+    if (!Array.isArray(style.layers)) return style;
+
+    return {
+      ...style,
+      layers: style.layers.filter(
+        (layer) =>
+          !(
+            layer.source === "composite" &&
+            layer["source-layer"] &&
+            UNSUPPORTED_GOONG_SOURCE_LAYERS.has(layer["source-layer"])
+          ),
+      ),
+    };
+  } catch (error) {
+    console.warn("Failed to sanitize Goong style:", error);
+    return GOONG_STYLE_URL;
+  }
+}

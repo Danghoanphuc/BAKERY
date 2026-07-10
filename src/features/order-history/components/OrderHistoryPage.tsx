@@ -25,6 +25,9 @@ type ApiOrder = {
   totalAmount: number;
   loyaltyPointsEarned?: number;
   status: string;
+  paymentStatus?: string;
+  paymentMethod?: string;
+  cancelReason?: string;
   orderType: string;
   deliveryAddress?: string | null;
 };
@@ -48,6 +51,8 @@ interface OrderItem {
   price: number;
   pointsEarned: number;
   status: OrderStatus;
+  statusText?: string;
+  statusTone?: "warning" | "success" | "muted" | "danger";
   type: "pickup" | "delivery";
   imageUrl: string;
   storeName?: string;
@@ -92,6 +97,40 @@ function normalizeOrderStatus(status: string): OrderStatus {
   }
 
   return "pending";
+}
+
+function getOrderStatusDisplay(order: ApiOrder): {
+  status: OrderStatus;
+  text?: string;
+  tone?: OrderItem["statusTone"];
+} {
+  const status = normalizeOrderStatus(order.status);
+
+  if (
+    order.paymentMethod === "bank_transfer" &&
+    order.paymentStatus === "pending" &&
+    status !== "cancelled"
+  ) {
+    return {
+      status,
+      text: "Chờ chuyển khoản",
+      tone: "warning",
+    };
+  }
+
+  if (
+    status === "cancelled" &&
+    order.paymentMethod === "bank_transfer" &&
+    order.cancelReason?.toLowerCase().includes("quá hạn")
+  ) {
+    return {
+      status,
+      text: "Thanh toán thất bại",
+      tone: "danger",
+    };
+  }
+
+  return { status };
 }
 
 const ORDER_STATUS_CONFIG: Record<
@@ -191,6 +230,8 @@ export default function OrderHistory() {
                 })
               : "N/A";
 
+            const statusDisplay = getOrderStatusDisplay(order);
+
             return {
               id: order.id,
               title: firstItem?.productName || firstItem?.name || "Đơn hàng",
@@ -201,7 +242,9 @@ export default function OrderHistory() {
                 typeof order.loyaltyPointsEarned === "number"
                   ? order.loyaltyPointsEarned
                   : Math.floor(order.totalAmount / 10000),
-              status: normalizeOrderStatus(order.status),
+              status: statusDisplay.status,
+              statusText: statusDisplay.text,
+              statusTone: statusDisplay.tone,
               type:
                 order.orderType.toLowerCase() === "pickup"
                   ? "pickup"
@@ -356,6 +399,16 @@ function OrderCard({ order }: { order: OrderItem }) {
     color: "text-text-muted",
     bg: "bg-[#f4ebe1]",
   };
+  const statusToneClass =
+    order.statusTone === "danger"
+      ? "bg-red-50 text-red-700"
+      : order.statusTone === "warning"
+        ? "bg-[#fcf4e8] text-accent-star"
+        : order.statusTone === "success"
+          ? "bg-[#f4f7e6] text-accent-healthy"
+          : order.statusTone === "muted"
+            ? "bg-[#f4ebe1] text-text-muted"
+            : `${currentStatus.bg} ${currentStatus.color}`;
   const addItem = useCartStore((state) => state.addItem);
   const router = useRouter();
 
@@ -389,11 +442,10 @@ function OrderCard({ order }: { order: OrderItem }) {
         <span
           className={clsx(
             "rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
-            currentStatus.bg,
-            currentStatus.color,
+            statusToneClass,
           )}
         >
-          {currentStatus.text}
+          {order.statusText ?? currentStatus.text}
         </span>
       </div>
 

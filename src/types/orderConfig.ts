@@ -14,5 +14,9 @@ export interface OrderConfig {
     street: string;
     district: string;
     city: string;
+    lat?: number;
+    lng?: number;
+    formattedAddress?: string;
+    placeId?: string;
   };
 }

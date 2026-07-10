@@ -1,5 +1,6 @@
 import type { CartItem, Product } from "@/types";
 import type { SelectedVoucher } from "@/types/voucher";
+export { resolvePaymentQrImageSrc } from "@/lib/payment-qr";
 
 export type PosPaymentMethod =
   | "cash"
@@ -49,6 +50,14 @@ export type PosCheckoutResult = {
   totalAmount: number;
   discountAmount: number;
   loyaltyPointsEarned: number;
+  paymentStatus?: "unpaid" | "pending" | "paid" | "refunded";
+  paymentMethod?: PosPaymentMethod;
+  payos?: {
+    checkoutUrl: string;
+    qrCode: string;
+    paymentLinkId: string;
+    orderCode: number;
+  };
 };
 
 export type HeldPosOrder = {

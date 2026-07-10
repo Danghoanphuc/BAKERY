@@ -1,16 +1,35 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
-import { ArrowLeft, KeyRound, Loader2, Save, ShieldCheck } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  KeyRound,
+  Loader2,
+  LocateFixed,
+  MapPin,
+  Plus,
+  Save,
+  ShieldCheck,
+  Trash2,
+} from "lucide-react";
 
-import type { Customer } from "@/types";
+import { AddressModal } from "@/components/layout/Header/AddressModal";
+import { useOrderConfigStore } from "@/store/orderConfigStore";
+import type {
+  Customer,
+  CustomerAddressBookEntry,
+  OrderConfig,
+} from "@/types";
+
+type DeliveryAddress = NonNullable<OrderConfig["deliveryAddress"]>;
 
 type AccountForm = {
   name: string;
   email: string;
   birthday: string;
-  defaultDeliveryAddress: string;
+  addressBook: CustomerAddressBookEntry[];
   favoriteFlavors: string;
   favoriteProducts: string;
   dietaryNotes: string;
@@ -18,18 +37,12 @@ type AccountForm = {
   notes: string;
 };
 
-function toForm(customer: Customer): AccountForm {
-  return {
-    name: customer.name,
-    email: customer.email ?? "",
-    birthday: customer.personalization.birthday ?? customer.birthday ?? "",
-    defaultDeliveryAddress: customer.personalization.defaultDeliveryAddress ?? "",
-    favoriteFlavors: (customer.personalization.favoriteFlavors ?? []).join(", "),
-    favoriteProducts: (customer.personalization.favoriteProducts ?? []).join(", "),
-    dietaryNotes: customer.personalization.dietaryNotes ?? "",
-    specialOccasions: customer.personalization.specialOccasions ?? "",
-    notes: customer.personalization.notes ?? "",
-  };
+function createId() {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function splitTags(value: string) {
@@ -39,13 +52,121 @@ function splitTags(value: string) {
     .filter(Boolean);
 }
 
+function getAddressText(address?: CustomerAddressBookEntry) {
+  if (!address) return "";
+  return (
+    address.formattedAddress ||
+    [address.street, address.district, address.city].filter(Boolean).join(", ")
+  );
+}
+
+function getDefaultAddress(addressBook: CustomerAddressBookEntry[]) {
+  return addressBook.find((address) => address.isDefault) || addressBook[0];
+}
+
+function normalizeAddressBook(customer: Customer): CustomerAddressBookEntry[] {
+  const saved = customer.personalization.addressBook ?? [];
+  if (saved.length > 0) {
+    const defaultIndex = saved.findIndex((address) => address.isDefault);
+    return saved.map((address, index) => ({
+      ...address,
+      isDefault: defaultIndex >= 0 ? index === defaultIndex : index === 0,
+    }));
+  }
+
+  const fallbackAddress = customer.personalization.defaultDeliveryAddress?.trim();
+  if (!fallbackAddress) return [];
+
+  return [
+    {
+      id: createId(),
+      label: "Mặc định",
+      street: fallbackAddress,
+      district: "",
+      city: "",
+      formattedAddress: fallbackAddress,
+      isDefault: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    },
+  ];
+}
+
+function toForm(customer: Customer): AccountForm {
+  return {
+    name: customer.name,
+    email: customer.email ?? "",
+    birthday: customer.personalization.birthday ?? customer.birthday ?? "",
+    addressBook: normalizeAddressBook(customer),
+    favoriteFlavors: (customer.personalization.favoriteFlavors ?? []).join(", "),
+    favoriteProducts: (customer.personalization.favoriteProducts ?? []).join(", "),
+    dietaryNotes: customer.personalization.dietaryNotes ?? "",
+    specialOccasions: customer.personalization.specialOccasions ?? "",
+    notes: customer.personalization.notes ?? "",
+  };
+}
+
+function toStoreAddress(address: CustomerAddressBookEntry): DeliveryAddress {
+  return {
+    street: address.street,
+    district: address.district,
+    city: address.city,
+    lat: address.lat,
+    lng: address.lng,
+    formattedAddress: address.formattedAddress,
+    placeId: address.placeId,
+  };
+}
+
+function toAddressBookEntry(
+  address: DeliveryAddress,
+  current?: CustomerAddressBookEntry,
+  index = 0,
+): CustomerAddressBookEntry {
+  const now = new Date().toISOString();
+  return {
+    id: current?.id || createId(),
+    label: current?.label || (index === 0 ? "Nhà" : `Địa chỉ ${index + 1}`),
+    street: address.street,
+    district: address.district,
+    city: address.city,
+    formattedAddress:
+      address.formattedAddress ||
+      [address.street, address.district, address.city].filter(Boolean).join(", "),
+    lat: address.lat,
+    lng: address.lng,
+    placeId: address.placeId,
+    isDefault: current?.isDefault ?? index === 0,
+    createdAt: current?.createdAt || now,
+    updatedAt: now,
+  };
+}
+
+function ensureSingleDefault(addressBook: CustomerAddressBookEntry[]) {
+  if (addressBook.length === 0) return [];
+  const defaultIndex = addressBook.findIndex((address) => address.isDefault);
+
+  return addressBook.map((address, index) => ({
+    ...address,
+    isDefault: defaultIndex >= 0 ? index === defaultIndex : index === 0,
+  }));
+}
+
 export default function AccountPage() {
+  const { setDeliveryAddress } = useOrderConfigStore();
   const [customer, setCustomer] = useState<Customer | null>(null);
   const [form, setForm] = useState<AccountForm | null>(null);
+  const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const defaultAddressText = useMemo(
+    () => getAddressText(getDefaultAddress(form?.addressBook ?? [])),
+    [form?.addressBook],
+  );
 
   useEffect(() => {
     async function loadAccount() {
@@ -58,40 +179,117 @@ export default function AccountPage() {
         }
 
         const data = await response.json();
-        setCustomer(data.customer);
-        setForm(toForm(data.customer));
+        const nextCustomer = data.customer as Customer;
+        const nextForm = toForm(nextCustomer);
+        const defaultAddress = getDefaultAddress(nextForm.addressBook);
+
+        setCustomer(nextCustomer);
+        setForm(nextForm);
+
+        if (defaultAddress) {
+          setDeliveryAddress(toStoreAddress(defaultAddress));
+        }
       } finally {
         setIsLoading(false);
       }
     }
 
     loadAccount();
-  }, []);
+  }, [setDeliveryAddress]);
+
+  function openAddressModal(address?: CustomerAddressBookEntry) {
+    setMessage(null);
+    setError(null);
+    setEditingAddressId(address?.id ?? null);
+    setDeliveryAddress(address ? toStoreAddress(address) : undefined);
+    setIsAddressModalOpen(true);
+  }
+
+  function handleAddressConfirm(address: DeliveryAddress) {
+    if (!form) return;
+
+    setForm((current) => {
+      if (!current) return current;
+
+      const editingIndex = current.addressBook.findIndex(
+        (item) => item.id === editingAddressId,
+      );
+      const nextEntry = toAddressBookEntry(
+        address,
+        editingIndex >= 0 ? current.addressBook[editingIndex] : undefined,
+        current.addressBook.length,
+      );
+
+      const nextAddressBook =
+        editingIndex >= 0
+          ? current.addressBook.map((item, index) =>
+              index === editingIndex ? nextEntry : item,
+            )
+          : [...current.addressBook, nextEntry];
+
+      return {
+        ...current,
+        addressBook: ensureSingleDefault(nextAddressBook),
+      };
+    });
+  }
+
+  function setDefaultAddress(id: string) {
+    if (!form) return;
+
+    const nextAddressBook = form.addressBook.map((address) => ({
+      ...address,
+      isDefault: address.id === id,
+      updatedAt: address.id === id ? new Date().toISOString() : address.updatedAt,
+    }));
+    const defaultAddress = nextAddressBook.find((address) => address.id === id);
+
+    setForm({ ...form, addressBook: nextAddressBook });
+    if (defaultAddress) setDeliveryAddress(toStoreAddress(defaultAddress));
+  }
+
+  function removeAddress(id: string) {
+    if (!form) return;
+
+    const nextAddressBook = ensureSingleDefault(
+      form.addressBook.filter((address) => address.id !== id),
+    );
+    setForm({ ...form, addressBook: nextAddressBook });
+
+    const defaultAddress = getDefaultAddress(nextAddressBook);
+    setDeliveryAddress(defaultAddress ? toStoreAddress(defaultAddress) : undefined);
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!customer || !form) return;
+
+    const addressBook = ensureSingleDefault(form.addressBook);
+    const defaultDeliveryAddress = getAddressText(getDefaultAddress(addressBook));
 
     setIsSaving(true);
     setMessage(null);
     setError(null);
 
     try {
+      const personalization = {
+        birthday: form.birthday || undefined,
+        defaultDeliveryAddress: defaultDeliveryAddress || undefined,
+        addressBook,
+        favoriteFlavors: splitTags(form.favoriteFlavors),
+        favoriteProducts: splitTags(form.favoriteProducts),
+        dietaryNotes: form.dietaryNotes || undefined,
+        specialOccasions: form.specialOccasions || undefined,
+        notes: form.notes || undefined,
+      };
+
       const response = await fetch(`/api/customers/${customer.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: form.name,
           email: form.email || undefined,
-          personalization: {
-            birthday: form.birthday || undefined,
-            defaultDeliveryAddress: form.defaultDeliveryAddress || undefined,
-            favoriteFlavors: splitTags(form.favoriteFlavors),
-            favoriteProducts: splitTags(form.favoriteProducts),
-            dietaryNotes: form.dietaryNotes || undefined,
-            specialOccasions: form.specialOccasions || undefined,
-            notes: form.notes || undefined,
-          },
+          personalization,
         }),
       });
 
@@ -103,13 +301,7 @@ export default function AccountPage() {
         email: form.email || undefined,
         personalization: {
           ...customer.personalization,
-          birthday: form.birthday || undefined,
-          defaultDeliveryAddress: form.defaultDeliveryAddress || undefined,
-          favoriteFlavors: splitTags(form.favoriteFlavors),
-          favoriteProducts: splitTags(form.favoriteProducts),
-          dietaryNotes: form.dietaryNotes || undefined,
-          specialOccasions: form.specialOccasions || undefined,
-          notes: form.notes || undefined,
+          ...personalization,
         },
       };
 
@@ -228,15 +420,51 @@ export default function AccountPage() {
           </section>
 
           <section className="rounded-[18px] bg-white/82 p-4 shadow-[0_10px_24px_rgba(83,38,12,0.08)]">
-            <h2 className="text-[16px] font-black">Sổ địa chỉ</h2>
-            <div className="mt-3">
-              <TextArea
-                label="Địa chỉ nhận bánh mặc định"
-                value={form.defaultDeliveryAddress}
-                onChange={(value) =>
-                  setForm({ ...form, defaultDeliveryAddress: value })
-                }
-              />
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-[16px] font-black">Sổ địa chỉ</h2>
+                <p className="mt-1 text-[12px] font-semibold text-[#8b6a58]">
+                  {defaultAddressText || "Chọn địa chỉ mặc định để đặt bánh nhanh hơn."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => openAddressModal()}
+                className="inline-flex h-10 shrink-0 items-center gap-1.5 rounded-[12px] bg-[#3d2417] px-3 text-[12px] font-black text-white"
+              >
+                <Plus className="h-4 w-4" />
+                Thêm
+              </button>
+            </div>
+
+            <div className="mt-3 space-y-2">
+              {form.addressBook.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => openAddressModal()}
+                  className="flex w-full items-center gap-3 rounded-[14px] border border-dashed border-[#d8bda9] bg-[#fffaf6] p-3 text-left"
+                >
+                  <MapPin className="h-5 w-5 shrink-0 text-[#d85d6c]" />
+                  <span>
+                    <span className="block text-[13px] font-black">
+                      Chưa có địa chỉ giao bánh
+                    </span>
+                    <span className="mt-0.5 block text-[12px] font-semibold text-[#8b6a58]">
+                      Ghim vị trí để tiệm giao đúng nơi.
+                    </span>
+                  </span>
+                </button>
+              ) : (
+                form.addressBook.map((address) => (
+                  <AddressCard
+                    key={address.id}
+                    address={address}
+                    onEdit={() => openAddressModal(address)}
+                    onDefault={() => setDefaultAddress(address.id)}
+                    onRemove={() => removeAddress(address.id)}
+                  />
+                ))
+              )}
             </div>
           </section>
 
@@ -246,17 +474,13 @@ export default function AccountPage() {
               <Field
                 label="Vị bánh yêu thích"
                 value={form.favoriteFlavors}
-                onChange={(value) =>
-                  setForm({ ...form, favoriteFlavors: value })
-                }
+                onChange={(value) => setForm({ ...form, favoriteFlavors: value })}
                 placeholder="Ví dụ: chocolate, matcha, dâu"
               />
               <Field
                 label="Món thường mua"
                 value={form.favoriteProducts}
-                onChange={(value) =>
-                  setForm({ ...form, favoriteProducts: value })
-                }
+                onChange={(value) => setForm({ ...form, favoriteProducts: value })}
                 placeholder="Ví dụ: tiramisu, croissant"
               />
               <TextArea
@@ -267,9 +491,7 @@ export default function AccountPage() {
               <TextArea
                 label="Dịp đặc biệt"
                 value={form.specialOccasions}
-                onChange={(value) =>
-                  setForm({ ...form, specialOccasions: value })
-                }
+                onChange={(value) => setForm({ ...form, specialOccasions: value })}
               />
               <TextArea
                 label="Ghi chú khác"
@@ -304,7 +526,78 @@ export default function AccountPage() {
           </button>
         </form>
       </div>
+
+      <AddressModal
+        isOpen={isAddressModalOpen}
+        onClose={() => setIsAddressModalOpen(false)}
+        onConfirm={handleAddressConfirm}
+      />
     </main>
+  );
+}
+
+function AddressCard({
+  address,
+  onEdit,
+  onDefault,
+  onRemove,
+}: {
+  address: CustomerAddressBookEntry;
+  onEdit: () => void;
+  onDefault: () => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div className="rounded-[14px] border border-[#edd8ca] bg-[#fffaf6] p-3">
+      <div className="flex items-start gap-3">
+        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-[#d85d6c] ring-1 ring-[#f0d8ca]">
+          <MapPin className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[14px] font-black text-[#3b170c]">
+              {address.label}
+            </p>
+            {address.isDefault && (
+              <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-black text-green-700 ring-1 ring-green-100">
+                Mặc định
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-[12px] font-semibold leading-5 text-[#7b6a60]">
+            {getAddressText(address)}
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-[1fr_auto_auto] gap-2">
+        <button
+          type="button"
+          onClick={onEdit}
+          className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[11px] bg-white px-3 text-[12px] font-black text-[#7a4b31] ring-1 ring-[#edd8ca]"
+        >
+          <LocateFixed className="h-4 w-4" />
+          Ghim lại
+        </button>
+        <button
+          type="button"
+          onClick={onDefault}
+          disabled={address.isDefault}
+          aria-label="Đặt làm mặc định"
+          className="grid h-9 w-9 place-items-center rounded-[11px] bg-white text-[#2f7b35] ring-1 ring-[#d9ead6] disabled:opacity-45"
+        >
+          <CheckCircle2 className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label="Xóa địa chỉ"
+          className="grid h-9 w-9 place-items-center rounded-[11px] bg-white text-[#b64b40] ring-1 ring-[#f0d0cc]"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
   );
 }
 

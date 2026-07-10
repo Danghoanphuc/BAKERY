@@ -20,6 +20,7 @@ import { clsx } from "clsx";
 import { ProductDetailModal } from "@/features/product/components/ProductDetailModal";
 import { CustomerVoucherPicker } from "@/features/vouchers";
 import { Toast } from "@/components/common";
+import { AddressModal } from "@/components/layout/Header/AddressModal";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import { useToast } from "@/hooks/useToast";
 import { useCartStore } from "@/store/cartStore";
@@ -54,6 +55,7 @@ export function BakeryHome({ categories, favoriteProducts }: BakeryHomeProps) {
   const { toast, showToast, hideToast } = useToast();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isVoucherPickerOpen, setIsVoucherPickerOpen] = useState(false);
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [profileSummary, setProfileSummary] = useState<HomeProfileSummary>({
     points: 0,
   });
@@ -105,10 +107,17 @@ export function BakeryHome({ categories, favoriteProducts }: BakeryHomeProps) {
       })
       .then((data) => {
         if (!data || cancelled) return;
+        const addressBook = data.customer?.personalization?.addressBook;
+        const defaultAddress = Array.isArray(addressBook)
+          ? addressBook.find((address) => address?.isDefault) || addressBook[0]
+          : undefined;
+
         setProfileSummary({
           name: data.customer?.name,
           points: data.rewards?.points?.current ?? 0,
-          address: data.customer?.personalization?.defaultDeliveryAddress,
+          address:
+            defaultAddress?.formattedAddress ||
+            data.customer?.personalization?.defaultDeliveryAddress,
         });
       })
       .catch(() => {
@@ -182,23 +191,16 @@ export function BakeryHome({ categories, favoriteProducts }: BakeryHomeProps) {
       <div className="pointer-events-none absolute left-0 right-0 top-0 h-[300px] bg-gradient-to-b from-bg-soft to-bg-main" />
 
       <div className="relative mx-auto min-h-screen w-full max-w-[480px] px-4 pb-32 pt-2 sm:px-4">
-        <HomeTopBar
-          cartCount={totalQuantity}
-          points={profileSummary.points}
-          address={deliveryAddress}
-          favoriteCount={favoriteIds.length}
-        />
+        <div className="sticky top-0 z-30 -mx-4 bg-bg-main/95 px-4 pt-2 shadow-[0_8px_18px_rgba(83,38,12,0.06)] backdrop-blur supports-[backdrop-filter]:bg-bg-main/82">
+          <HomeTopBar
+            cartCount={totalQuantity}
+            points={profileSummary.points}
+            address={deliveryAddress}
+            favoriteCount={favoriteIds.length}
+            onAddressClick={() => setIsAddressModalOpen(true)}
+          />
+        </div>
         <SearchPill />
-        <DeliverySwitch
-          onModeChange={(mode) =>
-            showToast(
-              mode === "pickup"
-                ? "Đã chuyển sang đến lấy tại quán"
-                : "Đã chuyển sang giao tận nơi",
-              "success",
-            )
-          }
-        />
         <PromoTileGrid />
         <CategoryStrip categories={categoryVisuals} />
         <MarketingGrid />
@@ -227,6 +229,11 @@ export function BakeryHome({ categories, favoriteProducts }: BakeryHomeProps) {
         onClose={() => setIsVoucherPickerOpen(false)}
       />
 
+      <AddressModal
+        isOpen={isAddressModalOpen}
+        onClose={() => setIsAddressModalOpen(false)}
+      />
+
       <Toast
         message={toast.message}
         type={toast.type}
@@ -242,23 +249,26 @@ function HomeTopBar({
   points,
   address,
   favoriteCount,
+  onAddressClick,
 }: {
   cartCount: number;
   points: number;
   address: string;
   favoriteCount: number;
+  onAddressClick: () => void;
 }) {
   return (
     <header className="pb-4 pt-2">
       <div className="flex items-center justify-between gap-3">
-        <Link
-          href="/account"
+        <button
+          type="button"
+          onClick={onAddressClick}
           className="flex min-w-0 flex-1 items-center gap-1 text-text-primary"
         >
           <MapPin className="h-5 w-5 shrink-0" strokeWidth={2.5} />
           <span className="truncate text-[13px] font-medium">{address}</span>
           <ChevronDown className="h-4 w-4 shrink-0" />
-        </Link>
+        </button>
 
         <div className="flex shrink-0 items-center gap-3">
           <Link
@@ -788,9 +798,15 @@ function SectionHeader({
 }
 
 function getDeliveryAddressLabel(
-  address?: { street: string; district: string; city: string },
+  address?: {
+    street: string;
+    district: string;
+    city: string;
+    formattedAddress?: string;
+  },
   profileAddress?: string,
 ) {
+  if (address?.formattedAddress) return `Giao đến: ${address.formattedAddress}`;
   if (address) return `Giao đến: ${address.street}, ${address.district}`;
   if (profileAddress) return `Giao đến: ${profileAddress}`;
   return "Chọn địa chỉ giao hàng";

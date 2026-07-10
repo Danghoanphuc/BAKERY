@@ -19,6 +19,8 @@ export type PosDisplaySnapshot = {
   customerPhone?: string;
   voucher?: SelectedVoucher;
   paymentMethod?: PaymentMethod;
+  paymentQrCode?: string;
+  paymentCheckoutUrl?: string;
   orderNumber?: string;
   loyaltyPointsEarned?: number;
   updatedAt: string;

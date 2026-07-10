@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getOrderById, updateOrder } from "@/lib/db";
+import { expireUnpaidBankTransferOrder } from "@/lib/payment-expiry";
 
 function serializeForJson(value: unknown): unknown {
   if (value instanceof Date) return value.toISOString();
@@ -37,7 +38,9 @@ export async function GET(
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
-    return NextResponse.json(serializeForJson(order));
+    return NextResponse.json(
+      serializeForJson(await expireUnpaidBankTransferOrder(order)),
+    );
   } catch (error) {
     console.error("Error fetching order:", error);
     return NextResponse.json(

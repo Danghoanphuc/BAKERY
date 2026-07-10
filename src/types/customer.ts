@@ -44,12 +44,31 @@ export interface CustomerVoucherIssue {
   createdAt: Date;
 }
 
+export interface CustomerAddressBookEntry {
+  id: string;
+  label: string;
+  recipientName?: string;
+  recipientPhone?: string;
+  street: string;
+  district: string;
+  city: string;
+  formattedAddress?: string;
+  lat?: number;
+  lng?: number;
+  placeId?: string;
+  note?: string;
+  isDefault?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface CustomerPersonalization {
   birthday?: string;
   favoriteFlavors?: string[];
   favoriteProducts?: string[];
   dietaryNotes?: string;
   defaultDeliveryAddress?: string;
+  addressBook?: CustomerAddressBookEntry[];
   specialOccasions?: string;
   notes?: string;
 }

@@ -422,10 +422,14 @@ function getInitials(name: string) {
 }
 
 function getAccountSummary(customer: Customer) {
+  const hasDeliveryAddress = Boolean(
+    customer.personalization.defaultDeliveryAddress ||
+      customer.personalization.addressBook?.length,
+  );
   const missing = [
     customer.email ? "" : "email",
     customer.personalization.birthday ? "" : "ngày sinh",
-    customer.personalization.defaultDeliveryAddress ? "" : "địa chỉ",
+    hasDeliveryAddress ? "" : "địa chỉ",
   ].filter(Boolean);
 
   if (!missing.length) return "Thông tin hồ sơ đã đầy đủ";

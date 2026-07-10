@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { clsx } from "clsx";
 import { ChevronDown, Clock, MapPin, UserRound } from "lucide-react";
 import { useOrderConfigStore } from "@/store/orderConfigStore";
@@ -14,84 +13,9 @@ export interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ className }) => {
-  const pathname = usePathname();
-  const { config, setDeliveryAddress } = useOrderConfigStore();
+  const { config } = useOrderConfigStore();
   const [isTimingModalOpen, setIsTimingModalOpen] = useState(false);
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
-  const [isLocating, setIsLocating] = useState(false);
-
-  useEffect(() => {
-    if (pathname === "/") return;
-    if (config.deliveryAddress) return;
-
-    if (!navigator.geolocation) {
-      console.warn("Geolocation không được hỗ trợ trên trình duyệt này");
-      return;
-    }
-
-    setIsLocating(true);
-
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const { latitude, longitude } = position.coords;
-
-        try {
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`,
-            {
-              headers: {
-                "User-Agent": "BakeryApp/1.0",
-              },
-            },
-          );
-
-          if (!response.ok) {
-            throw new Error("Không thể lấy thông tin địa chỉ");
-          }
-
-          const data = await response.json();
-          const address = data.address || {};
-          const street =
-            address.road ||
-            address.street ||
-            address.hamlet ||
-            "Đường chưa xác định";
-          const district =
-            address.suburb ||
-            address.quarter ||
-            address.neighbourhood ||
-            address.city_district ||
-            "Quận/Huyện chưa xác định";
-          const city =
-            address.city ||
-            address.town ||
-            address.village ||
-            address.state ||
-            "TP. Hồ Chí Minh";
-
-          setDeliveryAddress({
-            street,
-            district,
-            city,
-          });
-
-          setIsLocating(false);
-        } catch (error) {
-          console.error("Lỗi khi reverse geocoding:", error);
-          setIsLocating(false);
-        }
-      },
-      (error) => {
-        console.warn("Không thể lấy vị trí:", error.message);
-        setIsLocating(false);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      },
-    );
-  }, [config.deliveryAddress, pathname, setDeliveryAddress]);
 
   const getTimingText = () => {
     if (config.orderTiming.type === "now") {
@@ -101,7 +25,6 @@ export const Header: React.FC<HeaderProps> = ({ className }) => {
   };
 
   const getAddressText = () => {
-    if (isLocating) return "Đang tìm vị trí...";
     if (!config.deliveryAddress) return "Nhấn để chọn địa chỉ";
     const { street, district } = config.deliveryAddress;
     return `${street}, ${district}`;
@@ -145,7 +68,6 @@ export const Header: React.FC<HeaderProps> = ({ className }) => {
             <MapPin
               className={clsx(
                 "w-5 h-5 flex-shrink-0",
-                isLocating && "animate-pulse",
               )}
             />
             <div className="flex items-center gap-1.5 min-w-0 flex-1">

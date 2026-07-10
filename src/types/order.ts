@@ -34,6 +34,7 @@ export interface Order {
   payosQrCode?: string;
   payosReference?: string;
   payosTransactionDateTime?: string;
+  payosStockDeducted?: boolean;
   salesChannel?: SalesChannel;
   deliveryAddress?: string;
   pickupTime?: string;

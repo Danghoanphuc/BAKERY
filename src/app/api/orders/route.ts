@@ -25,6 +25,7 @@ import {
   getOrderProductSubtotal,
   inferSalesChannel,
 } from "@/lib/finance";
+import { expireUnpaidBankTransferOrder } from "@/lib/payment-expiry";
 import type { Order } from "@/types";
 import type { VoucherUseChannel } from "@/types";
 import {
@@ -84,7 +85,11 @@ export async function GET(request: Request) {
       ordersById.set(order.id, order);
     });
 
-    const orders = Array.from(ordersById.values()).sort(
+    const orders = (await Promise.all(
+      Array.from(ordersById.values()).map((order) =>
+        expireUnpaidBankTransferOrder(order),
+      ),
+    )).sort(
       (a, b) => getOrderTime(b.createdAt) - getOrderTime(a.createdAt),
     );
 
@@ -204,6 +209,13 @@ export async function POST(request: Request) {
     );
     const loyaltyPointsEarned =
       netProductRevenue > 0 ? Math.max(1, rawLoyaltyPoints) : 0;
+    if (data.paymentMethod === "bank_transfer" && !isPayOSEnabled()) {
+      return NextResponse.json(
+        { error: "PayOS chưa được cấu hình. Vui lòng chọn phương thức khác." },
+        { status: 503 },
+      );
+    }
+
     const customer =
       data.customerName && data.customerPhone
         ? await createOrUpdateCustomerFromPurchase({
@@ -248,13 +260,6 @@ export async function POST(request: Request) {
       | undefined;
 
     if (order.paymentMethod === "bank_transfer") {
-      if (!isPayOSEnabled()) {
-        return NextResponse.json(
-          { error: "PayOS chÆ°a Ä‘Æ°á»£c cáº¥u hĂ¬nh." },
-          { status: 500 },
-        );
-      }
-
       const paymentLink = await createOrderPaymentLink({
         order,
         orderCode: order.payosOrderCode ?? createPayOSOrderCode(),

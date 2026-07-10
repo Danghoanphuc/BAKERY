@@ -230,7 +230,15 @@ export async function POST(request: Request) {
     );
     const paymentMethod = payload.paymentMethod ?? "cash";
     const isBankTransfer = paymentMethod === "bank_transfer";
-    const isPayOSPayment = isBankTransfer && isPayOSEnabled();
+
+    if (isBankTransfer && !isPayOSEnabled()) {
+      return NextResponse.json(
+        { error: "PayOS chưa được cấu hình. Không thể tạo mã QR thanh toán." },
+        { status: 500 },
+      );
+    }
+
+    const isPayOSPayment = isBankTransfer;
     const orderPayload = stripUndefinedDeep({
       orderNumber: generateOrderNumber(),
       customerId: customer?.id,
@@ -275,19 +283,32 @@ export async function POST(request: Request) {
       | undefined;
 
     if (isPayOSPayment) {
-      const paymentLink = await createOrderPaymentLink({
-        order,
-        orderCode: order.payosOrderCode ?? createPayOSOrderCode(),
-      });
+      try {
+        const paymentLink = await createOrderPaymentLink({
+          order,
+          orderCode: order.payosOrderCode ?? createPayOSOrderCode(),
+        });
 
-      await updateOrder(order.id, {
-        payosOrderCode: paymentLink.orderCode,
-        payosPaymentLinkId: paymentLink.paymentLinkId,
-        payosCheckoutUrl: paymentLink.checkoutUrl,
-        payosQrCode: paymentLink.qrCode,
-      });
+        await updateOrder(order.id, {
+          payosOrderCode: paymentLink.orderCode,
+          payosPaymentLinkId: paymentLink.paymentLinkId,
+          payosCheckoutUrl: paymentLink.checkoutUrl,
+          payosQrCode: paymentLink.qrCode,
+        });
 
-      payosPayment = paymentLink;
+        payosPayment = paymentLink;
+      } catch (payosError) {
+        console.error("POS PayOS payment link failed:", payosError);
+        await updateOrder(order.id, {
+          status: "cancelled",
+          paymentStatus: "unpaid",
+          cancelReason: "Không tạo được mã QR PayOS",
+        });
+        return NextResponse.json(
+          { error: "Không thể tạo mã QR thanh toán. Vui lòng thử lại." },
+          { status: 502 },
+        );
+      }
     }
 
     if (requestedVoucher && discountAmount > 0) {
@@ -306,7 +327,7 @@ export async function POST(request: Request) {
       });
     }
 
-    if (!isPayOSPayment) {
+    if (!isBankTransfer) {
       await decrementStock(items, products);
     }
 

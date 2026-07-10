@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
-import {
-  getAllProducts,
-  getOrderByPayOSOrderCode,
-  updateOrder,
-  updateProduct,
-} from "@/lib/db";
+import { getOrderByPayOSOrderCode } from "@/lib/db";
 import { getPayOSClient } from "@/lib/payos";
-import type { CartItem, Order } from "@/types";
+import {
+  fetchPayOSPaymentLink,
+  syncOrderPaidFromPayOS,
+} from "@/lib/payos-order-sync";
 
 export async function POST(request: Request) {
   try {
@@ -27,52 +25,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true });
     }
 
-    await updateOrder(order.id, {
-      paymentStatus: "paid",
-      paidAt: new Date(),
-      payosPaymentLinkId: webhookData.paymentLinkId,
-      payosReference: webhookData.reference,
-      payosTransactionDateTime: webhookData.transactionDateTime,
-      status: order.salesChannel === "pos" ? "completed" : order.status,
-      statusHistory: [
-        ...(order.statusHistory ?? []),
-        {
-          status: order.salesChannel === "pos" ? "completed" : order.status,
-          at: new Date().toISOString(),
-          actor: "payos",
-          note: `PayOS ${webhookData.reference}`,
-        },
-      ],
-    });
-
-    await decrementStock(order.items);
+    const payosLink = await fetchPayOSPaymentLink(webhookData.orderCode);
+    await syncOrderPaidFromPayOS(order, payosLink);
 
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("PayOS webhook failed:", error);
     return NextResponse.json({ success: false }, { status: 400 });
   }
-}
-
-async function decrementStock(items: Order["items"]) {
-  const products = await getAllProducts();
-  const quantityByProductId = new Map<string, number>();
-
-  for (const item of items as CartItem[]) {
-    quantityByProductId.set(
-      item.productId,
-      (quantityByProductId.get(item.productId) ?? 0) + item.quantity,
-    );
-  }
-
-  await Promise.all(
-    [...quantityByProductId.entries()].map(async ([productId, quantity]) => {
-      const product = products.find((item) => item.id === productId);
-      if (typeof product?.stock !== "number") return;
-
-      await updateProduct(productId, {
-        stock: Math.max(0, product.stock - quantity),
-      });
-    }),
-  );
 }

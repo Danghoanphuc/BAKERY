@@ -2,6 +2,7 @@ import type {
   CartItem,
   Category,
   Customer,
+  CustomerAddressBookEntry,
   CustomerCareLog,
   CustomerMagicLink,
   CustomerPersonalization,
@@ -238,6 +239,10 @@ export function normalizeOrder(id: string, data: FirestoreDocument): Order {
       typeof data.payosTransactionDateTime === "string"
         ? data.payosTransactionDateTime
         : undefined,
+    payosStockDeducted:
+      typeof data.payosStockDeducted === "boolean"
+        ? data.payosStockDeducted
+        : undefined,
     salesChannel:
       typeof data.salesChannel === "string"
         ? (data.salesChannel as Order["salesChannel"])
@@ -290,6 +295,61 @@ export function normalizeOrder(id: string, data: FirestoreDocument): Order {
 function normalizeStringArray(value: unknown): string[] | undefined {
   if (!Array.isArray(value)) return undefined;
   return value.filter((item): item is string => typeof item === "string");
+}
+
+function normalizeOptionalString(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function normalizeOptionalNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function normalizeAddressBook(value: unknown): CustomerAddressBookEntry[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+
+  const addresses = value
+    .filter((item): item is FirestoreDocument => Boolean(item) && typeof item === "object")
+    .map((item, index): CustomerAddressBookEntry | null => {
+      const formattedAddress = normalizeOptionalString(item.formattedAddress);
+      const street = normalizeOptionalString(item.street);
+      const district = normalizeOptionalString(item.district) ?? "";
+      const city = normalizeOptionalString(item.city) ?? "";
+      const addressText =
+        formattedAddress ||
+        [street, district, city].filter(Boolean).join(", ");
+
+      if (!addressText) return null;
+
+      return {
+        id: normalizeOptionalString(item.id) ?? `address-${index}`,
+        label: normalizeOptionalString(item.label) ?? "Địa chỉ",
+        recipientName: normalizeOptionalString(item.recipientName),
+        recipientPhone: normalizeOptionalString(item.recipientPhone),
+        street: street ?? addressText,
+        district,
+        city,
+        formattedAddress: formattedAddress ?? addressText,
+        lat: normalizeOptionalNumber(item.lat),
+        lng: normalizeOptionalNumber(item.lng),
+        placeId: normalizeOptionalString(item.placeId),
+        note: normalizeOptionalString(item.note),
+        isDefault: item.isDefault === true,
+        createdAt: normalizeOptionalString(item.createdAt),
+        updatedAt: normalizeOptionalString(item.updatedAt),
+      };
+    })
+    .filter((item): item is CustomerAddressBookEntry => Boolean(item));
+
+  if (addresses.length === 0) return [];
+  const defaultIndex = addresses.findIndex((address) => address.isDefault);
+
+  return addresses.map((address, index) => ({
+    ...address,
+    isDefault: defaultIndex >= 0 ? index === defaultIndex : index === 0,
+  }));
 }
 
 function normalizeCareLogs(value: unknown): CustomerCareLog[] | undefined {
@@ -355,6 +415,11 @@ function normalizeCustomerPersonalization(
 ): CustomerPersonalization {
   if (!value || typeof value !== "object") return {};
   const data = value as FirestoreDocument;
+  const addressBook = normalizeAddressBook(data.addressBook);
+  const defaultAddress =
+    normalizeOptionalString(data.defaultDeliveryAddress) ||
+    addressBook?.find((address) => address.isDefault)?.formattedAddress ||
+    addressBook?.[0]?.formattedAddress;
 
   return {
     birthday: typeof data.birthday === "string" ? data.birthday : undefined,
@@ -362,10 +427,8 @@ function normalizeCustomerPersonalization(
     favoriteProducts: normalizeStringArray(data.favoriteProducts),
     dietaryNotes:
       typeof data.dietaryNotes === "string" ? data.dietaryNotes : undefined,
-    defaultDeliveryAddress:
-      typeof data.defaultDeliveryAddress === "string"
-        ? data.defaultDeliveryAddress
-        : undefined,
+    defaultDeliveryAddress: defaultAddress,
+    addressBook,
     specialOccasions:
       typeof data.specialOccasions === "string"
         ? data.specialOccasions

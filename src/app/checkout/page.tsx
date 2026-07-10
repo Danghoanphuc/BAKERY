@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   Clock3,
   CreditCard,
+  LocateFixed,
   MapPin,
   QrCode,
   ShieldCheck,
@@ -15,10 +16,38 @@ import {
 import { useCartStore } from "@/store/cartStore";
 import { useOrderConfigStore } from "@/store/orderConfigStore";
 import { useVoucherStore } from "@/store/voucherStore";
+import { AddressModal } from "@/components/layout/Header/AddressModal";
 import { formatPrice } from "@/lib/utils";
 import { calculateVoucherPricing } from "@/lib/vouchers";
 import { getPhoneError, sanitizePhone } from "@/features/auth/pin-ui";
-import type { Customer } from "@/types";
+import type { Customer, CustomerAddressBookEntry, OrderConfig } from "@/types";
+
+function getAddressText(address?: OrderConfig["deliveryAddress"]) {
+  if (!address) return "";
+  return (
+    address.formattedAddress ||
+    [address.street, address.district, address.city].filter(Boolean).join(", ")
+  );
+}
+
+function getDefaultAddress(addressBook?: CustomerAddressBookEntry[]) {
+  if (!addressBook || addressBook.length === 0) return undefined;
+  return addressBook.find((address) => address.isDefault) || addressBook[0];
+}
+
+function toDeliveryAddress(
+  address: CustomerAddressBookEntry,
+): NonNullable<OrderConfig["deliveryAddress"]> {
+  return {
+    street: address.street,
+    district: address.district,
+    city: address.city,
+    lat: address.lat,
+    lng: address.lng,
+    formattedAddress: address.formattedAddress,
+    placeId: address.placeId,
+  };
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -38,7 +67,9 @@ export default function CheckoutPage() {
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "bank_transfer">(
     "cod",
   );
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmittedOrder, setHasSubmittedOrder] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
 
@@ -51,7 +82,7 @@ export default function CheckoutPage() {
   const destinationLabel = useMemo(() => {
     if (isPickup) return "Nhận tại cửa hàng chính";
     if (!config.deliveryAddress) return "Chưa chọn địa chỉ giao hàng";
-    return `${config.deliveryAddress.street}, ${config.deliveryAddress.district}, ${config.deliveryAddress.city}`;
+    return getAddressText(config.deliveryAddress);
   }, [config.deliveryAddress, isPickup]);
 
   useEffect(() => {
@@ -81,9 +112,23 @@ export default function CheckoutPage() {
         }));
 
         if (!config.deliveryAddress) {
-          const defaultAddress = nextCustomer.personalization.defaultDeliveryAddress;
-          if (defaultAddress) {
-            setDeliveryAddress({ street: defaultAddress, district: "", city: "" });
+          const savedAddress = getDefaultAddress(
+            nextCustomer.personalization.addressBook,
+          );
+
+          if (savedAddress) {
+            setDeliveryAddress(toDeliveryAddress(savedAddress));
+          } else {
+            const defaultAddress =
+              nextCustomer.personalization.defaultDeliveryAddress;
+            if (defaultAddress) {
+              setDeliveryAddress({
+                street: defaultAddress,
+                district: "",
+                city: "",
+                formattedAddress: defaultAddress,
+              });
+            }
           }
         }
       } catch (err) {
@@ -97,8 +142,10 @@ export default function CheckoutPage() {
   }, [config.deliveryAddress, setDeliveryAddress]);
 
   useEffect(() => {
-    if (isClient && items.length === 0) router.push("/cart");
-  }, [isClient, items.length, router]);
+    if (isClient && items.length === 0 && !hasSubmittedOrder) {
+      router.push("/cart");
+    }
+  }, [hasSubmittedOrder, isClient, items.length, router]);
 
   if (!isClient) {
     return (
@@ -125,7 +172,7 @@ export default function CheckoutPage() {
 
       const deliveryAddressString =
         !isPickup && config.deliveryAddress
-          ? `${config.deliveryAddress.street}, ${config.deliveryAddress.district}, ${config.deliveryAddress.city}`
+          ? getAddressText(config.deliveryAddress)
           : undefined;
 
       const pickupTimeDate =
@@ -172,10 +219,15 @@ export default function CheckoutPage() {
       }
 
       const order = await response.json();
+      setHasSubmittedOrder(true);
       clearCart();
       clearSelectedVoucher();
-      if (order.payos?.checkoutUrl) {
-        window.location.assign(order.payos.checkoutUrl);
+      if (order.paymentMethod === "bank_transfer") {
+        router.push(
+          `/checkout/payment?orderId=${encodeURIComponent(
+            order.id,
+          )}&orderNumber=${encodeURIComponent(order.orderNumber)}`,
+        );
         return;
       }
       router.push(`/order-success?orderNumber=${order.orderNumber}`);
@@ -328,9 +380,21 @@ export default function CheckoutPage() {
                 {isPickup ? <Clock3 className="h-5 w-5" /> : <MapPin className="h-5 w-5" />}
               </span>
               <div className="min-w-0 flex-1">
-                <h2 className="text-base font-black text-[#3d2417]">
-                  {isPickup ? "Điểm nhận bánh" : "Địa chỉ giao bánh"}
-                </h2>
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="text-base font-black text-[#3d2417]">
+                    {isPickup ? "Điểm nhận bánh" : "Địa chỉ giao bánh"}
+                  </h2>
+                  {!isPickup && (
+                    <button
+                      type="button"
+                      onClick={() => setIsAddressModalOpen(true)}
+                      className="inline-flex h-8 shrink-0 items-center gap-1 rounded-[10px] bg-[#fff1f0] px-2.5 text-xs font-black text-[#d85d6c]"
+                    >
+                      <LocateFixed className="h-3.5 w-3.5" />
+                      Chỉnh vị trí
+                    </button>
+                  )}
+                </div>
                 <p className="mt-1 text-sm font-semibold leading-5 text-[#7b6254]">
                   {destinationLabel}
                 </p>
@@ -407,21 +471,21 @@ export default function CheckoutPage() {
 
           <section className="rounded-[20px] border border-[#f0dfcc] bg-white p-4 shadow-sm">
             <h2 className="text-base font-black text-[#3d2417]">
-              PhÆ°Æ¡ng thá»©c thanh toĂ¡n
+              Phương thức thanh toán
             </h2>
             <div className="mt-3 grid gap-2">
               <PaymentMethodButton
                 active={paymentMethod === "cod"}
                 icon={<CreditCard className="h-5 w-5" />}
-                title={isPickup ? "Thanh toĂ¡n táº¡i quáº§y" : "Thanh toĂ¡n khi nháº­n bĂ¡nh"}
-                description="Tiá»‡m xĂ¡c nháº­n Ä‘Æ¡n trÆ°á»›c, báº¡n thanh toĂ¡n sau."
+                title={isPickup ? "Thanh toán tại quầy" : "Thanh toán khi nhận bánh"}
+                description="Tiệm xác nhận đơn trước, bạn thanh toán sau."
                 onClick={() => setPaymentMethod("cod")}
               />
               <PaymentMethodButton
                 active={paymentMethod === "bank_transfer"}
                 icon={<QrCode className="h-5 w-5" />}
-                title="Chuyá»ƒn khoáº£n PayOS"
-                description="QuĂ©t QR/chuyá»ƒn khoáº£n qua PayOS, há»‡ thá»‘ng tá»± Ä‘á»‘i soĂ¡t."
+                title="Thanh toán chuyển khoản"
+                description="Quét QR hoặc lưu ảnh QR để chuyển khoản, hệ thống tự đối soát."
                 onClick={() => setPaymentMethod("bank_transfer")}
               />
             </div>
@@ -440,6 +504,10 @@ export default function CheckoutPage() {
           </button>
         </form>
       </div>
+      <AddressModal
+        isOpen={isAddressModalOpen}
+        onClose={() => setIsAddressModalOpen(false)}
+      />
     </main>
   );
 }

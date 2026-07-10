@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import type {
   Customer,
+  CustomerAddressBookEntry,
   CustomerInput,
   CustomerMagicLink,
   CustomerPersonalization,
@@ -55,6 +56,60 @@ function normalizeOptionalString(value?: string) {
   return trimmed ? trimmed : undefined;
 }
 
+function normalizeOptionalNumber(value?: number) {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function normalizeAddressText(address: CustomerAddressBookEntry) {
+  return normalizeOptionalString(address.formattedAddress) ||
+    [address.street, address.district, address.city]
+      .map((part) => normalizeOptionalString(part))
+      .filter(Boolean)
+      .join(", ");
+}
+
+function normalizeAddressBook(
+  addressBook?: CustomerAddressBookEntry[],
+): CustomerAddressBookEntry[] {
+  if (!Array.isArray(addressBook)) return [];
+
+  const normalized = addressBook
+    .map((address, index): CustomerAddressBookEntry | null => {
+      const text = normalizeAddressText(address);
+      if (!text) return null;
+
+      return {
+        id:
+          normalizeOptionalString(address.id) ||
+          `${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`,
+        label: normalizeOptionalString(address.label) || "Địa chỉ",
+        recipientName: normalizeOptionalString(address.recipientName),
+        recipientPhone: normalizeOptionalString(address.recipientPhone),
+        street: normalizeOptionalString(address.street) || text,
+        district: normalizeOptionalString(address.district) || "",
+        city: normalizeOptionalString(address.city) || "",
+        formattedAddress: normalizeOptionalString(address.formattedAddress) || text,
+        lat: normalizeOptionalNumber(address.lat),
+        lng: normalizeOptionalNumber(address.lng),
+        placeId: normalizeOptionalString(address.placeId),
+        note: normalizeOptionalString(address.note),
+        isDefault: Boolean(address.isDefault),
+        createdAt: normalizeOptionalString(address.createdAt),
+        updatedAt: normalizeOptionalString(address.updatedAt),
+      };
+    })
+    .filter((address): address is CustomerAddressBookEntry => Boolean(address));
+
+  if (normalized.length > 0 && !normalized.some((address) => address.isDefault)) {
+    normalized[0] = { ...normalized[0], isDefault: true };
+  }
+
+  return normalized.map((address, index) => ({
+    ...address,
+    isDefault: address.isDefault && index === normalized.findIndex((item) => item.isDefault),
+  }));
+}
+
 function stripUndefinedDeep<T>(value: T): T {
   if (Array.isArray(value)) {
     return value
@@ -76,14 +131,19 @@ function stripUndefinedDeep<T>(value: T): T {
 function normalizePersonalization(
   personalization?: CustomerPersonalization,
 ): CustomerPersonalization {
+  const addressBook = normalizeAddressBook(personalization?.addressBook);
+  const defaultAddress =
+    normalizeOptionalString(personalization?.defaultDeliveryAddress) ||
+    addressBook.find((address) => address.isDefault)?.formattedAddress ||
+    addressBook[0]?.formattedAddress;
+
   return {
     birthday: normalizeOptionalString(personalization?.birthday),
     favoriteFlavors: personalization?.favoriteFlavors ?? [],
     favoriteProducts: personalization?.favoriteProducts ?? [],
     dietaryNotes: normalizeOptionalString(personalization?.dietaryNotes),
-    defaultDeliveryAddress: normalizeOptionalString(
-      personalization?.defaultDeliveryAddress,
-    ),
+    defaultDeliveryAddress: defaultAddress,
+    addressBook,
     specialOccasions: normalizeOptionalString(
       personalization?.specialOccasions,
     ),

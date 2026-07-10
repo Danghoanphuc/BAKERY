@@ -39,18 +39,22 @@ export function createPayOSOrderCode() {
   return Number(`${timePart}${randomPart}`);
 }
 
-export function getPayOSReturnUrl(order: Pick<Order, "orderNumber">) {
+export function getPayOSReturnUrl(order: Pick<Order, "id" | "orderNumber">) {
   const baseUrl = getPublicBaseUrl();
-  return `${baseUrl}/order-success?orderNumber=${encodeURIComponent(
+  return `${baseUrl}/checkout/payment?orderId=${encodeURIComponent(
+    order.id,
+  )}&orderNumber=${encodeURIComponent(
     order.orderNumber,
   )}&payment=payos`;
 }
 
-export function getPayOSCancelUrl(order: Pick<Order, "orderNumber">) {
+export function getPayOSCancelUrl(order: Pick<Order, "id" | "orderNumber">) {
   const baseUrl = getPublicBaseUrl();
-  return `${baseUrl}/checkout?payment=cancelled&orderNumber=${encodeURIComponent(
+  return `${baseUrl}/checkout/payment?orderId=${encodeURIComponent(
+    order.id,
+  )}&orderNumber=${encodeURIComponent(
     order.orderNumber,
-  )}`;
+  )}&payment=cancelled`;
 }
 
 export async function createOrderPaymentLink({

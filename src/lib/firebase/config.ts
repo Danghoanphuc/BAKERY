@@ -362,7 +362,8 @@ export async function getOrderById(id: string): Promise<Order | null> {
     const docRef = doc(db, "orders", id);
     const docSnap = await getDoc(docRef);
     if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() } as Order;
+      const { normalizeOrder } = await import("./utils");
+      return normalizeOrder(docSnap.id, docSnap.data());
     }
     return null;
   } catch (error) {
@@ -383,7 +384,8 @@ export async function getOrderByPayOSOrderCode(
     const orderDoc = snapshot.docs[0];
 
     if (!orderDoc) return null;
-    return { id: orderDoc.id, ...orderDoc.data() } as Order;
+    const { normalizeOrder } = await import("./utils");
+    return normalizeOrder(orderDoc.id, orderDoc.data());
   } catch (error) {
     console.error("Error fetching order by payOS order code:", error);
     return null;

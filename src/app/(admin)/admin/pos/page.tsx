@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Category, Product } from "@/types";
 import type { SelectedVoucher } from "@/types/voucher";
 import { usePosCartStore } from "@/store/posCartStore";
@@ -25,9 +25,11 @@ import {
   PosCustomer,
   PosPaymentMethod,
   productNeedsCustomization,
+  resolvePaymentQrImageSrc,
 } from "./_lib/pos-utils";
 
 const HELD_ORDERS_STORAGE_KEY = "bakery-pos-held-orders";
+const PAYMENT_TIMEOUT_MS = 5 * 60 * 1000;
 
 export default function POSPage() {
   const {
@@ -63,9 +65,24 @@ export default function POSPage() {
     PosDisplaySnapshot,
     "updatedAt"
   > | null>(null);
+  const [awaitingPaymentDisplay, setAwaitingPaymentDisplay] = useState<Omit<
+    PosDisplaySnapshot,
+    "updatedAt"
+  > | null>(null);
+  const paymentPollingTimerRef = useRef<number | null>(null);
+  const paymentDeadlineRef = useRef<number | null>(null);
+  const [paymentDeadline, setPaymentDeadline] = useState<number | null>(null);
+  const [clockTick, setClockTick] = useState(0);
+  const [payosEnabled, setPayosEnabled] = useState<boolean | null>(null);
 
   useEffect(() => {
     loadCatalog();
+    fetch("/api/pos/config")
+      .then((response) => response.json())
+      .then((data: { payosEnabled?: boolean }) =>
+        setPayosEnabled(Boolean(data.payosEnabled)),
+      )
+      .catch(() => setPayosEnabled(false));
   }, []);
 
   useEffect(() => {
@@ -93,8 +110,26 @@ export default function POSPage() {
   );
 
   useEffect(() => {
+    return () => {
+      if (paymentPollingTimerRef.current) {
+        window.clearTimeout(paymentPollingTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!paymentDeadline) return;
+    const timer = window.setInterval(() => setClockTick((value) => value + 1), 1000);
+    return () => window.clearInterval(timer);
+  }, [paymentDeadline]);
+
+  useEffect(() => {
     if (completedDisplay) {
       publishPosDisplaySnapshot(completedDisplay);
+      return;
+    }
+    if (awaitingPaymentDisplay) {
+      publishPosDisplaySnapshot(awaitingPaymentDisplay);
       return;
     }
 
@@ -104,11 +139,7 @@ export default function POSPage() {
         : 0;
 
     publishPosDisplaySnapshot({
-      status: isSubmitting
-        ? "awaiting_payment"
-        : items.length > 0
-          ? "editing"
-          : "idle",
+      status: items.length > 0 ? "editing" : "idle",
       items,
       subtotal: totalPrice,
       discountAmount,
@@ -121,9 +152,9 @@ export default function POSPage() {
     });
   }, [
     completedDisplay,
+    awaitingPaymentDisplay,
     customer.name,
     customer.phone,
-    isSubmitting,
     items,
     paymentMethod,
     selectedVoucher,
@@ -192,6 +223,7 @@ export default function POSPage() {
 
   function resetCurrentSale() {
     setCompletedDisplay(null);
+    cancelAwaitingPayment();
     clearCart();
     setCustomer({ name: "", phone: "" });
     setVoucherCode("");
@@ -199,8 +231,49 @@ export default function POSPage() {
     setPaymentMethod("cash");
   }
 
+  function cancelAwaitingPayment(note?: string) {
+    setAwaitingPaymentDisplay(null);
+    setPaymentDeadline(null);
+    paymentDeadlineRef.current = null;
+    if (paymentPollingTimerRef.current) {
+      window.clearTimeout(paymentPollingTimerRef.current);
+      paymentPollingTimerRef.current = null;
+    }
+    if (note) setMessage(note);
+  }
+
+  function beginAwaitingPayment(
+    order: PosCheckoutResult,
+    qrImageSrc: string,
+  ) {
+    const deadline = Date.now() + PAYMENT_TIMEOUT_MS;
+    const snapshot: Omit<PosDisplaySnapshot, "updatedAt"> = {
+      status: "awaiting_payment",
+      items,
+      subtotal: totalPrice,
+      discountAmount: order.discountAmount,
+      totalAmount: order.totalAmount,
+      customerName: customer.name.trim() || undefined,
+      customerPhone: customer.phone.trim() || undefined,
+      voucher: selectedVoucher,
+      paymentMethod: "bank_transfer",
+      paymentQrCode: qrImageSrc,
+      paymentCheckoutUrl: order.payos?.checkoutUrl,
+      orderNumber: order.orderNumber,
+      loyaltyPointsEarned: 0,
+    };
+
+    paymentDeadlineRef.current = deadline;
+    setPaymentDeadline(deadline);
+    setAwaitingPaymentDisplay(snapshot);
+    publishPosDisplaySnapshot(snapshot);
+    pollOrderPayment(order);
+    setMessage(`Đơn ${order.orderNumber} đang chờ khách quét mã QR.`);
+  }
+
   function handleProductClick(product: Product) {
     setCompletedDisplay(null);
+    cancelAwaitingPayment();
     setMessage(null);
     setError(null);
 
@@ -266,7 +339,15 @@ export default function POSPage() {
   }
 
   async function submitOrder() {
-    if (items.length === 0 || isSubmitting) return;
+    if (items.length === 0 || isSubmitting || Boolean(awaitingPaymentDisplay))
+      return;
+
+    if (paymentMethod === "bank_transfer" && payosEnabled === false) {
+      setError(
+        "PayOS chưa được cấu hình. Không thể thanh toán QR. Vui lòng dùng tiền mặt hoặc cấu hình PayOS.",
+      );
+      return;
+    }
 
     setIsSubmitting(true);
     setError(null);
@@ -292,49 +373,143 @@ export default function POSPage() {
 
       if (!response.ok) {
         throw new Error(
-          "error" in data ? data.error : "KhĂ´ng thá»ƒ thanh toĂ¡n.",
+          "error" in data ? data.error : "Không thể thanh toán.",
         );
       }
 
       const order = data as PosCheckoutResult;
-      const paidDiscount =
-        selectedVoucher && voucherPricing.isEligible
-          ? voucherPricing.discountAmount
-          : order.discountAmount;
-      setCompletedDisplay({
-        status: "thank_you",
-        items,
-        subtotal: totalPrice,
-        discountAmount: paidDiscount,
-        totalAmount: order.totalAmount,
-        customerName: customer.name.trim() || undefined,
-        customerPhone: customer.phone.trim() || undefined,
-        voucher: selectedVoucher,
-        paymentMethod,
-        orderNumber: order.orderNumber,
-        loyaltyPointsEarned: order.loyaltyPointsEarned,
-      });
-      printReceipt(order);
-      clearCart();
-      setCustomer({ name: "", phone: "" });
-      setVoucherCode("");
-      setSelectedVoucher(undefined);
-      setPaymentMethod("cash");
-      await loadCatalog();
-      window.setTimeout(() => {
-        setCompletedDisplay(null);
-      }, 9000);
-      setMessage(`ÄĂ£ táº¡o Ä‘Æ¡n ${order.orderNumber}.`);
+
+      if (paymentMethod === "bank_transfer") {
+        if (order.paymentStatus !== "pending") {
+          throw new Error("Đơn QR không ở trạng thái chờ thanh toán.");
+        }
+
+        const qrImageSrc = resolvePaymentQrImageSrc(order.payos);
+        if (!qrImageSrc) {
+          throw new Error(
+            "Không tạo được mã QR thanh toán. Vui lòng thử lại hoặc chọn tiền mặt.",
+          );
+        }
+
+        beginAwaitingPayment(order, qrImageSrc);
+        return;
+      }
+
+      if (order.paymentStatus && order.paymentStatus !== "paid") {
+        throw new Error("Đơn chưa được thanh toán.");
+      }
+
+      await finalizePaidOrder(order);
     } catch (submitError) {
       console.error("POS checkout failed:", submitError);
       setError(
         submitError instanceof Error
           ? submitError.message
-          : "KhĂ´ng thá»ƒ thanh toĂ¡n.",
+          : "Không thể thanh toán.",
       );
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function pollOrderPayment(order: PosCheckoutResult) {
+    if (paymentPollingTimerRef.current) {
+      window.clearTimeout(paymentPollingTimerRef.current);
+    }
+
+    const poll = async () => {
+      try {
+        if (
+          paymentDeadlineRef.current &&
+          Date.now() >= paymentDeadlineRef.current
+        ) {
+          cancelAwaitingPayment(
+            `Hết thời gian chờ thanh toán cho đơn ${order.orderNumber}. Bạn có thể tạo QR mới.`,
+          );
+          return;
+        }
+
+        const response = await fetch(`/api/pos/checkout/${order.id}`, {
+          cache: "no-store",
+        });
+        const data = (await response.json()) as
+          | {
+              paymentStatus?: "unpaid" | "pending" | "paid" | "refunded";
+              status?: string;
+              totalAmount?: number;
+              orderNumber?: string;
+            }
+          | { error?: string };
+
+        if (!response.ok) {
+          throw new Error(
+            "error" in data ? data.error : "Không thể kiểm tra thanh toán.",
+          );
+        }
+
+        const isPaid =
+          ("paymentStatus" in data && data.paymentStatus === "paid") ||
+          ("status" in data && data.status === "completed");
+
+        if (isPaid) {
+          await finalizePaidOrder(
+            {
+              ...order,
+              totalAmount: data.totalAmount ?? order.totalAmount,
+              orderNumber: data.orderNumber ?? order.orderNumber,
+              paymentStatus: "paid",
+            },
+            { shouldPrintReceipt: false },
+          );
+          return;
+        }
+
+        paymentPollingTimerRef.current = window.setTimeout(poll, 1500);
+      } catch (pollError) {
+        console.error("POS payment polling failed:", pollError);
+        paymentPollingTimerRef.current = window.setTimeout(poll, 3000);
+      }
+    };
+
+    paymentPollingTimerRef.current = window.setTimeout(poll, 1500);
+  }
+
+  async function finalizePaidOrder(
+    order: PosCheckoutResult,
+    options: { shouldPrintReceipt?: boolean } = {},
+  ) {
+    cancelAwaitingPayment();
+
+    const paidDiscount =
+      selectedVoucher && voucherPricing.isEligible
+        ? voucherPricing.discountAmount
+        : order.discountAmount;
+    setCompletedDisplay({
+      status: "thank_you",
+      items,
+      subtotal: totalPrice,
+      discountAmount: paidDiscount,
+      totalAmount: order.totalAmount,
+      customerName: customer.name.trim() || undefined,
+      customerPhone: customer.phone.trim() || undefined,
+      voucher: selectedVoucher,
+      paymentMethod,
+      orderNumber: order.orderNumber,
+      loyaltyPointsEarned: order.loyaltyPointsEarned,
+    });
+    if (options.shouldPrintReceipt !== false) {
+      printReceipt(order);
+    }
+    clearCart();
+    setCustomer({ name: "", phone: "" });
+    setVoucherCode("");
+    setSelectedVoucher(undefined);
+    setPaymentMethod("cash");
+    await loadCatalog();
+    window.setTimeout(() => {
+      setCompletedDisplay(null);
+    }, 9000);
+    setMessage(`Đã tạo đơn ${order.orderNumber}.`);
   }
 
   function printReceipt(order: PosCheckoutResult) {
@@ -397,6 +572,14 @@ export default function POSPage() {
       )}
 
       <aside className="flex min-h-0 flex-col overflow-y-auto border-l border-[#f0e1d2] bg-white">
+        {payosEnabled === false && paymentMethod === "bank_transfer" && (
+          <div className="border-b border-[#f0e1d2] px-4 py-3">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-bold text-amber-900">
+              PayOS chưa được cấu hình. Chọn QR/CK sẽ không tạo được mã thanh toán.
+            </div>
+          </div>
+        )}
+
         {(error || message || isLoading) && (
           <div className="border-b border-[#f0e1d2] px-4 py-3">
             <div
@@ -406,7 +589,46 @@ export default function POSPage() {
                   : "rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700"
               }
             >
-              {error || message || "Äang táº£i POS..."}
+              {error || message || (isLoading ? "Đang tải POS..." : null)}
+            </div>
+          </div>
+        )}
+
+        {awaitingPaymentDisplay && paymentDeadline && (
+          <div className="border-b border-[#f0e1d2] bg-[#fffaf6] px-4 py-3">
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-bold text-amber-900">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="truncate">
+                    Đang chờ khách thanh toán (đơn{" "}
+                    <span className="font-black">
+                      {awaitingPaymentDisplay.orderNumber ?? "—"}
+                    </span>
+                    )
+                  </p>
+                  <p className="mt-1 text-xs font-semibold text-amber-800">
+                    Còn{" "}
+                    {Math.max(
+                      0,
+                      Math.ceil(
+                        (paymentDeadline - (Date.now() + clockTick * 0)) / 1000,
+                      ),
+                    )}{" "}
+                    giây (tự huỷ khi hết giờ).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    cancelAwaitingPayment(
+                      "Đã huỷ chờ thanh toán. Bạn có thể tạo QR mới.",
+                    )
+                  }
+                  className="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-black text-amber-900 hover:bg-amber-100"
+                >
+                  Huỷ chờ
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -415,7 +637,7 @@ export default function POSPage() {
           selectedVoucher={selectedVoucher}
           voucherPricing={voucherPricing}
           paymentMethod={paymentMethod}
-          canSubmit={items.length > 0}
+          canSubmit={items.length > 0 && !awaitingPaymentDisplay}
           isSubmitting={isSubmitting}
           onPaymentMethodChange={setPaymentMethod}
           onSubmit={submitOrder}

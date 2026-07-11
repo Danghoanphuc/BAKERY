@@ -96,6 +96,13 @@ export function normalizeProduct(id: string, data: FirestoreDocument): Product {
     categoryId: String(data.categoryId ?? ""),
     description:
       typeof data.description === "string" ? data.description : undefined,
+    sellingPoints: Array.isArray(data.sellingPoints)
+      ? (data.sellingPoints as string[])
+      : undefined,
+    servingSuggestion:
+      typeof data.servingSuggestion === "string"
+        ? data.servingSuggestion
+        : undefined,
     ingredients: Array.isArray(data.ingredients)
       ? (data.ingredients as string[])
       : undefined,
@@ -154,6 +161,14 @@ export function normalizeProduct(id: string, data: FirestoreDocument): Product {
     galleryImages: Array.isArray(data.galleryImages)
       ? (data.galleryImages as string[])
       : undefined,
+    nutrition:
+      data.nutrition && typeof data.nutrition === "object"
+        ? (data.nutrition as Product["nutrition"])
+        : undefined,
+    social:
+      data.social && typeof data.social === "object"
+        ? (data.social as Product["social"])
+        : undefined,
     pickupBranchIds: Array.isArray(data.pickupBranchIds)
       ? (data.pickupBranchIds as string[])
       : undefined,

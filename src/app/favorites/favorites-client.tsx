@@ -12,6 +12,10 @@ import {
 } from "lucide-react";
 
 import { ProductDetailModal } from "@/features/product/components/ProductDetailModal";
+import {
+  buildProductCartItem,
+  type ProductCustomization,
+} from "@/features/product/product-cart";
 import { Toast } from "@/components/common";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import { useToast } from "@/hooks/useToast";
@@ -55,34 +59,10 @@ export function FavoritesClient({ products }: { products: Product[] }) {
     showToast("Đã bỏ khỏi danh sách yêu thích", "success");
   };
 
-  const handleAddToCart = (customization: {
-    quantity: number;
-    selectedSize?: string;
-    selectedFlavor?: string;
-    customMessage?: string;
-    candles?: number;
-  }) => {
+  const handleAddToCart = (customization: ProductCustomization) => {
     if (!selectedProduct) return;
 
-    let finalPrice = selectedProduct.price;
-    if (customization.selectedSize && selectedProduct.sizeOptions) {
-      const size = selectedProduct.sizeOptions.find(
-        (item) => item.id === customization.selectedSize,
-      );
-      finalPrice += size?.priceAdjustment ?? 0;
-    }
-
-    addItem({
-      productId: selectedProduct.id,
-      productName: selectedProduct.name,
-      quantity: customization.quantity,
-      price: finalPrice,
-      imageUrl: selectedProduct.imageUrl,
-      selectedSize: customization.selectedSize,
-      selectedFlavor: customization.selectedFlavor,
-      customMessage: customization.customMessage,
-      candles: customization.candles,
-    });
+    addItem(buildProductCartItem(selectedProduct, customization));
 
     showToast(`Đã thêm ${selectedProduct.name} vào giỏ hàng`, "success");
     setSelectedProduct(null);

@@ -18,6 +18,7 @@ import { useOrderConfigStore } from "@/store/orderConfigStore";
 import { useVoucherStore } from "@/store/voucherStore";
 import { AddressModal } from "@/components/layout/Header/AddressModal";
 import { formatPrice } from "@/lib/utils";
+import { getShippingBenefit } from "@/lib/order-pricing";
 import { calculateVoucherPricing } from "@/lib/vouchers";
 import { getPhoneError, sanitizePhone } from "@/features/auth/pin-ui";
 import type { Customer, CustomerAddressBookEntry, OrderConfig } from "@/types";
@@ -75,7 +76,7 @@ export default function CheckoutPage() {
 
   const isPickup = config.deliveryMode === "pickup";
   const voucherPricing = calculateVoucherPricing(totalPrice, selectedVoucher);
-  const deliveryFee = isPickup || totalPrice >= 149000 ? 0 : 20000;
+  const deliveryFee = getShippingBenefit(totalPrice, config.deliveryMode).fee;
   const finalTotal = voucherPricing.totalAfterDiscount + deliveryFee;
   const isPhoneVerified = Boolean(customer?.phoneVerifiedAt);
 

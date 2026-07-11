@@ -3,6 +3,10 @@
 import { useState } from "react";
 import { ProductCollection } from "@/features/home/components";
 import { ProductDetailModal } from "@/features/product/components/ProductDetailModal";
+import {
+  buildProductCartItem,
+  type ProductCustomization,
+} from "@/features/product/product-cart";
 import { useCartStore } from "@/store/cartStore";
 import { Toast } from "@/components/common";
 import { useToast } from "@/hooks/useToast";
@@ -26,39 +30,11 @@ export function HomepageClient({ title, products }: HomepageClientProps) {
     setSelectedProduct(null);
   };
 
-  const handleAddToCart = (customization: {
-    quantity: number;
-    selectedSize?: string;
-    selectedFlavor?: string;
-    customMessage?: string;
-    candles?: number;
-  }) => {
+  const handleAddToCart = (customization: ProductCustomization) => {
     if (!selectedProduct) return;
 
     try {
-      // Calculate final price with size adjustment
-      let finalPrice = selectedProduct.price;
-      if (customization.selectedSize && selectedProduct.sizeOptions) {
-        const sizeOption = selectedProduct.sizeOptions.find(
-          (s) => s.id === customization.selectedSize,
-        );
-        if (sizeOption) {
-          finalPrice += sizeOption.priceAdjustment;
-        }
-      }
-
-      // Add to cart with customization
-      addItem({
-        productId: selectedProduct.id,
-        productName: selectedProduct.name,
-        quantity: customization.quantity,
-        price: finalPrice,
-        imageUrl: selectedProduct.imageUrl,
-        selectedSize: customization.selectedSize,
-        selectedFlavor: customization.selectedFlavor,
-        customMessage: customization.customMessage,
-        candles: customization.candles,
-      });
+      addItem(buildProductCartItem(selectedProduct, customization));
 
       // Close modal and show success toast
       handleCloseModal();

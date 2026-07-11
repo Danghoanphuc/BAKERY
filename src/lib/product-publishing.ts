@@ -26,12 +26,17 @@ export type ProductFeedItem = {
   available_for_pickup: boolean;
   requires_preorder: boolean;
   preparation_time_minutes?: number;
+  social_title: string;
+  social_description: string;
+  social_image: string;
+  social_hashtags: string[];
 };
 
 const DEFAULT_DESCRIPTION =
   "Dat banh tuoi giao trong ngay, phu hop an sang, an xe va tiec nho.";
 const DEFAULT_STORAGE = "Bao quan noi thoang mat, dung ngon nhat trong ngay.";
 const DEFAULT_SHELF_LIFE = "1 ngay";
+const PRODUCT_BRAND_NAME = "Ngọt & Trà";
 
 export function getSiteUrl() {
   return getPublicBaseUrl();
@@ -53,7 +58,19 @@ export function getCategoryName(
 }
 
 export function getProductDescription(product: Product) {
-  return cleanText(product.description) || DEFAULT_DESCRIPTION;
+  return (
+    cleanText(product.social?.description) ||
+    cleanText(product.description) ||
+    DEFAULT_DESCRIPTION
+  );
+}
+
+export function getProductSocialTitle(product: Product) {
+  return cleanText(product.social?.title) || product.name;
+}
+
+export function getProductSocialImage(product: Product) {
+  return absoluteUrl(product.social?.imageUrl || product.imageUrl);
 }
 
 export function getProductAvailability(product: Product): ProductAvailability {
@@ -88,6 +105,10 @@ export function buildProductFeedItem(
     available_for_pickup: product.availableForPickup ?? true,
     requires_preorder: product.requiresPreorder ?? false,
     preparation_time_minutes: product.preparationTimeMinutes,
+    social_title: getProductSocialTitle(product),
+    social_description: getProductDescription(product),
+    social_image: getProductSocialImage(product),
+    social_hashtags: product.social?.hashtags ?? [],
   };
 }
 
@@ -96,14 +117,14 @@ export function buildProductJsonLd(feedItem: ProductFeedItem) {
     "@context": "https://schema.org",
     "@type": "Product",
     productID: feedItem.id,
-    name: feedItem.name,
-    description: feedItem.description,
-    image: feedItem.image,
+    name: feedItem.social_title,
+    description: feedItem.social_description,
+    image: feedItem.social_image,
     category: feedItem.category,
     url: feedItem.url,
     brand: {
       "@type": "Brand",
-      name: "Bakery",
+      name: PRODUCT_BRAND_NAME,
     },
     offers: {
       "@type": "Offer",

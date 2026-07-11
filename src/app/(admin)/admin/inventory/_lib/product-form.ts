@@ -8,6 +8,12 @@ export type ProductFormData = {
   imageUrl: string;
   categoryId: string;
   description: string;
+  sellingPoints: string;
+  servingSuggestion: string;
+  socialTitle: string;
+  socialDescription: string;
+  socialImageUrl: string;
+  socialHashtags: string;
   availableForDelivery: boolean;
   availableForPickup: boolean;
   requiresMessage: boolean;
@@ -49,6 +55,12 @@ export function createEmptyProductForm(categoryId = ""): ProductFormData {
     imageUrl: "",
     categoryId,
     description: "",
+    sellingPoints: "",
+    servingSuggestion: "",
+    socialTitle: "",
+    socialDescription: "",
+    socialImageUrl: "",
+    socialHashtags: "",
     availableForDelivery: true,
     availableForPickup: true,
     requiresMessage: false,
@@ -91,6 +103,12 @@ export function productToForm(product: Product, fallbackCategoryId = ""): Produc
     imageUrl: product.imageUrl,
     categoryId: product.categoryId ?? fallbackCategoryId,
     description: product.description ?? "",
+    sellingPoints: joinTags(product.sellingPoints),
+    servingSuggestion: product.servingSuggestion ?? "",
+    socialTitle: product.social?.title ?? "",
+    socialDescription: product.social?.description ?? "",
+    socialImageUrl: product.social?.imageUrl ?? "",
+    socialHashtags: joinTags(product.social?.hashtags),
     availableForDelivery: product.availableForDelivery ?? true,
     availableForPickup: product.availableForPickup ?? true,
     requiresMessage: product.requiresMessage ?? false,
@@ -141,6 +159,14 @@ export function productFormToPayload(formData: ProductFormData) {
     preorderMinHours: Number(formData.preorderMinHours) || 0,
     sortPriority: Number(formData.sortPriority) || 0,
     tags: splitTags(formData.tags),
+    sellingPoints: splitTags(formData.sellingPoints),
+    servingSuggestion: formData.servingSuggestion.trim(),
+    social: {
+      title: formData.socialTitle.trim(),
+      description: formData.socialDescription.trim(),
+      imageUrl: formData.socialImageUrl.trim(),
+      hashtags: splitTags(formData.socialHashtags),
+    },
     ingredients: splitTags(formData.ingredients),
     occasionTags: splitTags(formData.occasionTags),
     dietaryTags: splitTags(formData.dietaryTags),

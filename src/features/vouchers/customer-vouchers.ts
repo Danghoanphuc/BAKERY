@@ -14,6 +14,12 @@ export type CustomerVoucher = {
   maxUsesPerPhone?: number;
 };
 
+export type SelectableCustomerVoucher = CustomerVoucher & {
+  code: string;
+  discountType: "percent" | "fixed";
+  discountValue: number;
+};
+
 export type CustomerRewardsPayload = {
   vouchers?: CustomerVoucher[];
 };
@@ -24,7 +30,9 @@ export function getSelectableCustomerVouchers(
   return (payload?.vouchers ?? []).filter(isSelectableVoucher);
 }
 
-export function isSelectableVoucher(voucher: CustomerVoucher) {
+export function isSelectableVoucher(
+  voucher: CustomerVoucher,
+): voucher is SelectableCustomerVoucher {
   return Boolean(
     voucher.unlocked &&
       voucher.code &&

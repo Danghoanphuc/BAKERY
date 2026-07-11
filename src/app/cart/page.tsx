@@ -19,6 +19,7 @@ import { useOrderConfigStore } from "@/store/orderConfigStore";
 import { useVoucherStore } from "@/store/voucherStore";
 import { calculateVoucherPricing } from "@/lib/vouchers";
 import { formatPrice } from "@/lib/utils";
+import { getShippingBenefit } from "@/lib/order-pricing";
 import type { CartItem } from "@/types";
 
 type DiscountLine = {
@@ -380,7 +381,7 @@ function CheckoutSummary({
   onCheckout: () => void;
 }) {
   const isPickup = mode === "pickup";
-  const deliveryFee = isPickup || totalPrice >= 149000 ? 0 : 20000;
+  const deliveryFee = getShippingBenefit(totalPrice, mode).fee;
   const finalTotal = Math.max(0, totalPrice - discountAmount) + deliveryFee;
 
   return (

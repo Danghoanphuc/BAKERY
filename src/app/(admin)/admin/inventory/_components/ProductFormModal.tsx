@@ -719,6 +719,59 @@ function MetadataSection({
             {assistantNote}
           </div>
         )}
+        <div className="grid gap-3 md:grid-cols-2">
+          <TextField
+            label="Khẩu phần gợi ý"
+            value={formData.servingSuggestion}
+            onChange={(servingSuggestion) =>
+              setFormData((prev) => ({ ...prev, servingSuggestion }))
+            }
+          />
+          <TagInput
+            label="Điểm bán hàng nổi bật"
+            value={formData.sellingPoints}
+            placeholder="Làm mới sau khi đặt, kem cheese nhập khẩu"
+            onChange={(sellingPoints) =>
+              setFormData((prev) => ({ ...prev, sellingPoints }))
+            }
+          />
+        </div>
+        <div className="rounded-lg border border-neutral-200 bg-neutral-50 p-3">
+          <p className="mb-3 text-xs font-bold uppercase text-neutral-500">
+            Metadata chia sẻ mạng xã hội
+          </p>
+          <div className="space-y-3">
+            <TextField
+              label="Tiêu đề khi chia sẻ"
+              value={formData.socialTitle}
+              onChange={(socialTitle) =>
+                setFormData((prev) => ({ ...prev, socialTitle }))
+              }
+            />
+            <TextAreaField
+              label="Mô tả chào hàng"
+              value={formData.socialDescription}
+              onChange={(socialDescription) =>
+                setFormData((prev) => ({ ...prev, socialDescription }))
+              }
+            />
+            <TextField
+              label="Ảnh social riêng"
+              value={formData.socialImageUrl}
+              onChange={(socialImageUrl) =>
+                setFormData((prev) => ({ ...prev, socialImageUrl }))
+              }
+            />
+            <TagInput
+              label="Hashtag"
+              value={formData.socialHashtags}
+              placeholder="banhsinhnhat, bakery, giaohomnay"
+              onChange={(socialHashtags) =>
+                setFormData((prev) => ({ ...prev, socialHashtags }))
+              }
+            />
+          </div>
+        </div>
         <TagInput
           label="Tag sản phẩm"
           value={formData.tags}

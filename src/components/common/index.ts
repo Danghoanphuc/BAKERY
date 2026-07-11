@@ -1,4 +1,5 @@
 export { Button } from "./Button";
+export { BottomSheet } from "./BottomSheet";
 export { Card } from "./Card";
 export { Modal } from "./Modal";
 export { Toast } from "./Toast";

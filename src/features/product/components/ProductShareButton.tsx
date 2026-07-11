@@ -8,7 +8,7 @@ import { getProductPath } from "@/lib/product-path";
 import type { Product } from "@/types";
 
 type ProductShareButtonProps = {
-  product: Pick<Product, "id" | "name">;
+  product: Pick<Product, "id" | "name" | "description" | "social">;
   label?: string;
   className?: string;
   iconOnly?: boolean;
@@ -28,12 +28,16 @@ export function ProductShareButton({
       process.env.NEXT_PUBLIC_SITE_URL ||
       window.location.origin;
     const url = new URL(getProductPath(product), baseUrl).toString();
+    const hashtags = product.social?.hashtags?.length
+      ? `\n${product.social.hashtags.map((tag) => `#${tag.replace(/^#/, "")}`).join(" ")}`
+      : "";
+    const shareText = `${product.social?.description || product.description || product.name}${hashtags}`;
 
     try {
       if (navigator.share) {
         await navigator.share({
           title: product.name,
-          text: product.name,
+          text: shareText,
           url,
         });
         return;

@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
+        hostname: "res.cloudinary.com", // Cloudinary uploaded product images
+      },
+      {
+        protocol: "https",
         hostname: "**.bing.net", // Images copied from Bing image results
       },
       {

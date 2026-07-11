@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { getOrderById, updateOrder } from "@/lib/db";
+import { getOrderById } from "@/lib/db";
+import {
+  canAccessCustomerOrder,
+  getCustomerOrderAccess,
+} from "@/lib/customer-order-access";
 
 function serializeForJson(value: unknown): unknown {
   if (value instanceof Date) return value.toISOString();
@@ -33,6 +37,11 @@ export async function GET(
 ) {
   try {
     const { id } = await context.params;
+    const access = await getCustomerOrderAccess(_request);
+    if (!access) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const order = await getOrderById(id);
     if (!order) {
       return NextResponse.json(
@@ -40,6 +49,11 @@ export async function GET(
         { status: 404 }
       );
     }
+
+    if (!canAccessCustomerOrder(order, access)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     return NextResponse.json(serializeForJson(order));
   } catch (error) {
     console.error("Error fetching order:", error);
@@ -51,37 +65,11 @@ export async function GET(
 }
 
 export async function PUT(
-  request: Request,
-  context: { params: Promise<{ id: string }> },
+  _request: Request,
+  _context: { params: Promise<{ id: string }> },
 ) {
-  try {
-    const { id } = await context.params;
-    const data = await request.json();
-    await updateOrder(id, data);
-    const order = await getOrderById(id);
-
-    if (!order) {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
-
-    return NextResponse.json(serializeForJson(order));
-  } catch (error) {
-    console.error("Error updating order:", error);
-    if (
-      error instanceof Error &&
-      error.message === "INVALID_STATUS_TRANSITION"
-    ) {
-      return NextResponse.json(
-        { error: "Invalid status transition" },
-        { status: 409 },
-      );
-    }
-    if (error instanceof Error && error.message === "ORDER_NOT_FOUND") {
-      return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
-    return NextResponse.json(
-      { error: "Failed to update order" },
-      { status: 500 }
-    );
-  }
+  return NextResponse.json(
+    { error: "Customer order updates are not allowed from this endpoint." },
+    { status: 405 },
+  );
 }

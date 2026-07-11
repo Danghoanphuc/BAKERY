@@ -15,6 +15,10 @@ import {
 import { clsx } from "clsx";
 
 import { ProductDetailModal } from "@/features/product/components/ProductDetailModal";
+import {
+  buildProductCartItem,
+  type ProductCustomization,
+} from "@/features/product/product-cart";
 import { Toast } from "@/components/common";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import { useToast } from "@/hooks/useToast";
@@ -38,6 +42,19 @@ interface FilterChip {
 interface ProductContext {
   categoryName: string;
   haystack: string;
+}
+
+interface SearchQueryAnalysis {
+  filters: string[];
+  intents: string[];
+  maxPrice?: number;
+}
+
+interface SearchIntentRule {
+  filterId: string;
+  label: string;
+  needles: string[];
+  tokenPattern: RegExp;
 }
 
 const filterChips: FilterChip[] = [
@@ -79,10 +96,55 @@ const filterChips: FilterChip[] = [
   },
 ];
 
+const filterById = new Map(filterChips.map((filter) => [filter.id, filter]));
+
+const intentRules: SearchIntentRule[] = [
+  {
+    filterId: "delivery",
+    label: "Cần nhận sớm",
+    needles: ["giao", "ship", "hom nay", "ngay", "chieu nay"],
+    tokenPattern: /\b(?:giao|ship|hom nay|ngay|chieu nay)\b/g,
+  },
+  {
+    filterId: "birthday",
+    label: "Theo dịp",
+    needles: ["sinh nhat", "birthday", "be trai", "be gai", "su kien", "event"],
+    tokenPattern: /\b(?:sinh nhat|birthday|be trai|be gai|su kien|event)\b/g,
+  },
+  {
+    filterId: "healthy",
+    label: "Ít ngọt / healthy",
+    needles: ["it ngot", "healthy", "keto", "nguyen cam", "nguoi lon"],
+    tokenPattern: /\b(?:it ngot|healthy|keto|nguyen cam|nguoi lon)\b/g,
+  },
+  {
+    filterId: "bestseller",
+    label: "Được chọn nhiều",
+    needles: ["best", "ban chay", "ngon nhat", "pho bien"],
+    tokenPattern: /\b(?:best|ban chay|ngon nhat|pho bien)\b/g,
+  },
+  {
+    filterId: "message",
+    label: "Có lời chúc",
+    needles: ["loi chuc", "ghi chu", "viet chu", "tang"],
+    tokenPattern: /\b(?:loi chuc|ghi chu|viet chu|tang)\b/g,
+  },
+];
+
+const maxPricePattern =
+  /(?:duoi|toi da|tam|khoang|<)\s*(\d{2,4})\s*(k|nghin|ngan|000)?/;
+
+interface SearchResult {
+  product: Product;
+  score: number;
+  context: ProductContext;
+  reasons: string[];
+}
+
 const quickSuggestions = [
-  "bánh sinh nhật bé gái",
-  "ít ngọt",
-  "giao hôm nay",
+  "bánh sinh nhật bé gái dưới 300k",
+  "ít ngọt cho người lớn",
+  "giao hôm nay có ghi lời chúc",
   "croissant",
   "chocolate",
   "dưới 100k",
@@ -115,15 +177,22 @@ export function SearchExperience({
     setHistory(readStringArray(SEARCH_HISTORY_KEY).slice(0, 6));
   }, []);
 
-  const inferredFilters = useMemo(() => inferFilters(query), [query]);
+  useEffect(() => {
+    const initialQuery = new URLSearchParams(window.location.search).get("q")?.trim();
+    if (initialQuery) applyQuery(initialQuery);
+    // The landing query should hydrate the page once when users arrive from home.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const queryAnalysis = useMemo(() => analyzeSearchQuery(query), [query]);
+  const inferredFilters = queryAnalysis.filters;
   const combinedFilters = useMemo(
     () => Array.from(new Set([...activeFilters, ...inferredFilters])),
     [activeFilters, inferredFilters],
   );
 
   const results = useMemo(() => {
-    const normalizedQuery = normalizeText(query);
-    const tokens = normalizedQuery.split(" ").filter(Boolean);
+    const tokens = getSearchTokens(query);
 
     const scored = products
       .filter((product) =>
@@ -135,11 +204,12 @@ export function SearchExperience({
         const context = getProductContext(product, categoryById);
         const textScore = getTextScore(product, context, tokens);
         const filterScore = combinedFilters.every((filterId) => {
-          const filter = filterChips.find((item) => item.id === filterId);
+          const filter = filterById.get(filterId);
           return filter ? filter.match(product, context) : true;
         });
 
         if (!filterScore) return null;
+        if (queryAnalysis.maxPrice && product.price > queryAnalysis.maxPrice) return null;
         if (tokens.length > 0 && textScore === 0) return null;
 
         const boost =
@@ -153,13 +223,10 @@ export function SearchExperience({
           product,
           score: textScore + boost,
           context,
+          reasons: getProductReasons(product, context, queryAnalysis, config.deliveryMode),
         };
       })
-      .filter(Boolean) as Array<{
-      product: Product;
-      score: number;
-      context: ProductContext;
-    }>;
+      .filter(Boolean) as SearchResult[];
 
     return scored.sort((left, right) => {
       if (sortMode === "price-asc") return left.product.price - right.product.price;
@@ -172,7 +239,7 @@ export function SearchExperience({
       }
       return right.score - left.score;
     });
-  }, [categoryById, combinedFilters, config.deliveryMode, products, query, sortMode]);
+  }, [categoryById, combinedFilters, config.deliveryMode, products, query, queryAnalysis, sortMode]);
 
   const recommendedProducts = useMemo(
     () =>
@@ -218,34 +285,10 @@ export function SearchExperience({
     });
   };
 
-  const handleAddToCart = (customization: {
-    quantity: number;
-    selectedSize?: string;
-    selectedFlavor?: string;
-    customMessage?: string;
-    candles?: number;
-  }) => {
+  const handleAddToCart = (customization: ProductCustomization) => {
     if (!selectedProduct) return;
 
-    let finalPrice = selectedProduct.price;
-    if (customization.selectedSize && selectedProduct.sizeOptions) {
-      const size = selectedProduct.sizeOptions.find(
-        (item) => item.id === customization.selectedSize,
-      );
-      finalPrice += size?.priceAdjustment ?? 0;
-    }
-
-    addItem({
-      productId: selectedProduct.id,
-      productName: selectedProduct.name,
-      quantity: customization.quantity,
-      price: finalPrice,
-      imageUrl: selectedProduct.imageUrl,
-      selectedSize: customization.selectedSize,
-      selectedFlavor: customization.selectedFlavor,
-      customMessage: customization.customMessage,
-      candles: customization.candles,
-    });
+    addItem(buildProductCartItem(selectedProduct, customization));
 
     showToast(`Đã thêm ${selectedProduct.name} vào giỏ hàng`, "success");
     setSelectedProduct(null);
@@ -293,7 +336,7 @@ export function SearchExperience({
               onKeyDown={(event) => {
                 if (event.key === "Enter") applyQuery(query);
               }}
-              placeholder="Tìm theo dịp, vị bánh, giá, giao hàng..."
+              placeholder="VD: sinh nhật bé gái, ít ngọt, giao chiều nay"
               className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[#3d2417] outline-none placeholder:text-[#b7a397]"
             />
             {query && (
@@ -333,6 +376,10 @@ export function SearchExperience({
             </div>
           </div>
 
+          {queryAnalysis.intents.length > 0 && (
+            <IntentSummary intents={queryAnalysis.intents} />
+          )}
+
           <div className="mt-3 rounded-[14px] border border-[#efdfd1] bg-white px-3 py-2 text-xs font-bold text-[#7b6254]">
             {config.deliveryMode === "pickup"
               ? "Đang hiển thị các món có thể nhận tại quán."
@@ -361,11 +408,12 @@ export function SearchExperience({
 
             {results.length > 0 ? (
               <div className="grid grid-cols-2 gap-3">
-                {results.map(({ product, context }) => (
+                {results.map(({ product, context, reasons }) => (
                   <SearchProductCard
                     key={product.id}
                     product={product}
                     categoryName={context.categoryName}
+                    reasons={reasons}
                     mode={config.deliveryMode}
                     isFavorite={favoriteIds.includes(product.id)}
                     onToggleFavorite={() => toggleFavorite(product.id)}
@@ -374,10 +422,13 @@ export function SearchExperience({
                 ))}
               </div>
             ) : (
-              <NoResults onReset={() => {
-                setQuery("");
-                setActiveFilters([]);
-              }} />
+              <NoResults
+                onPickQuery={applyQuery}
+                onReset={() => {
+                  setQuery("");
+                  setActiveFilters([]);
+                }}
+              />
             )}
           </section>
         )}
@@ -481,6 +532,7 @@ function Discovery({
 function SearchProductCard({
   product,
   categoryName,
+  reasons = [],
   isCompact = false,
   mode,
   isFavorite,
@@ -489,6 +541,7 @@ function SearchProductCard({
 }: {
   product: Product;
   categoryName?: string;
+  reasons?: string[];
   isCompact?: boolean;
   mode: "delivery" | "pickup";
   isFavorite: boolean;
@@ -544,6 +597,18 @@ function SearchProductCard({
         <h2 className="line-clamp-2 min-h-[36px] text-[13px] font-bold leading-tight text-[#3d2417]">
           {product.name}
         </h2>
+        {reasons.length > 0 && (
+          <div className="mt-2 flex min-h-[22px] flex-wrap gap-1">
+            {reasons.map((reason) => (
+              <span
+                key={reason}
+                className="rounded-full bg-[#f7eee7] px-2 py-1 text-[10px] font-bold text-[#7b6254]"
+              >
+                {reason}
+              </span>
+            ))}
+          </div>
+        )}
         <div className="mt-2 flex items-center justify-between gap-2">
           <p className="truncate text-[14px] font-black text-[#d85d6c]">
             {formatPrice(product.price)}
@@ -554,6 +619,26 @@ function SearchProductCard({
         </div>
       </button>
     </article>
+  );
+}
+
+function IntentSummary({ intents }: { intents: string[] }) {
+  return (
+    <div className="-mx-4 mt-3 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex w-max items-center gap-2">
+        <span className="text-[11px] font-black uppercase text-[#b38a76]">
+          Đã hiểu
+        </span>
+        {intents.map((intent) => (
+          <span
+            key={intent}
+            className="rounded-full border border-[#f0e3d3] bg-[#fffaf6] px-3 py-1.5 text-xs font-bold text-[#65483a]"
+          >
+            {intent}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -581,7 +666,15 @@ function SortControl({
   );
 }
 
-function NoResults({ onReset }: { onReset: () => void }) {
+function NoResults({
+  onPickQuery,
+  onReset,
+}: {
+  onPickQuery: (query: string) => void;
+  onReset: () => void;
+}) {
+  const recoveryQueries = ["giao hôm nay", "best seller", "bánh sinh nhật", "ít ngọt"];
+
   return (
     <section className="mt-8 rounded-[22px] border border-dashed border-[#e8d5c5] bg-white px-6 py-12 text-center">
       <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#fff4ec] text-[#d85d6c]">
@@ -591,9 +684,21 @@ function NoResults({ onReset }: { onReset: () => void }) {
         Chưa tìm thấy món phù hợp
       </h2>
       <p className="mt-2 text-sm leading-relaxed text-[#8c7568]">
-        Thử bỏ bớt bộ lọc hoặc tìm theo dịp như sinh nhật, vị chocolate, ít
-        ngọt.
+        Mình chưa ghép được đủ điều kiện. Bạn có thể nới ngân sách, bỏ bớt bộ
+        lọc hoặc chuyển sang nhóm gần nhất.
       </p>
+      <div className="mt-5 flex flex-wrap justify-center gap-2">
+        {recoveryQueries.map((item) => (
+          <button
+            key={item}
+            type="button"
+            onClick={() => onPickQuery(item)}
+            className="rounded-full border border-[#eadbcc] bg-[#fffaf6] px-3 py-2 text-xs font-black text-[#65483a]"
+          >
+            {item}
+          </button>
+        ))}
+      </div>
       <button
         type="button"
         onClick={onReset}
@@ -662,19 +767,92 @@ function getTextScore(
   return score;
 }
 
-function inferFilters(query: string) {
+function getSearchTokens(query: string) {
+  const normalized = intentRules
+    .reduce(
+      (value, rule) => value.replace(rule.tokenPattern, " "),
+      normalizeText(query).replace(new RegExp(maxPricePattern.source, "g"), " "),
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return normalized.split(" ").filter((token) => token.length > 1);
+}
+
+function analyzeSearchQuery(query: string): SearchQueryAnalysis {
   const normalized = normalizeText(query);
   const filters: string[] = [];
-  if (hasAny(normalized, ["giao", "ship", "hôm nay", "ngay"])) filters.push("delivery");
-  if (hasAny(normalized, ["sinh nhật", "birthday", "bé trai", "bé gái"])) filters.push("birthday");
-  if (hasAny(normalized, ["ít ngọt", "healthy", "keto", "nguyên cám"])) filters.push("healthy");
-  if (hasAny(normalized, ["best", "bán chạy", "ngon nhất"])) filters.push("bestseller");
-  if (hasAny(normalized, ["lời chúc", "ghi chữ", "viết chữ"])) filters.push("message");
+  const intents: string[] = [];
 
-  const priceMatch = normalized.match(/(?:duoi|dưới|<)\s*(\d{2,4})\s*k?/);
-  if (priceMatch && Number(priceMatch[1]) <= 100) filters.push("under-100");
+  intentRules.forEach((rule) => {
+    addIntentWhen(hasAny(normalized, rule.needles), {
+      filterId: rule.filterId,
+      label: rule.label,
+      filters,
+      intents,
+    });
+  });
 
-  return filters;
+  const maxPrice = getMaxPriceFromQuery(normalized);
+  if (maxPrice) {
+    intents.push(`Dưới ${formatPrice(maxPrice)}`);
+    if (maxPrice <= 100000) filters.push("under-100");
+  }
+
+  return {
+    filters: Array.from(new Set(filters)),
+    intents: Array.from(new Set(intents)).slice(0, 5),
+    maxPrice,
+  };
+}
+
+function addIntentWhen(
+  condition: boolean,
+  options: {
+    filterId: string;
+    label: string;
+    filters: string[];
+    intents: string[];
+  },
+) {
+  if (!condition) return;
+  options.filters.push(options.filterId);
+  options.intents.push(options.label);
+}
+
+function getMaxPriceFromQuery(normalizedQuery: string) {
+  const match = normalizedQuery.match(maxPricePattern);
+  if (!match) return undefined;
+
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount) || amount <= 0) return undefined;
+  return amount < 10000 ? amount * 1000 : amount;
+}
+
+function getProductReasons(
+  product: Product,
+  context: ProductContext,
+  analysis: SearchQueryAnalysis,
+  mode: "delivery" | "pickup",
+) {
+  const reasons: string[] = [];
+  const addReason = (condition: boolean, reason: string) => {
+    if (condition && !reasons.includes(reason)) reasons.push(reason);
+  };
+
+  addReason(mode === "pickup", "Nhận tại quán");
+  addReason(mode === "delivery" && product.availableForDelivery !== false, "Giao được");
+  addReason(product.availableToday !== false && !product.requiresPreorder, "Có hôm nay");
+  addReason(product.requiresMessage === true, "Ghi lời chúc");
+  addReason(product.isBestseller === true, "Best seller");
+  addReason(product.isNew === true, "Mới");
+  addReason(analysis.maxPrice !== undefined && product.price <= analysis.maxPrice, "Đúng ngân sách");
+  addReason(
+    hasAny(context.haystack, ["healthy", "keto", "it ngot", "nguyen cam"]),
+    "Ít ngọt",
+  );
+
+  return reasons.slice(0, 3);
 }
 
 function hasAny(text: string, needles: string[]) {

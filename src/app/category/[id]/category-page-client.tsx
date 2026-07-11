@@ -5,6 +5,11 @@ import { Header } from "@/components/layout";
 import { StickyCart } from "@/components/layout/StickyCart";
 import { ProductCollection } from "@/features/home/components/ProductCollection";
 import { ProductDetailModal } from "@/features/product/components/ProductDetailModal";
+import {
+  buildProductCartItem,
+  type ProductCustomization,
+} from "@/features/product/product-cart";
+import { Toast } from "@/components/common";
 import { useToast } from "@/hooks/useToast";
 import { useCartStore } from "@/store";
 import type { Category, Product } from "@/types";
@@ -20,7 +25,7 @@ export function CategoryPageClient({
 }: CategoryPageClientProps) {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const addToCart = useCartStore((state) => state.addItem);
-  const { showToast } = useToast();
+  const { toast, showToast, hideToast } = useToast();
 
   const handleProductClick = (product: Product) => {
     setSelectedProduct(product);
@@ -30,37 +35,11 @@ export function CategoryPageClient({
     setSelectedProduct(null);
   };
 
-  const handleAddToCart = (customization: {
-    quantity: number;
-    selectedSize?: string;
-    selectedFlavor?: string;
-    customMessage?: string;
-    candles?: number;
-  }) => {
+  const handleAddToCart = (customization: ProductCustomization) => {
     if (!selectedProduct) return;
 
     try {
-      let finalPrice = selectedProduct.price;
-      if (customization.selectedSize && selectedProduct.sizeOptions) {
-        const sizeOption = selectedProduct.sizeOptions.find(
-          (option) => option.label === customization.selectedSize,
-        );
-        if (sizeOption) {
-          finalPrice += sizeOption.priceAdjustment;
-        }
-      }
-
-      addToCart({
-        productId: selectedProduct.id,
-        productName: selectedProduct.name,
-        quantity: customization.quantity,
-        price: finalPrice,
-        imageUrl: selectedProduct.imageUrl,
-        selectedSize: customization.selectedSize,
-        selectedFlavor: customization.selectedFlavor,
-        customMessage: customization.customMessage,
-        candles: customization.candles,
-      });
+      addToCart(buildProductCartItem(selectedProduct, customization));
 
       handleCloseModal();
       showToast(`Đã thêm ${selectedProduct.name} vào giỏ hàng`, "success");
@@ -115,6 +94,12 @@ export function CategoryPageClient({
       )}
 
       <StickyCart />
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        isVisible={toast.isVisible}
+        onClose={hideToast}
+      />
     </>
   );
 }

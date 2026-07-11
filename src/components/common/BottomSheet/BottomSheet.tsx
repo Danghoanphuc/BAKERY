@@ -1,0 +1,189 @@
+"use client";
+
+import {
+  type PointerEvent as ReactPointerEvent,
+  type ReactNode,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
+import { X } from "lucide-react";
+import { clsx } from "clsx";
+
+interface BottomSheetProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: ReactNode;
+  footer?: ReactNode;
+  className?: string;
+  contentClassName?: string;
+  expanded?: boolean;
+}
+
+const FOCUSABLE_SELECTOR =
+  'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const CLOSE_DRAG_THRESHOLD = 88;
+
+export function BottomSheet({
+  isOpen,
+  onClose,
+  title,
+  children,
+  footer,
+  className,
+  contentClassName,
+  expanded = false,
+}: BottomSheetProps) {
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const dragStartRef = useRef<number | null>(null);
+  const dragOffsetRef = useRef(0);
+  const [dragOffset, setDragOffset] = useState(0);
+  const titleId = useId();
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    previousFocusRef.current = document.activeElement as HTMLElement;
+    const previousOverflow = document.body.style.overflow;
+    const previousPaddingRight = document.body.style.paddingRight;
+    document.body.style.overflow = "hidden";
+    document.body.style.paddingRight = "var(--scrollbar-width, 0px)";
+
+    const closeButton = sheetRef.current?.querySelector<HTMLElement>(
+      '[data-sheet-close="true"]',
+    );
+    closeButton?.focus();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key !== "Tab" || !sheetRef.current) return;
+      const focusable = Array.from(
+        sheetRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+      );
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      document.body.style.paddingRight = previousPaddingRight;
+      previousFocusRef.current?.focus();
+    };
+  }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (!isOpen) setDragOffset(0);
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const startDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    dragStartRef.current = event.clientY;
+    dragOffsetRef.current = 0;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const moveDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (dragStartRef.current === null) return;
+    const nextOffset = Math.max(0, event.clientY - dragStartRef.current);
+    dragOffsetRef.current = nextOffset;
+    setDragOffset(nextOffset);
+  };
+
+  const finishDrag = () => {
+    dragStartRef.current = null;
+    if (dragOffsetRef.current >= CLOSE_DRAG_THRESHOLD) {
+      onClose();
+      return;
+    }
+    dragOffsetRef.current = 0;
+    setDragOffset(0);
+  };
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[130] flex items-end justify-center lg:items-center lg:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={titleId}
+    >
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default bg-[#2e170f]/45 backdrop-blur-[2px] animate-in fade-in duration-200"
+        onClick={onClose}
+        aria-label="Đóng bảng sản phẩm"
+      />
+
+      <div
+        ref={sheetRef}
+        className={clsx(
+          "relative flex w-full flex-col overflow-hidden rounded-t-[22px] bg-white shadow-[0_-12px_40px_rgba(61,36,23,0.2)]",
+          "animate-in slide-in-from-bottom-full duration-300 ease-out",
+          "lg:max-h-[90vh] lg:max-w-3xl lg:rounded-[18px] lg:slide-in-from-bottom-0",
+          expanded ? "max-h-[92dvh]" : "max-h-[76dvh]",
+          className,
+        )}
+        style={{
+          transform: `translateY(${dragOffset}px)`,
+          transition: dragStartRef.current === null ? "transform 180ms ease-out" : "none",
+        }}
+      >
+        <button
+          type="button"
+          className="flex h-7 shrink-0 touch-none items-center justify-center lg:hidden"
+          onPointerDown={startDrag}
+          onPointerMove={moveDrag}
+          onPointerUp={finishDrag}
+          onPointerCancel={finishDrag}
+          aria-label="Kéo xuống để đóng"
+        >
+          <span className="h-1 w-10 rounded-full bg-[#dbc9bd]" />
+        </button>
+
+        <h2 id={titleId} className="sr-only">
+          {title}
+        </h2>
+        <button
+          type="button"
+          data-sheet-close="true"
+          onClick={onClose}
+          className="absolute right-3 top-9 z-20 grid h-9 w-9 place-items-center rounded-full bg-white/95 text-[#4f3022] shadow-md backdrop-blur transition active:scale-95 lg:top-3"
+          aria-label="Đóng"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        <div className={clsx("min-h-0 flex-1 overflow-y-auto overscroll-contain", contentClassName)}>
+          {children}
+        </div>
+
+        {footer && (
+          <div className="shrink-0 border-t border-[#f0e1d2] bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_24px_rgba(61,36,23,0.07)] lg:px-5">
+            {footer}
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body,
+  );
+}

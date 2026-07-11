@@ -21,7 +21,11 @@ import { useVoucherStore } from "@/store/voucherStore";
 import { calculateVoucherPricing } from "@/lib/vouchers";
 import { formatPrice } from "@/lib/utils";
 import { getShippingBenefit } from "@/lib/order-pricing";
-import type { CartItem } from "@/types";
+import {
+  getCartItemFlavorLabel,
+  getCartItemSizeLabel,
+  type CartItem,
+} from "@/types";
 
 type DiscountLine = {
   id: string;
@@ -310,9 +314,11 @@ function CartHeader({
 }
 
 function CustomizationSummary({ item }: { item: CartItem }) {
+  const sizeLabel = getCartItemSizeLabel(item);
+  const flavorLabel = getCartItemFlavorLabel(item);
   const details = [
-    item.selectedSize && `Size ${item.selectedSize}`,
-    item.selectedFlavor && `Vị ${item.selectedFlavor}`,
+    sizeLabel && `Size ${sizeLabel}`,
+    flavorLabel && `Vị ${flavorLabel}`,
     item.candles ? `${item.candles} nến` : "",
     item.customMessage && `Lời chúc: ${item.customMessage}`,
   ].filter(Boolean);

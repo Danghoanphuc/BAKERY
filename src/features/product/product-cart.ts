@@ -51,6 +51,13 @@ export function buildProductCartItem(
   product: Product,
   customization: ProductCustomization,
 ): Omit<CartItem, "cartItemId"> {
+  const selectedSizeOption = product.sizeOptions?.find(
+    (option) => option.id === customization.selectedSize,
+  );
+  const selectedFlavorOption = product.flavorOptions?.find(
+    (option) => option.id === customization.selectedFlavor,
+  );
+
   return {
     productId: product.id,
     productName: product.name,
@@ -58,7 +65,9 @@ export function buildProductCartItem(
     price: getProductUnitPrice(product, customization.selectedSize),
     imageUrl: product.imageUrl,
     selectedSize: customization.selectedSize,
+    selectedSizeLabel: selectedSizeOption?.label,
     selectedFlavor: customization.selectedFlavor,
+    selectedFlavorLabel: selectedFlavorOption?.label,
     customMessage: customization.customMessage?.trim() || undefined,
     candles: customization.candles || undefined,
   };

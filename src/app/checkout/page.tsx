@@ -23,7 +23,13 @@ import { getShippingBenefit } from "@/lib/order-pricing";
 import { calculateVoucherPricing } from "@/lib/vouchers";
 import { getPhoneError, sanitizePhone } from "@/features/auth/pin-ui";
 import PinSetupFlow from "@/features/auth/PinSetupFlow";
-import type { Customer, CustomerAddressBookEntry, OrderConfig } from "@/types";
+import {
+  getCartItemFlavorLabel,
+  getCartItemSizeLabel,
+  type Customer,
+  type CustomerAddressBookEntry,
+  type OrderConfig,
+} from "@/types";
 
 function getAddressText(address?: OrderConfig["deliveryAddress"]) {
   if (!address) return "";
@@ -142,14 +148,6 @@ export default function CheckoutPage() {
     }
   }, [hasSubmittedOrder, isClient, items.length, router]);
 
-  if (!isClient) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-bg-main">
-        <p className="text-sm font-bold text-text-muted">Đang tải...</p>
-      </main>
-    );
-  }
-
   const handlePinComplete = useCallback(async (pin: string) => {
     if (!pendingOrder || isSavingPin) return;
     setIsSavingPin(true);
@@ -174,6 +172,14 @@ export default function CheckoutPage() {
       setIsSavingPin(false);
     }
   }, [isSavingPin, pendingOrder, router]);
+
+  if (!isClient) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-bg-main">
+        <p className="text-sm font-bold text-text-muted">Đang tải...</p>
+      </main>
+    );
+  }
 
   if (pendingOrder) {
     return (
@@ -423,8 +429,10 @@ export default function CheckoutPage() {
                       {item.productName} x{item.quantity}
                     </p>
                     <p className="mt-1 text-xs text-text-muted">
-                      {item.selectedSize && `Size ${item.selectedSize}`}
-                      {item.selectedFlavor && ` - Vị ${item.selectedFlavor}`}
+                      {getCartItemSizeLabel(item) &&
+                        `Size ${getCartItemSizeLabel(item)}`}
+                      {getCartItemFlavorLabel(item) &&
+                        ` - Vị ${getCartItemFlavorLabel(item)}`}
                     </p>
                   </div>
                   <p className="text-sm font-black text-[#3d2417]">

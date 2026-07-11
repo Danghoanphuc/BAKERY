@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
-import { getCategories, getProductsByCategory } from "@/lib/db";
+import { getAllProducts, getCategories } from "@/lib/db";
 import { serializeForClient } from "@/lib/firebase/utils";
+import { getVisibleProductsForCategory } from "@/lib/product-category";
 import { CategoryPageClient } from "./category-page-client";
 
 interface CategoryPageProps {
@@ -9,9 +10,9 @@ interface CategoryPageProps {
 
 export default async function CategoryPage({ params }: CategoryPageProps) {
   const { id } = await params;
-  const [categories, products] = await Promise.all([
+  const [categories, allProducts] = await Promise.all([
     getCategories(),
-    getProductsByCategory(id),
+    getAllProducts(),
   ]);
 
   const category = categories.find((c) => c.id === id);
@@ -19,6 +20,8 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   if (!category || !(category.isVisible ?? true)) {
     notFound();
   }
+
+  const products = getVisibleProductsForCategory(allProducts, category);
 
   return (
     <CategoryPageClient

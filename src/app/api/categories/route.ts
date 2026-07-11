@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { getCategories, createCategory } from "@/lib/db";
+import { getAllProducts, getCategories, createCategory } from "@/lib/db";
+import { attachProductStatsToCategories } from "@/lib/category-product-stats";
 
 export async function GET() {
   try {
-    const categories = await getCategories();
-    return NextResponse.json(categories);
+    const [categories, products] = await Promise.all([
+      getCategories(),
+      getAllProducts(),
+    ]);
+    return NextResponse.json(attachProductStatsToCategories(categories, products));
   } catch (error) {
     console.error("Error fetching categories:", error);
     return NextResponse.json(

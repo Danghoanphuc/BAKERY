@@ -992,7 +992,7 @@ function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
             href={category.href}
             className="group w-[calc((100%_-_32px)/5)] min-w-[calc((100%_-_32px)/5)] shrink-0 snap-start overflow-hidden rounded-[10px] border border-white/80 bg-white/35 shadow-[0_4px_12px_rgba(83,38,12,0.07),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-[14px] backdrop-saturate-150 transition active:scale-[0.96]"
           >
-            <span className="flex h-10 items-start overflow-hidden px-1.5 pt-1.5 text-[5px] font-black leading-[11px] text-[#542413]">
+            <span className="flex h-10 items-start overflow-hidden px-1.5 pt-1.5 text-[10px] font-black leading-[11px] text-[#542413]">
               {category.name}
             </span>
             <span className="relative block h-16 w-full overflow-hidden">
@@ -1013,7 +1013,7 @@ function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
           <div className="grid h-8 w-8 place-items-center rounded-full bg-[#f0d8c2]/40">
             <LayoutGrid className="h-4 w-4 text-[#8a6855]" strokeWidth={2.5} />
           </div>
-          <span className="px-1 text-center text-[5px] font-black leading-[11px] text-[#8a6855]">
+          <span className="px-1 text-center text-[10px] font-black leading-[11px] text-[#8a6855]">
             Xem tất cả
           </span>
         </Link>

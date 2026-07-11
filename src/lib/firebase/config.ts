@@ -38,6 +38,7 @@ function stripUndefined(obj: any): any {
 }
 import { db } from "./app";
 import type { Category, Product, Order } from "@/types";
+import { productBelongsToCategory } from "@/lib/product-category";
 
 // Re-export db for other modules
 export { db };
@@ -122,14 +123,20 @@ export async function updateCategory(
 }
 
 export async function deleteCategory(id: string): Promise<void> {
-  // Check if category has products
-  const productsQuery = query(
-    collection(db, "products"),
-    where("categoryId", "==", id),
-  );
-  const productsSnap = await getDocs(productsQuery);
+  const [categorySnap, productsSnap] = await Promise.all([
+    getDoc(doc(db, "categories", id)),
+    getDocs(collection(db, "products")),
+  ]);
+  const category = categorySnap.exists()
+    ? ({ id: categorySnap.id, ...categorySnap.data() } as Category)
+    : null;
+  const hasAssignedProducts =
+    category &&
+    productsSnap.docs.some((productDoc) =>
+      productBelongsToCategory(productDoc.data() as Product, category),
+    );
 
-  if (!productsSnap.empty) {
+  if (hasAssignedProducts) {
     throw new Error("CATEGORY_HAS_PRODUCTS");
   }
 
@@ -140,16 +147,19 @@ export async function moveCategoryProducts(
   fromCategoryId: string,
   toCategoryId: string,
 ): Promise<number> {
-  const productsQuery = query(
-    collection(db, "products"),
-    where("categoryId", "==", fromCategoryId),
+  const [categorySnap, productsSnap] = await Promise.all([
+    getDoc(doc(db, "categories", fromCategoryId)),
+    getDocs(collection(db, "products")),
+  ]);
+  if (!categorySnap.exists()) return 0;
+  const category = { id: categorySnap.id, ...categorySnap.data() } as Category;
+  const assignedProductDocs = productsSnap.docs.filter((productDoc) =>
+    productBelongsToCategory(productDoc.data() as Product, category),
   );
-  const productsSnap = await getDocs(productsQuery);
-
-  if (productsSnap.empty) return 0;
+  if (assignedProductDocs.length === 0) return 0;
 
   const batch = writeBatch(db);
-  productsSnap.docs.forEach((productDoc) => {
+  assignedProductDocs.forEach((productDoc) => {
     batch.update(productDoc.ref, {
       categoryId: toCategoryId,
       updatedAt: Timestamp.now(),
@@ -157,7 +167,7 @@ export async function moveCategoryProducts(
   });
 
   await batch.commit();
-  return productsSnap.size;
+  return assignedProductDocs.length;
 }
 
 export async function reorderCategories(

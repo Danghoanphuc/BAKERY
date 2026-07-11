@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronRight } from "lucide-react";
+import { ArrowLeft, ChevronRight } from "lucide-react";
 import { getCategories } from "@/lib/db";
 import { defaultCategoryVisuals } from "@/features/home/data/homeContent";
 import type { Category } from "@/types/category";
@@ -23,7 +23,10 @@ export default async function CategoryPage() {
           id: category.id,
           name: category.name,
           href: `/category/${category.id}`,
-          imageUrl: category.iconUrl || defaultCategoryVisuals[index % defaultCategoryVisuals.length].imageUrl,
+          imageUrl:
+            category.iconUrl ||
+            defaultCategoryVisuals[index % defaultCategoryVisuals.length]
+              .imageUrl,
         }))
       : defaultCategoryVisuals.map((category) => ({
           id: category.name,
@@ -36,7 +39,16 @@ export default async function CategoryPage() {
     <div className="min-h-screen bg-[#fff8ea] px-4 pb-28 pt-20 text-[#5b2b14]">
       <div className="mx-auto max-w-3xl">
         <div className="mb-5">
-          <p className="text-sm font-medium text-[#a36a43]">Sweet Bakery</p>
+          <Link
+            href="/"
+            className="mb-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-[#5b2b14] shadow-sm ring-1 ring-[#efcfad] transition hover:bg-[#fffbf5]"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Quay lại
+          </Link>
+          <p className="mt-4 text-sm font-medium text-[#a36a43]">
+            Sweet Bakery
+          </p>
           <h1 className="text-2xl font-extrabold tracking-tight">
             Danh mục bánh
           </h1>

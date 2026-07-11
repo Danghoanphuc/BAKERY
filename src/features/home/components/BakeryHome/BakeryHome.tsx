@@ -509,9 +509,7 @@ function GuestMemberCard({
             Đăng nhập để tích điểm, nhận quà và lưu ưu đãi.
           </p>
         </div>
-        <span className="text-2xl" aria-hidden="true">
-          🎁
-        </span>
+        <span className="text-2xl" aria-hidden="true">🎁</span>
       </div>
       <div className="mt-2 flex gap-2">
         <Link
@@ -542,15 +540,9 @@ function GuestMemberCard({
             href="/account/register"
             className="w-[82%] shrink-0 snap-start rounded-[12px] border border-[#f1d6bc] bg-white p-3 shadow-sm"
           >
-            <span className="block text-[12px] font-black text-[#9e3e2f]">
-              {voucher.title}
-            </span>
-            <span className="mt-1 block line-clamp-2 text-[10px] font-medium text-[#7d513d]">
-              {voucher.description}
-            </span>
-            <span className="mt-1.5 block text-[10px] font-black tracking-wide text-[#542413]">
-              Mã: {voucher.code}
-            </span>
+            <span className="block text-[12px] font-black text-[#9e3e2f]">{voucher.title}</span>
+            <span className="mt-1 block line-clamp-2 text-[10px] font-medium text-[#7d513d]">{voucher.description}</span>
+            <span className="mt-1.5 block text-[10px] font-black tracking-wide text-[#542413]">Mã: {voucher.code}</span>
           </Link>
         ))}
       </div>
@@ -998,17 +990,17 @@ function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
           <Link
             key={`${category.name}-${index}`}
             href={category.href}
-            className="group w-[calc((100%_-_32px)/5)] min-w-[calc((100%_-_32px)/5)] shrink-0 snap-start overflow-hidden rounded-[12px] border border-white/80 bg-white/35 shadow-[0_6px_16px_rgba(83,38,12,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-[16px] backdrop-saturate-150 transition active:scale-[0.96]"
+            className="group w-[calc((100%_-_32px)/5)] min-w-[calc((100%_-_32px)/5)] shrink-0 snap-start overflow-hidden rounded-[10px] border border-white/80 bg-white/35 shadow-[0_4px_12px_rgba(83,38,12,0.07),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-[14px] backdrop-saturate-150 transition active:scale-[0.96]"
           >
-            <span className="block min-h-[34px] px-2 pt-2 text-[12px] font-black leading-tight text-[#542413]">
+            <span className="flex h-10 items-start overflow-hidden px-1.5 pt-1.5 text-[5px] font-black leading-[11px] text-[#542413]">
               {category.name}
             </span>
-            <span className="relative mt-1 block aspect-square w-full overflow-hidden">
+            <span className="relative block h-16 w-full overflow-hidden">
               <Image
                 src={category.imageUrl}
                 alt={category.name}
                 fill
-                sizes="72px"
+                sizes="84px"
                 className="object-cover transition duration-200 group-hover:scale-105"
               />
             </span>
@@ -1016,12 +1008,12 @@ function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
         ))}
         <Link
           href="/category"
-          className="group flex w-[calc((100%_-_32px)/5)] min-w-[calc((100%_-_32px)/5)] shrink-0 snap-start flex-col items-center justify-center gap-2 overflow-hidden rounded-[12px] border border-white/80 bg-white/30 shadow-[0_6px_16px_rgba(83,38,12,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-[16px] transition active:scale-[0.96]"
+          className="group flex h-[104px] w-[calc((100%_-_32px)/5)] min-w-[calc((100%_-_32px)/5)] shrink-0 snap-start flex-col items-center justify-center gap-1.5 overflow-hidden rounded-[10px] border border-white/80 bg-white/30 shadow-[0_4px_12px_rgba(83,38,12,0.07),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-[14px] transition active:scale-[0.96]"
         >
-          <div className="grid h-12 w-12 place-items-center rounded-full bg-[#f0d8c2]/40">
-            <LayoutGrid className="h-6 w-6 text-[#8a6855]" strokeWidth={2.5} />
+          <div className="grid h-8 w-8 place-items-center rounded-full bg-[#f0d8c2]/40">
+            <LayoutGrid className="h-4 w-4 text-[#8a6855]" strokeWidth={2.5} />
           </div>
-          <span className="px-2 text-center text-[11px] font-black leading-tight text-[#8a6855]">
+          <span className="px-1 text-center text-[5px] font-black leading-[11px] text-[#8a6855]">
             Xem tất cả
           </span>
         </Link>

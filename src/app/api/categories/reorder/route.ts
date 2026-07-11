@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { reorderCategories } from "@/lib/db";
 
 export async function PUT(request: Request) {
@@ -14,13 +15,19 @@ export async function PUT(request: Request) {
     }
 
     await reorderCategories(
-      items.map((item: { id: string; displayOrder: number }, index: number) => ({
-        id: item.id,
-        displayOrder: Number.isFinite(item.displayOrder)
-          ? item.displayOrder
-          : index,
-      })),
+      items.map(
+        (item: { id: string; displayOrder: number }, index: number) => ({
+          id: item.id,
+          displayOrder: Number.isFinite(item.displayOrder)
+            ? item.displayOrder
+            : index,
+        }),
+      ),
     );
+
+    // Revalidate pages that display categories
+    revalidatePath("/");
+    revalidatePath("/admin/categories");
 
     return NextResponse.json({ ok: true });
   } catch (error) {

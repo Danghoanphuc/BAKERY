@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getCategoryById, updateCategory, deleteCategory } from "@/lib/db";
 
 export async function GET(
@@ -11,7 +12,7 @@ export async function GET(
     if (!category) {
       return NextResponse.json(
         { error: "Category not found" },
-        { status: 404 }
+        { status: 404 },
       );
     }
     return NextResponse.json(category);
@@ -19,7 +20,7 @@ export async function GET(
     console.error("Error fetching category:", error);
     return NextResponse.json(
       { error: "Failed to fetch category" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -32,12 +33,17 @@ export async function PUT(
     const { id } = await context.params;
     const data = await request.json();
     const category = await updateCategory(id, data);
+
+    // Revalidate pages that display categories
+    revalidatePath("/");
+    revalidatePath("/admin/categories");
+
     return NextResponse.json(category);
   } catch (error) {
     console.error("Error updating category:", error);
     return NextResponse.json(
       { error: "Failed to update category" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -49,6 +55,11 @@ export async function DELETE(
   try {
     const { id } = await context.params;
     await deleteCategory(id);
+
+    // Revalidate pages that display categories
+    revalidatePath("/");
+    revalidatePath("/admin/categories");
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting category:", error);
@@ -60,7 +71,7 @@ export async function DELETE(
     }
     return NextResponse.json(
       { error: "Failed to delete category" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

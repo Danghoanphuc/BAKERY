@@ -137,7 +137,7 @@ export function BottomSheet({
       <div
         ref={sheetRef}
         className={clsx(
-          "relative flex w-full flex-col overflow-hidden rounded-t-[22px] bg-white shadow-[0_-12px_40px_rgba(61,36,23,0.2)]",
+          "relative flex w-full flex-col overflow-hidden rounded-t-[26px] border-t border-white/80 bg-white/94 shadow-[0_-18px_46px_rgba(61,36,23,0.22),inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-[28px] backdrop-saturate-[1.5]",
           "animate-in slide-in-from-bottom-full duration-300 ease-out",
           "lg:max-h-[90vh] lg:max-w-3xl lg:rounded-[18px] lg:slide-in-from-bottom-0",
           expanded ? "max-h-[92dvh]" : "max-h-[76dvh]",
@@ -150,14 +150,14 @@ export function BottomSheet({
       >
         <button
           type="button"
-          className="flex h-7 shrink-0 touch-none items-center justify-center lg:hidden"
+          className="relative flex h-8 shrink-0 touch-none items-center justify-center bg-white/25 backdrop-blur-xl lg:hidden"
           onPointerDown={startDrag}
           onPointerMove={moveDrag}
           onPointerUp={finishDrag}
           onPointerCancel={finishDrag}
           aria-label="Kéo xuống để đóng"
         >
-          <span className="h-1 w-10 rounded-full bg-[#dbc9bd]" />
+          <span className="h-1 w-10 rounded-full bg-[#8c776b]/45 shadow-[0_1px_0_rgba(255,255,255,0.9)]" />
         </button>
 
         <h2 id={titleId} className="sr-only">
@@ -167,7 +167,7 @@ export function BottomSheet({
           type="button"
           data-sheet-close="true"
           onClick={onClose}
-          className="absolute right-3 top-9 z-20 grid h-9 w-9 place-items-center rounded-full bg-white/95 text-[#4f3022] shadow-md backdrop-blur transition active:scale-95 lg:top-3"
+          className="absolute right-3 top-9 z-20 grid h-9 w-9 place-items-center rounded-full border border-white/80 bg-white/45 text-[#4f3022] shadow-[0_6px_18px_rgba(61,36,23,0.14),inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-[18px] backdrop-saturate-150 transition active:scale-90 lg:top-3"
           aria-label="Đóng"
         >
           <X className="h-4 w-4" />
@@ -178,7 +178,7 @@ export function BottomSheet({
         </div>
 
         {footer && (
-          <div className="shrink-0 border-t border-[#f0e1d2] bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_24px_rgba(61,36,23,0.07)] lg:px-5">
+          <div className="shrink-0 border-t border-white/75 bg-white/55 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 shadow-[0_-10px_28px_rgba(61,36,23,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-[24px] backdrop-saturate-150 lg:px-5">
             {footer}
           </div>
         )}

@@ -31,7 +31,7 @@
   --color-accent-star: #e8a22b;
   --color-accent-healthy: #5c7a29;
   --color-accent-healthy-light: #789645;
-  --color-accent-pink: #d66565;
+  --color-accent-pink: #c35847;
   --color-accent-gold: #f3cf99;
 
   /* Neutral (from original, kept for compatibility) */
@@ -212,7 +212,7 @@
 }
 
 .admin-ui-frame :where(input:focus, select:focus, textarea:focus) {
-  border-color: #d85d6c;
+  border-color: #b84a39;
   box-shadow: 0 0 0 3px rgba(216, 93, 108, 0.12);
 }
 

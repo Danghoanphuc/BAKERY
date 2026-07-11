@@ -72,7 +72,7 @@ export function ProductOffers({ productTotal }: { productTotal: number }) {
 
       <div className="overflow-hidden rounded-[14px] border border-[#f0dfd4] bg-white">
         <div className="flex min-h-[58px] items-center gap-3 px-3 py-2.5">
-          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[#fff0f2] text-[#d85d6c]">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[#fff0f2] text-[#b84a39]">
             <TicketPercent className="h-4 w-4" />
           </span>
           <div className="min-w-0 flex-1">

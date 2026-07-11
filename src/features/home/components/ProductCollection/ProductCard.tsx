@@ -106,7 +106,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               <button
                 type="button"
                 onClick={() => setIsVoucherPickerOpen(true)}
-                className="shrink-0 text-[11px] font-black text-[#d85d6c]"
+                className="shrink-0 text-[11px] font-black text-[#b84a39]"
               >
                 Đổi
               </button>

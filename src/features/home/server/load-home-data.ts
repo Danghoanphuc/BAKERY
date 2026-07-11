@@ -3,7 +3,7 @@ import type { Category, Product } from "@/types";
 
 export type HomeData = {
   categories: Category[];
-  favoriteProducts: Product[];
+  products: Product[];
 };
 
 export async function loadHomeData(featuredProduct?: Product): Promise<HomeData> {
@@ -21,7 +21,7 @@ export async function loadHomeData(featuredProduct?: Product): Promise<HomeData>
 
   return {
     categories,
-    favoriteProducts: featuredProduct
+    products: featuredProduct
       ? [featuredProduct, ...curated.filter((product) => product.id !== featuredProduct.id)]
       : curated,
   };

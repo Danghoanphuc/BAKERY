@@ -28,7 +28,7 @@ function OrderSuccessContent() {
             Đặt hàng thành công!
           </h1>
           {orderNumber && (
-            <p className="mt-2 text-sm font-black text-[#d85d6c]">
+            <p className="mt-2 text-sm font-black text-[#b84a39]">
               Mã đơn hàng: {orderNumber}
             </p>
           )}
@@ -41,7 +41,7 @@ function OrderSuccessContent() {
             <button
               type="button"
               onClick={() => router.push("/account/rewards")}
-              className="flex h-12 items-center justify-center gap-2 rounded-lg bg-[#d85d6c] text-sm font-black text-white"
+              className="flex h-12 items-center justify-center gap-2 rounded-lg bg-[#b84a39] text-sm font-black text-white"
             >
               <Gift className="h-5 w-5" />
               Xem voucher của tôi

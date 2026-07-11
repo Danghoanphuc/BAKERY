@@ -19,7 +19,7 @@ export function OffersView({
             Ưu đãi gắn với số điện thoại của bạn.
           </p>
         </div>
-        <Gift className="h-6 w-6 text-[#d85d6c]" />
+        <Gift className="h-6 w-6 text-[#b84a39]" />
       </div>
 
       <div className="mt-4 space-y-2.5">

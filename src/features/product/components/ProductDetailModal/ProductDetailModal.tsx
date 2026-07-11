@@ -136,7 +136,7 @@ export function ProductDetailModal({
             className={clsx(
               "flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-[14px] px-3 text-sm font-black text-white transition active:scale-[0.98]",
               availability.canOrder
-                ? "bg-[#d85d6c] shadow-[0_8px_18px_rgba(216,93,108,0.24)] hover:bg-[#c94f60]"
+                ? "bg-[#b84a39] shadow-[0_8px_18px_rgba(184,74,57,0.24)] hover:bg-[#9e3e2f]"
                 : "cursor-not-allowed bg-[#cdbeb5]",
             )}
           >
@@ -305,7 +305,7 @@ function ProductSummary({
       <h3 className="pr-12 text-[20px] font-black leading-tight text-[#3d2417] lg:pr-0 lg:text-2xl">
         {product.name}
       </h3>
-      <p className="mt-1.5 text-xl font-black text-[#d85d6c]">
+      <p className="mt-1.5 text-xl font-black text-[#b84a39]">
         {product.sizeOptions?.length ? (
           <span className="mr-1 text-xs font-bold text-[#9b8171]">từ</span>
         ) : null}
@@ -385,9 +385,9 @@ const OptionGroup = forwardRef<
     <section ref={ref}>
       <div className="mb-2 flex items-center justify-between gap-2">
         <h4 className="text-sm font-black text-[#3d2417]">
-          {title} <span className="text-[#d85d6c]">*</span>
+          {title} <span className="text-[#b84a39]">*</span>
         </h4>
-        {error && <span className="text-[11px] font-bold text-[#c94f60]">{error}</span>}
+        {error && <span className="text-[11px] font-bold text-[#9e3e2f]">{error}</span>}
       </div>
       <div className={carousel ? "-mx-1 flex snap-x gap-2.5 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&>*]:w-[36%] [&>*]:shrink-0 [&>*]:snap-start [&::-webkit-scrollbar]:hidden" : "grid grid-cols-2 gap-2"}>{children}</div>
     </section>
@@ -414,8 +414,8 @@ function VariantOption({
         className={clsx(
           "flex aspect-square flex-col overflow-hidden rounded-[14px] border bg-white p-1.5 text-left transition",
           active
-            ? "border-[#d85d6c] ring-2 ring-[#d85d6c]/15"
-            : "border-[#eadbcc] hover:border-[#d85d6c]/50",
+            ? "border-[#b84a39] ring-2 ring-[#b84a39]/15"
+            : "border-[#eadbcc] hover:border-[#b84a39]/50",
         )}
       >
         <span className="relative min-h-0 w-full flex-1 overflow-hidden rounded-[10px] bg-[#f8eee6]">
@@ -440,8 +440,8 @@ function VariantOption({
       className={clsx(
         "relative min-h-[64px] overflow-hidden rounded-[12px] border p-2.5 text-left transition",
         active
-          ? "border-[#d85d6c] bg-[#fff4f5] ring-1 ring-[#d85d6c]/15"
-          : "border-[#eadbcc] bg-white hover:border-[#d85d6c]/50",
+          ? "border-[#b84a39] bg-[#fff4f5] ring-1 ring-[#b84a39]/15"
+          : "border-[#eadbcc] bg-white hover:border-[#b84a39]/50",
       )}
     >
       {presentation.badge && (
@@ -469,7 +469,7 @@ function VariantOption({
             </span>
           )}
           {presentation.price !== undefined && (
-            <span className="mt-1 block text-[11px] font-black text-[#d85d6c]">
+            <span className="mt-1 block text-[11px] font-black text-[#b84a39]">
               {formatPrice(presentation.price)}
             </span>
           )}
@@ -511,7 +511,7 @@ function PersonalizationSection({
             {summary || "Thêm lời chúc, tuổi hoặc số lượng nến"}
           </span>
         </span>
-        <span className="shrink-0 text-xs font-black text-[#d85d6c]">
+        <span className="shrink-0 text-xs font-black text-[#b84a39]">
           {isOpen ? "Thu gọn" : summary ? "Chỉnh sửa" : "Thêm"}
         </span>
       </button>
@@ -525,7 +525,7 @@ function PersonalizationSection({
               placeholder="Ví dụ: Chúc mừng sinh nhật"
               rows={2}
               maxLength={100}
-              className="mt-1.5 w-full resize-none rounded-[11px] border border-[#eadbcc] bg-white px-3 py-2 text-sm font-medium outline-none focus:border-[#d85d6c]"
+              className="mt-1.5 w-full resize-none rounded-[11px] border border-[#eadbcc] bg-white px-3 py-2 text-sm font-medium outline-none focus:border-[#b84a39]"
             />
           </label>
           <label className="text-xs font-black text-[#3d2417]">
@@ -539,7 +539,7 @@ function PersonalizationSection({
                 onCandlesChange(Math.min(99, Math.max(0, Number(event.target.value) || 0)))
               }
               placeholder="0"
-              className="mt-1.5 h-10 w-full rounded-[11px] border border-[#eadbcc] bg-white px-3 text-sm font-medium outline-none focus:border-[#d85d6c]"
+              className="mt-1.5 h-10 w-full rounded-[11px] border border-[#eadbcc] bg-white px-3 text-sm font-medium outline-none focus:border-[#b84a39]"
             />
           </label>
         </div>

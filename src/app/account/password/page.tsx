@@ -70,7 +70,7 @@ function PasswordPageContent() {
   if (isLoading) {
     return (
       <main className="grid min-h-screen place-items-center bg-[#fff8ef]">
-        <Loader2 className="h-6 w-6 animate-spin text-[#d85d6c]" />
+        <Loader2 className="h-6 w-6 animate-spin text-[#b84a39]" />
       </main>
     );
   }
@@ -86,7 +86,7 @@ function PasswordPageContent() {
           </p>
           <Link
             href="/profile"
-            className="flex h-12 items-center justify-center rounded-lg bg-[#d85d6c] text-sm font-black text-white"
+            className="flex h-12 items-center justify-center rounded-lg bg-[#b84a39] text-sm font-black text-white"
           >
             Về trang hồ sơ
           </Link>
@@ -111,7 +111,7 @@ function PasswordPageContent() {
         )}
 
         <div className="mb-6">
-          <div className="grid h-14 w-14 place-items-center rounded-[16px] bg-[#d85d6c] text-white">
+          <div className="grid h-14 w-14 place-items-center rounded-[16px] bg-[#b84a39] text-white">
             <KeyRound className="h-7 w-7" />
           </div>
           <h1 className="mt-4 text-[30px] font-black leading-tight">
@@ -141,7 +141,7 @@ function PasswordPageContent() {
                   onChange={(event) =>
                     setCurrentPin(sanitizePin(event.target.value))
                   }
-                  className="h-14 w-40 rounded-xl border-2 border-[#eadbcc] bg-[#fffaf6] px-3 text-center text-[28px] font-black tracking-[0.3em] outline-none focus:border-[#d85d6c]"
+                  className="h-14 w-40 rounded-xl border-2 border-[#eadbcc] bg-[#fffaf6] px-3 text-center text-[28px] font-black tracking-[0.3em] outline-none focus:border-[#b84a39]"
                 />
               </div>
             </label>

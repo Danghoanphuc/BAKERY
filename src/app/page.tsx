@@ -10,7 +10,7 @@ export default async function HomePage() {
   return (
     <BakeryHome
       categories={serializeForClient(data.categories)}
-      favoriteProducts={serializeForClient(data.favoriteProducts)}
+      products={serializeForClient(data.products)}
     />
   );
 }

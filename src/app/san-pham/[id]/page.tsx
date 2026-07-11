@@ -66,7 +66,7 @@ export default async function ProductShareEntry({ params }: ProductShareEntryPro
       />
       <BakeryHome
         categories={serializeForClient(data.categories)}
-        favoriteProducts={serializeForClient(data.favoriteProducts)}
+        products={serializeForClient(data.products)}
         initialProduct={serializeForClient(product)}
         returnToHomeOnClose
       />

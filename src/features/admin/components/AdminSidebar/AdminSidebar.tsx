@@ -110,7 +110,7 @@ export function AdminSidebar() {
             isExpanded ? "flex" : "hidden",
           )}
         >
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#d85d6c] text-sm font-black text-white shadow-[0_10px_20px_rgba(216,93,108,0.22)]">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#b84a39] text-sm font-black text-white shadow-[0_10px_20px_rgba(184,74,57,0.22)]">
             B
           </span>
           <span className="min-w-0">
@@ -126,7 +126,7 @@ export function AdminSidebar() {
         <button
           type="button"
           onClick={() => setIsExpanded((current) => !current)}
-          className="grid h-10 w-10 place-items-center rounded-2xl border border-[#eadbcc] bg-white text-[#65483a] transition hover:border-[#d85d6c]/40 hover:text-[#d85d6c]"
+          className="grid h-10 w-10 place-items-center rounded-2xl border border-[#eadbcc] bg-white text-[#65483a] transition hover:border-[#b84a39]/40 hover:text-[#b84a39]"
           aria-label={isExpanded ? "Thu gọn sidebar" : "Mở rộng sidebar"}
           title={isExpanded ? "Thu gọn" : "Mở rộng"}
         >
@@ -155,12 +155,12 @@ export function AdminSidebar() {
                     "group relative flex h-12 items-center rounded-2xl text-sm font-bold transition",
                     isExpanded ? "gap-3 px-3" : "justify-center px-0",
                     isActive
-                      ? "bg-white text-[#d85d6c] shadow-sm ring-1 ring-[#f0e1d2]"
+                      ? "bg-white text-[#b84a39] shadow-sm ring-1 ring-[#f0e1d2]"
                       : "text-[#7b6254] hover:bg-white/80 hover:text-[#3d2417]",
                   )}
                 >
                   {isActive && (
-                    <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-[#d85d6c]" />
+                    <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-[#b84a39]" />
                   )}
                   <Icon className="h-5 w-5 shrink-0" />
                   {isExpanded && <span className="truncate">{item.label}</span>}

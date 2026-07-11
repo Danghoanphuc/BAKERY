@@ -55,8 +55,8 @@ export function PosCheckoutPanel({
               className={clsx(
                 "flex h-14 flex-col items-center justify-center gap-1 rounded-xl border text-[11px] font-black transition",
                 active
-                  ? "border-[#d85d6c] bg-[#fff1f0] text-[#d85d6c]"
-                  : "border-[#eadbcc] bg-white text-[#7b6254] hover:border-[#d85d6c]/40",
+                  ? "border-[#b84a39] bg-[#fff1f0] text-[#b84a39]"
+                  : "border-[#eadbcc] bg-white text-[#7b6254] hover:border-[#b84a39]/40",
               )}
             >
               <Icon className="h-4 w-4" />
@@ -79,7 +79,7 @@ export function PosCheckoutPanel({
         )}
         <div className="flex items-center justify-between text-xl font-black text-[#3d2417]">
           <span>Tổng tiền</span>
-          <span className="text-[#d85d6c]">{formatCurrency(finalTotal)}</span>
+          <span className="text-[#b84a39]">{formatCurrency(finalTotal)}</span>
         </div>
       </div>
 
@@ -87,7 +87,7 @@ export function PosCheckoutPanel({
         type="button"
         onClick={onSubmit}
         disabled={!canSubmit || isSubmitting}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#d85d6c] text-sm font-black text-white shadow-[0_10px_22px_rgba(216,93,108,0.25)] transition hover:bg-[#c94f60] disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#b84a39] text-sm font-black text-white shadow-[0_10px_22px_rgba(184,74,57,0.25)] transition hover:bg-[#9e3e2f] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isSubmitting ? (
           <RefreshCw className="h-4 w-4 animate-spin" />

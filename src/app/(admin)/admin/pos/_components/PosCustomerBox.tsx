@@ -62,7 +62,7 @@ export function PosCustomerBox({
       <section className="rounded-2xl border border-[#eadbcc] bg-[#fffaf6] p-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex min-w-0 gap-3">
-            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-[#d85d6c] shadow-sm">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white text-[#b84a39] shadow-sm">
               <UserRound className="h-5 w-5" />
             </span>
             <div className="min-w-0">
@@ -73,7 +73,7 @@ export function PosCustomerBox({
                 {customer.phone}
               </p>
               <div className="mt-2 flex flex-wrap gap-1.5 text-[11px] font-black">
-                <span className="rounded-full bg-white px-2 py-1 text-[#d85d6c]">
+                <span className="rounded-full bg-white px-2 py-1 text-[#b84a39]">
                   {customer.loyaltyPoints ?? 0} điểm
                 </span>
                 <span className="rounded-full bg-white px-2 py-1 text-[#7b6254]">
@@ -93,7 +93,7 @@ export function PosCustomerBox({
               setQuery("");
               onCustomerChange({ name: "", phone: "" });
             }}
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#9b8171] transition hover:bg-white hover:text-[#d85d6c]"
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#9b8171] transition hover:bg-white hover:text-[#b84a39]"
             aria-label="Bỏ khách"
           >
             <X className="h-4 w-4" />
@@ -125,10 +125,10 @@ export function PosCustomerBox({
             });
           }}
           placeholder="SĐT hoặc tên khách"
-          className="h-11 w-full rounded-xl border border-[#eadbcc] bg-[#fffaf6] pl-10 pr-10 text-sm font-bold text-[#3d2417] outline-none focus:border-[#d85d6c]"
+          className="h-11 w-full rounded-xl border border-[#eadbcc] bg-[#fffaf6] pl-10 pr-10 text-sm font-bold text-[#3d2417] outline-none focus:border-[#b84a39]"
         />
         {isLoading && (
-          <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-[#d85d6c]" />
+          <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-[#b84a39]" />
         )}
       </label>
       <p className="text-xs font-semibold text-[#9b8171]">{helperText}</p>
@@ -154,7 +154,7 @@ export function PosCustomerBox({
                   {item.phone}
                 </span>
               </span>
-              <span className="shrink-0 rounded-full bg-[#fff1f0] px-2 py-1 text-[11px] font-black text-[#d85d6c]">
+              <span className="shrink-0 rounded-full bg-[#fff1f0] px-2 py-1 text-[11px] font-black text-[#b84a39]">
                 {item.loyaltyPoints ?? 0} điểm
               </span>
             </button>

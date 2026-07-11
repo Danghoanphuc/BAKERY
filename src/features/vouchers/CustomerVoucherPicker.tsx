@@ -96,7 +96,7 @@ export function CustomerVoucherPicker({
                 key={voucher.id}
                 type="button"
                 onClick={() => selectVoucher(voucher)}
-                className="flex w-full gap-3 rounded-[14px] border border-[#f0d8b8] bg-[#fffaf0] p-3 text-left transition hover:border-[#d85d6c] hover:bg-[#fff7f2]"
+                className="flex w-full gap-3 rounded-[14px] border border-[#f0d8b8] bg-[#fffaf0] p-3 text-left transition hover:border-[#b84a39] hover:bg-[#fff7f2]"
               >
                 <span className="grid h-11 w-11 shrink-0 place-items-center rounded-[11px] bg-[#ffc845] text-[#74351f]">
                   <TicketPercent className="h-5 w-5" />
@@ -106,7 +106,7 @@ export function CustomerVoucherPicker({
                     <span className="truncate text-sm font-black text-[#3d2417]">
                       {voucher.title}
                     </span>
-                    <span className="shrink-0 rounded bg-white px-2 py-0.5 text-[10px] font-black text-[#d85d6c]">
+                    <span className="shrink-0 rounded bg-white px-2 py-0.5 text-[10px] font-black text-[#b84a39]">
                       {voucher.code}
                     </span>
                   </span>
@@ -135,7 +135,7 @@ function VoucherEligibility({
 }) {
   const pricing = calculateVoucherPricing(subtotal, voucher);
   return (
-    <span className="mt-1 block text-[11px] font-black text-[#b94355]">
+    <span className="mt-1 block text-[11px] font-black text-[#9e3e2f]">
       {pricing.isEligible
         ? `Tiết kiệm ${formatPrice(pricing.discountAmount)}`
         : `Cần thêm ${formatPrice(Math.max(0, (voucher.minOrderValue ?? 0) - subtotal))}`}

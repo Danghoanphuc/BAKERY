@@ -444,7 +444,7 @@ export default function AccountPage() {
                   onClick={() => openAddressModal()}
                   className="flex w-full items-center gap-3 rounded-[14px] border border-dashed border-[#d8bda9] bg-[#fffaf6] p-3 text-left"
                 >
-                  <MapPin className="h-5 w-5 shrink-0 text-[#d85d6c]" />
+                  <MapPin className="h-5 w-5 shrink-0 text-[#b84a39]" />
                   <span>
                     <span className="block text-[13px] font-black">
                       Chưa có địa chỉ giao bánh
@@ -515,7 +515,7 @@ export default function AccountPage() {
           <button
             type="submit"
             disabled={isSaving}
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-[#d85d6c] text-[15px] font-black text-white shadow-[0_8px_16px_rgba(216,93,108,0.22)] disabled:opacity-70"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-[#b84a39] text-[15px] font-black text-white shadow-[0_8px_16px_rgba(184,74,57,0.22)] disabled:opacity-70"
           >
             {isSaving ? (
               <Loader2 className="h-5 w-5 animate-spin" />
@@ -550,7 +550,7 @@ function AddressCard({
   return (
     <div className="rounded-[14px] border border-[#edd8ca] bg-[#fffaf6] p-3">
       <div className="flex items-start gap-3">
-        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-[#d85d6c] ring-1 ring-[#f0d8ca]">
+        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-[#b84a39] ring-1 ring-[#f0d8ca]">
           <MapPin className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
@@ -625,7 +625,7 @@ function Field({
         placeholder={placeholder}
         required={required}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-1 h-11 w-full rounded-[12px] border border-[#edd8ca] bg-[#fffaf6] px-3 text-[14px] font-semibold outline-none focus:border-[#d85d6c]"
+        className="mt-1 h-11 w-full rounded-[12px] border border-[#edd8ca] bg-[#fffaf6] px-3 text-[14px] font-semibold outline-none focus:border-[#b84a39]"
       />
     </label>
   );
@@ -647,7 +647,7 @@ function TextArea({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         rows={3}
-        className="mt-1 w-full resize-none rounded-[12px] border border-[#edd8ca] bg-[#fffaf6] px-3 py-2 text-[14px] font-semibold outline-none focus:border-[#d85d6c]"
+        className="mt-1 w-full resize-none rounded-[12px] border border-[#edd8ca] bg-[#fffaf6] px-3 py-2 text-[14px] font-semibold outline-none focus:border-[#b84a39]"
       />
     </label>
   );

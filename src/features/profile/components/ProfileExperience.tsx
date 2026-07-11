@@ -206,16 +206,16 @@ function MemberCard({
             </span>
           </p>
           <div className="mt-2.5 flex items-end gap-1.5">
-            <span className="text-[32px] font-black leading-none text-[#d85d6c]">
+            <span className="text-[32px] font-black leading-none text-[#b84a39]">
               {formatNumber(rewards.points.current)}
             </span>
-            <span className="pb-0.5 text-[14px] font-bold text-[#d85d6c]">
+            <span className="pb-0.5 text-[14px] font-bold text-[#b84a39]">
               điểm
             </span>
           </div>
           <Link
             href="/rewards"
-            className="mt-4 flex h-10 items-center justify-center gap-1.5 rounded-[12px] bg-[#d85d6c] px-2.5 text-[14px] font-black text-white shadow-[0_6px_14px_rgba(216,93,108,0.25)]"
+            className="mt-4 flex h-10 items-center justify-center gap-1.5 rounded-[12px] bg-[#b84a39] px-2.5 text-[14px] font-black text-white shadow-[0_6px_14px_rgba(184,74,57,0.25)]"
           >
             Đổi Voucher Ngay
             <span className="text-lg leading-none">→</span>
@@ -303,7 +303,7 @@ function GiftBanner({
             ? "Mở kho ưu đãi đã cá nhân hóa cho bạn"
             : "Thêm ngày sinh để mở khóa quà sinh nhật"}
         </p>
-        <span className="mt-3 inline-flex h-8 items-center gap-1.5 rounded-[11px] bg-[#d85d6c] px-4 text-[12px] font-black text-white">
+        <span className="mt-3 inline-flex h-8 items-center gap-1.5 rounded-[11px] bg-[#b84a39] px-4 text-[12px] font-black text-white">
           {hasBirthday ? "Xem ngay" : "Cập nhật"}
           <span className="text-lg leading-none">→</span>
         </span>

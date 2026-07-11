@@ -71,7 +71,7 @@ function StatCard({
       ? "bg-red-50 text-red-700 ring-red-100"
       : tone === "warn"
         ? "bg-amber-50 text-amber-700 ring-amber-100"
-        : "bg-white text-[#d85d6c] ring-[#f0e1d2]";
+        : "bg-white text-[#b84a39] ring-[#f0e1d2]";
 
   return (
     <div className="rounded-3xl border border-[#f0e1d2] bg-[#fffaf6] p-4 shadow-[0_14px_34px_rgba(61,36,23,0.06)]">

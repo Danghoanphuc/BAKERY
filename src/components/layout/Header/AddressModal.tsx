@@ -209,7 +209,7 @@ export const AddressModal: React.FC<AddressModalProps> = ({
         });
         const marker = new window.goongjs.Marker({
           draggable: true,
-          color: "#d85d6c",
+          color: "#b84a39",
         })
           .setLngLat([coords.lng, coords.lat])
           .addTo(map);
@@ -380,7 +380,7 @@ export const AddressModal: React.FC<AddressModalProps> = ({
         value={searchTerm}
         onChange={(event) => setSearchTerm(event.target.value)}
         placeholder="Nhập số nhà, tên đường, quận..."
-        className="h-11 w-full rounded-[14px] border border-[#eadbcc] bg-white pl-10 pr-3 text-sm font-semibold outline-none focus:border-[#d85d6c] focus:ring-2 focus:ring-[#d85d6c]/15"
+        className="h-11 w-full rounded-[14px] border border-[#eadbcc] bg-white pl-10 pr-3 text-sm font-semibold outline-none focus:border-[#b84a39] focus:ring-2 focus:ring-[#b84a39]/15"
       />
     </div>
   );
@@ -390,7 +390,7 @@ export const AddressModal: React.FC<AddressModalProps> = ({
       <button type="button" onClick={handleCancel} className="h-11 flex-1 rounded-[14px] border border-[#eadbcc] bg-white text-sm font-black text-[#3d2417]">
         Hủy
       </button>
-      <button type="button" onClick={handleConfirm} disabled={!isFormValid} className="h-11 flex-1 rounded-[14px] bg-[#d85d6c] text-sm font-black text-white shadow-[0_8px_18px_rgba(216,93,108,0.20)] disabled:cursor-not-allowed disabled:bg-[#d8c8bd]">
+      <button type="button" onClick={handleConfirm} disabled={!isFormValid} className="h-11 flex-1 rounded-[14px] bg-[#b84a39] text-sm font-black text-white shadow-[0_8px_18px_rgba(184,74,57,0.20)] disabled:cursor-not-allowed disabled:bg-[#d8c8bd]">
         Lưu địa chỉ
       </button>
     </div>
@@ -416,7 +416,7 @@ export const AddressModal: React.FC<AddressModalProps> = ({
                   onClick={() => selectPrediction(prediction)}
                   className="flex w-full gap-3 border-b border-[#f5eadf] px-3 py-3 text-left last:border-b-0 hover:bg-[#fff8ef]"
                 >
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#d85d6c]" />
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#b84a39]" />
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-black text-[#3d2417]">
                       {prediction.structured_formatting?.main_text ||

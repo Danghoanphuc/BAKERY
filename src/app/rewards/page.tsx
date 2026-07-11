@@ -108,11 +108,11 @@ function RewardsContent() {
       <section className="mx-auto w-full max-w-[520px] px-4 pt-6">
         <div className="rounded-lg border border-[#f0e1d2] bg-white p-5 shadow-[0_14px_30px_rgba(83,38,12,0.08)]">
           <div className="flex items-start gap-3">
-            <span className="grid h-12 w-12 place-items-center rounded-[14px] bg-[#d85d6c] text-white">
+            <span className="grid h-12 w-12 place-items-center rounded-[14px] bg-[#b84a39] text-white">
               <Gift className="h-6 w-6" />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-black uppercase text-[#d85d6c]">
+              <p className="text-xs font-black uppercase text-[#b84a39]">
                 Voucher công khai
               </p>
               <h1 className="mt-1 text-[28px] font-black leading-tight">
@@ -153,7 +153,7 @@ function RewardsContent() {
             <button
               type="button"
               onClick={() => router.push("/account/rewards")}
-              className="mt-4 h-11 rounded-lg bg-[#d85d6c] px-5 text-sm font-black text-white"
+              className="mt-4 h-11 rounded-lg bg-[#b84a39] px-5 text-sm font-black text-white"
             >
               Mở kho voucher của tôi
             </button>
@@ -222,11 +222,11 @@ function VoucherCard({
       }`}
     >
       <div className="flex">
-        <div className="grid w-24 place-items-center bg-[#d85d6c] text-white">
+        <div className="grid w-24 place-items-center bg-[#b84a39] text-white">
           <TicketPercent className="h-9 w-9" />
         </div>
         <div className="min-w-0 flex-1 p-4">
-          <p className="text-xs font-black uppercase text-[#d85d6c]">
+          <p className="text-xs font-black uppercase text-[#b84a39]">
             {voucher.code}
           </p>
           <h2 className="mt-1 text-lg font-black leading-tight">
@@ -238,7 +238,7 @@ function VoucherCard({
           <button
             type="button"
             onClick={onUse}
-            className="mt-3 h-10 rounded-lg bg-[#d85d6c] px-4 text-sm font-black text-white"
+            className="mt-3 h-10 rounded-lg bg-[#b84a39] px-4 text-sm font-black text-white"
           >
             Sử dụng ngay
           </button>
@@ -320,7 +320,7 @@ function ModeButton({
       onClick={onClick}
       className="flex items-start gap-3 rounded-lg border border-[#eadbcc] bg-[#fffaf6] p-3 text-left transition active:scale-[0.99]"
     >
-      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white text-[#d85d6c]">
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-white text-[#b84a39]">
         {icon}
       </span>
       <span>
@@ -347,7 +347,7 @@ function PosVoucherModal({
   return (
     <div className="fixed inset-0 z-[130] flex items-center justify-center bg-[#fff8ef] p-4">
       <div className="w-full max-w-sm rounded-lg border border-[#f0e1d2] bg-white p-5 text-center shadow-xl">
-        <div className="mx-auto grid h-14 w-14 place-items-center rounded-[16px] bg-[#d85d6c] text-white">
+        <div className="mx-auto grid h-14 w-14 place-items-center rounded-[16px] bg-[#b84a39] text-white">
           <QrCode className="h-8 w-8" />
         </div>
         <h2 className="mt-4 text-xl font-black text-[#3d2417]">

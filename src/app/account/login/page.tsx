@@ -105,7 +105,7 @@ function AccountLoginContent() {
     <main className="min-h-screen bg-[#fff8ef] px-4 py-8 text-[#3d2417]">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] w-full max-w-[430px] flex-col justify-center">
         <div className="mb-6">
-          <div className="grid h-14 w-14 place-items-center rounded-[16px] bg-[#d85d6c] text-white shadow-[0_12px_24px_rgba(216,93,108,0.24)]">
+          <div className="grid h-14 w-14 place-items-center rounded-[16px] bg-[#b84a39] text-white shadow-[0_12px_24px_rgba(184,74,57,0.24)]">
             <Phone className="h-7 w-7" />
           </div>
           <h1 className="mt-4 text-[30px] font-black leading-tight">
@@ -144,7 +144,7 @@ function AccountLoginContent() {
                   onChange={(event) =>
                     setPhone(sanitizePhone(event.target.value))
                   }
-                  className="h-14 w-full rounded-xl border-2 border-[#eadbcc] bg-[#fffaf6] px-4 text-[16px] font-bold outline-none focus:border-[#d85d6c] transition-colors"
+                  className="h-14 w-full rounded-xl border-2 border-[#eadbcc] bg-[#fffaf6] px-4 text-[16px] font-bold outline-none focus:border-[#b84a39] transition-colors"
                   placeholder="Ví dụ: 0901234567"
                 />
               </label>
@@ -159,7 +159,7 @@ function AccountLoginContent() {
 
               <button
                 type="submit"
-                className="mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#d85d6c] text-[15px] font-black text-white shadow-[0_8px_16px_rgba(216,93,108,0.2)] disabled:opacity-70 transition-all active:scale-[0.98]"
+                className="mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#b84a39] text-[15px] font-black text-white shadow-[0_8px_16px_rgba(184,74,57,0.2)] disabled:opacity-70 transition-all active:scale-[0.98]"
                 disabled={isSubmitting}
               >
                 {isSubmitting ? (
@@ -186,14 +186,14 @@ function AccountLoginContent() {
                   onChange={(event) =>
                     setPhone(sanitizePhone(event.target.value))
                   }
-                  className="h-14 w-full rounded-xl border-2 border-[#eadbcc] bg-[#fffaf6] px-4 text-[16px] font-bold outline-none focus:border-[#d85d6c] transition-colors"
+                  className="h-14 w-full rounded-xl border-2 border-[#eadbcc] bg-[#fffaf6] px-4 text-[16px] font-bold outline-none focus:border-[#b84a39] transition-colors"
                   placeholder="Ví dụ: 0901234567"
                 />
               </label>
 
               <button
                 type="submit"
-                className="mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#d85d6c] text-[15px] font-black text-white shadow-[0_8px_16px_rgba(216,93,108,0.2)] disabled:opacity-70 transition-all active:scale-[0.98]"
+                className="mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#b84a39] text-[15px] font-black text-white shadow-[0_8px_16px_rgba(184,74,57,0.2)] disabled:opacity-70 transition-all active:scale-[0.98]"
                 disabled={isSubmitting}
               >
                 {isSubmitting && <Loader2 className="h-5 w-5 animate-spin" />}
@@ -214,7 +214,7 @@ function AccountLoginContent() {
         <div className="mt-6 grid gap-2 text-center text-[14px] font-bold text-[#7b6254]">
           <Link
             href="/account/register"
-            className="inline-flex items-center justify-center gap-1 hover:text-[#d85d6c] transition-colors"
+            className="inline-flex items-center justify-center gap-1 hover:text-[#b84a39] transition-colors"
           >
             Chưa có tài khoản? Đăng ký ngay <ArrowRight className="h-4 w-4" />
           </Link>
@@ -254,7 +254,7 @@ function PinField({
           key={index}
           className={`relative flex h-14 flex-1 items-center justify-center rounded-xl border-2 bg-[#fffaf6] transition-all ${
             isActive
-              ? "border-[#d85d6c] shadow-[0_0_0_3px_rgba(216,93,108,0.15)]"
+              ? "border-[#b84a39] shadow-[0_0_0_3px_rgba(184,74,57,0.15)]"
               : "border-[#eadbcc] text-[#3d2417]"
           }`}
         >
@@ -262,7 +262,7 @@ function PinField({
             <span className="h-3.5 w-3.5 rounded-full bg-current"></span>
           ) : (
             isActive && (
-              <span className="h-6 w-[2px] bg-[#d85d6c] animate-blink"></span>
+              <span className="h-6 w-[2px] bg-[#b84a39] animate-blink"></span>
             )
           )}
         </div>
@@ -279,7 +279,7 @@ function PinField({
         <button
           type="button"
           onClick={onForgotPin}
-          className="text-[12px] font-bold text-[#d85d6c] hover:underline"
+          className="text-[12px] font-bold text-[#b84a39] hover:underline"
         >
           Quên mã PIN?
         </button>

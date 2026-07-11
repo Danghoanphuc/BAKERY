@@ -108,7 +108,7 @@ export default function AdminDashboard() {
       <section className="overflow-hidden rounded-3xl border border-[#f0e1d2] bg-[#fffaf6] shadow-[0_18px_42px_rgba(61,36,23,0.08)]">
         <div className="grid gap-5 p-5 lg:grid-cols-[1fr_auto] lg:items-center lg:p-6">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-black text-[#d85d6c] ring-1 ring-[#f0e1d2]">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-black text-[#b84a39] ring-1 ring-[#f0e1d2]">
               <Sparkles className="h-3.5 w-3.5" />
               Bakery Operations
             </div>
@@ -123,7 +123,7 @@ export default function AdminDashboard() {
 
           <Link
             href="/admin/pos"
-            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#d85d6c] px-5 text-sm font-black text-white shadow-[0_16px_28px_rgba(216,93,108,0.24)] transition hover:bg-[#c94c5c]"
+            className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#b84a39] px-5 text-sm font-black text-white shadow-[0_16px_28px_rgba(184,74,57,0.24)] transition hover:bg-[#c94c5c]"
           >
             Mở POS
             <ArrowRight className="h-4 w-4" />
@@ -147,10 +147,10 @@ export default function AdminDashboard() {
               className="group rounded-3xl border border-[#f0e1d2] bg-[#fffaf6] p-5 shadow-[0_14px_34px_rgba(61,36,23,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_20px_42px_rgba(61,36,23,0.10)]"
             >
               <div className="flex items-start justify-between gap-3">
-                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-[#d85d6c] shadow-sm ring-1 ring-[#f0e1d2]">
+                <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-[#b84a39] shadow-sm ring-1 ring-[#f0e1d2]">
                   <Icon className="h-5 w-5" />
                 </span>
-                <ArrowRight className="h-4 w-4 text-[#c5aa99] transition group-hover:translate-x-1 group-hover:text-[#d85d6c]" />
+                <ArrowRight className="h-4 w-4 text-[#c5aa99] transition group-hover:translate-x-1 group-hover:text-[#b84a39]" />
               </div>
               <p className="mt-5 text-sm font-bold text-[#7b6254]">{stat.label}</p>
               <p className="mt-1 text-3xl font-black text-[#3d2417]">
@@ -221,10 +221,10 @@ function QuickAction({
   return (
     <Link
       href={href}
-      className="flex min-h-24 items-center justify-between gap-3 rounded-2xl border border-[#f0e1d2] bg-white px-4 py-3 text-left font-black text-[#3d2417] transition hover:border-[#d85d6c]/40 hover:bg-[#fff1f0]"
+      className="flex min-h-24 items-center justify-between gap-3 rounded-2xl border border-[#f0e1d2] bg-white px-4 py-3 text-left font-black text-[#3d2417] transition hover:border-[#b84a39]/40 hover:bg-[#fff1f0]"
     >
       <span className="flex items-center gap-3">
-        <span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#fff1f0] text-[#d85d6c]">
+        <span className="grid h-10 w-10 place-items-center rounded-2xl bg-[#fff1f0] text-[#b84a39]">
           {icon}
         </span>
         {label}

@@ -49,7 +49,7 @@ export function VoucherUseModeSheet({
       <div className="w-full max-w-md rounded-t-2xl bg-white shadow-xl sm:rounded-2xl">
         <div className="flex items-start justify-between gap-3 border-b border-[#f0e1d2] px-4 py-3">
           <div>
-            <p className="text-xs font-black uppercase text-[#d85d6c]">
+            <p className="text-xs font-black uppercase text-[#b84a39]">
               {voucher.code}
             </p>
             <h2 className="mt-1 text-base font-black text-[#3d2417]">
@@ -78,7 +78,7 @@ export function VoucherUseModeSheet({
                 type="button"
                 disabled={disabled}
                 onClick={() => onSelect(voucher, option.id)}
-                className="w-full rounded-xl border border-[#f0d8b8] bg-[#fffaf0] px-3 py-3 text-left transition hover:border-[#d85d6c] hover:bg-[#fff7f2] disabled:cursor-not-allowed disabled:opacity-45"
+                className="w-full rounded-xl border border-[#f0d8b8] bg-[#fffaf0] px-3 py-3 text-left transition hover:border-[#b84a39] hover:bg-[#fff7f2] disabled:cursor-not-allowed disabled:opacity-45"
               >
                 <span className="block text-sm font-black text-[#3d2417]">
                   {option.title}

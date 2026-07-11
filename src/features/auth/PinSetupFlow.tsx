@@ -57,7 +57,7 @@ export default function PinSetupFlow({
               isError
                 ? "border-red-500 bg-red-50 text-red-600"
                 : isActive
-                  ? "border-[#d85d6c] shadow-[0_0_0_3px_rgba(216,93,108,0.15)]"
+                  ? "border-[#b84a39] shadow-[0_0_0_3px_rgba(184,74,57,0.15)]"
                   : "border-[#eadbcc] text-[#3d2417]"
             }
           `}
@@ -68,7 +68,7 @@ export default function PinSetupFlow({
           ) : (
             /* Nếu chưa có ký tự và đang Active, hiển thị con trỏ nhấp nháy */
             isActive && (
-              <span className="h-6 w-[2px] bg-[#d85d6c] animate-blink"></span>
+              <span className="h-6 w-[2px] bg-[#b84a39] animate-blink"></span>
             )
           )}
         </div>

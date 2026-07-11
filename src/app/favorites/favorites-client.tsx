@@ -80,7 +80,7 @@ export function FavoritesClient({ products }: { products: Product[] }) {
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div className="text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#d85d6c]">
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#b84a39]">
               Bộ sưu tập
             </p>
             <h1 className="text-xl font-black text-[#3d2417]">Yêu thích</h1>
@@ -96,7 +96,7 @@ export function FavoritesClient({ products }: { products: Product[] }) {
 
         <section className="mb-5 rounded-[18px] border border-[#f0dfcc] bg-white p-4 shadow-sm">
           <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-full bg-[#fff0f2] text-[#d85d6c]">
+            <span className="grid h-11 w-11 place-items-center rounded-full bg-[#fff0f2] text-[#b84a39]">
               <Heart className="h-5 w-5 fill-current" />
             </span>
             <div className="min-w-0 flex-1">
@@ -168,7 +168,7 @@ function FavoriteProductCard({
             alt={product.name}
             className="object-cover"
           />
-          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-[10px] font-black text-[#d85d6c] shadow-sm">
+          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-[10px] font-black text-[#b84a39] shadow-sm">
             <Sparkles className="h-3 w-3" />
             Đã lưu
           </span>
@@ -177,7 +177,7 @@ function FavoriteProductCard({
           <h2 className="line-clamp-2 min-h-[36px] text-[13px] font-bold leading-tight text-[#3d2417]">
             {product.name}
           </h2>
-          <p className="mt-2 text-[14px] font-black text-[#d85d6c]">
+          <p className="mt-2 text-[14px] font-black text-[#b84a39]">
             {formatPrice(product.price)}
           </p>
         </div>
@@ -187,7 +187,7 @@ function FavoriteProductCard({
         <button
           type="button"
           onClick={onOpen}
-          className="flex h-9 flex-1 items-center justify-center rounded-full bg-[#d85d6c] text-xs font-black text-white shadow-sm transition active:scale-95"
+          className="flex h-9 flex-1 items-center justify-center rounded-full bg-[#b84a39] text-xs font-black text-white shadow-sm transition active:scale-95"
         >
           Thêm vào giỏ
         </button>
@@ -207,7 +207,7 @@ function FavoriteProductCard({
 function EmptyFavorites() {
   return (
     <section className="flex min-h-[360px] flex-col items-center justify-center rounded-[22px] border border-dashed border-[#e8d5c5] bg-white px-6 text-center">
-      <span className="grid h-16 w-16 place-items-center rounded-full bg-[#fff0f2] text-[#d85d6c]">
+      <span className="grid h-16 w-16 place-items-center rounded-full bg-[#fff0f2] text-[#b84a39]">
         <Heart className="h-8 w-8" />
       </span>
       <h2 className="mt-4 text-lg font-black text-[#3d2417]">

@@ -77,7 +77,7 @@ export default function CartPage() {
           <CartHeader title="Giỏ hàng" onBack={() => router.back()} />
 
           <section className="flex flex-1 flex-col items-center justify-center text-center">
-            <div className="grid h-24 w-24 place-items-center rounded-full bg-[#fff0e9] text-[#d85d6c] shadow-inner">
+            <div className="grid h-24 w-24 place-items-center rounded-full bg-[#fff0e9] text-[#b84a39] shadow-inner">
               <ShoppingBag className="h-11 w-11" />
             </div>
             <h1 className="mt-5 text-[24px] font-black tracking-[0]">
@@ -88,7 +88,7 @@ export default function CartPage() {
             </p>
             <Link
               href="/"
-              className="mt-6 inline-flex h-12 items-center justify-center rounded-[14px] bg-[#d85d6c] px-6 text-[15px] font-black text-white shadow-[0_8px_16px_rgba(216,93,108,0.24)]"
+              className="mt-6 inline-flex h-12 items-center justify-center rounded-[14px] bg-[#b84a39] px-6 text-[15px] font-black text-white shadow-[0_8px_16px_rgba(184,74,57,0.24)]"
             >
               Tiếp tục mua sắm
             </Link>
@@ -159,7 +159,7 @@ export default function CartPage() {
 
                     <div className="mt-3 flex items-end justify-between gap-3">
                       <div>
-                        <p className="text-[16px] font-black text-[#d85d6c]">
+                        <p className="text-[16px] font-black text-[#b84a39]">
                           {formatPrice(item.price)}
                         </p>
                         <p className="mt-0.5 text-[11px] font-semibold text-text-muted">
@@ -368,7 +368,7 @@ function QuantityStepper({
       <button
         type="button"
         onClick={onIncrease}
-        className="grid h-8 w-8 place-items-center rounded-full bg-[#d85d6c] text-white shadow-sm transition active:scale-95"
+        className="grid h-8 w-8 place-items-center rounded-full bg-[#b84a39] text-white shadow-sm transition active:scale-95"
         aria-label="Tăng số lượng"
       >
         <Plus className="h-4 w-4" />
@@ -457,7 +457,7 @@ function CheckoutSummary({
           )}
           <div className="flex items-center justify-between border-t border-[#f0dfd4] pt-3">
             <span className="text-[15px] font-black">Tổng cộng</span>
-            <span className="text-[22px] font-black text-[#d85d6c]">
+            <span className="text-[22px] font-black text-[#b84a39]">
               {formatPrice(finalTotal)}
             </span>
           </div>
@@ -466,7 +466,7 @@ function CheckoutSummary({
         <button
           type="button"
           onClick={onCheckout}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-[15px] bg-[#d85d6c] text-[15px] font-black text-white shadow-[0_8px_18px_rgba(216,93,108,0.26)] transition active:scale-[0.99]"
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-[15px] bg-[#b84a39] text-[15px] font-black text-white shadow-[0_8px_18px_rgba(184,74,57,0.26)] transition active:scale-[0.99]"
         >
           <CakeSlice className="h-5 w-5" />
           {isPickup ? "Đặt để đến lấy" : "Đặt giao tận nơi"} ({totalQuantity}{" "}

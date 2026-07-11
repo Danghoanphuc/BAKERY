@@ -169,7 +169,7 @@ export function PosVoucherBox({
               onApplyVoucher(toSelectedVoucher(bestVoucher));
               onVoucherCodeChange(bestVoucher.voucher.code);
             }}
-            className="inline-flex items-center gap-1 rounded-full bg-[#fff1f0] px-2.5 py-1 text-xs font-black text-[#d85d6c]"
+            className="inline-flex items-center gap-1 rounded-full bg-[#fff1f0] px-2.5 py-1 text-xs font-black text-[#b84a39]"
           >
             <BadgeCheck className="h-3.5 w-3.5" />
             Áp tốt nhất
@@ -191,14 +191,14 @@ export function PosVoucherBox({
               }
             }}
             placeholder="Nhập mã"
-            className="h-10 w-full rounded-xl border border-[#eadbcc] bg-[#fffaf6] pl-10 pr-3 text-sm font-bold text-[#3d2417] outline-none focus:border-[#d85d6c]"
+            className="h-10 w-full rounded-xl border border-[#eadbcc] bg-[#fffaf6] pl-10 pr-3 text-sm font-bold text-[#3d2417] outline-none focus:border-[#b84a39]"
           />
         </label>
         <button
           type="button"
           onClick={() => previewAndApply({ code: voucherCode })}
           disabled={isLoading || subtotal <= 0}
-          className="h-10 rounded-xl bg-[#d85d6c] px-3 text-sm font-black text-white transition hover:bg-[#c94f60] disabled:opacity-50"
+          className="h-10 rounded-xl bg-[#b84a39] px-3 text-sm font-black text-white transition hover:bg-[#9e3e2f] disabled:opacity-50"
         >
           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Áp"}
         </button>
@@ -217,9 +217,9 @@ export function PosVoucherBox({
             }
           }}
           placeholder="Quét QR voucher tại đây"
-          className="h-10 w-full rounded-xl border border-dashed border-[#e6b8ac] bg-white pl-10 pr-10 text-sm font-bold text-[#3d2417] outline-none focus:border-[#d85d6c]"
+          className="h-10 w-full rounded-xl border border-dashed border-[#e6b8ac] bg-white pl-10 pr-10 text-sm font-bold text-[#3d2417] outline-none focus:border-[#b84a39]"
         />
-        <QrCode className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#d85d6c]" />
+        <QrCode className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#b84a39]" />
       </label>
 
       {(selectedVoucher || message) && (
@@ -227,7 +227,7 @@ export function PosVoucherBox({
           {selectedVoucher ? (
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="truncate font-black text-[#d85d6c]">
+                <p className="truncate font-black text-[#b84a39]">
                   {selectedVoucher.code}
                 </p>
                 <p className="truncate">{selectedVoucher.title}</p>
@@ -236,7 +236,7 @@ export function PosVoucherBox({
               <button
                 type="button"
                 onClick={onClearVoucher}
-                className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[#d85d6c] hover:bg-white"
+                className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[#b84a39] hover:bg-white"
                 aria-label="Bỏ voucher"
               >
                 <X className="h-4 w-4" />
@@ -262,9 +262,9 @@ export function PosVoucherBox({
                   setMessage(preview.reason ?? "Voucher chưa đủ điều kiện.");
                 }
               }}
-              className="min-w-[150px] rounded-xl border border-[#eadbcc] bg-white px-3 py-2 text-left transition hover:border-[#d85d6c]/50"
+              className="min-w-[150px] rounded-xl border border-[#eadbcc] bg-white px-3 py-2 text-left transition hover:border-[#b84a39]/50"
             >
-              <p className="truncate text-xs font-black text-[#d85d6c]">
+              <p className="truncate text-xs font-black text-[#b84a39]">
                 {preview.voucher.code}
               </p>
               <p className="mt-0.5 truncate text-xs font-bold text-[#3d2417]">

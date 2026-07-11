@@ -41,7 +41,7 @@ export function PosCartPanel({
           <button
             type="button"
             onClick={onClear}
-            className="grid h-9 w-9 place-items-center rounded-full text-[#9b8171] transition hover:bg-[#fff1f0] hover:text-[#d85d6c]"
+            className="grid h-9 w-9 place-items-center rounded-full text-[#9b8171] transition hover:bg-[#fff1f0] hover:text-[#b84a39]"
             aria-label="Xoá giỏ hàng"
             title="Xoá giỏ hàng"
           >
@@ -56,7 +56,7 @@ export function PosCartPanel({
             <p className="text-xs font-black uppercase tracking-[0.12em] text-[#9b8171]">
               Đơn tạm giữ
             </p>
-            <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-black text-[#d85d6c] ring-1 ring-[#f0e1d2]">
+            <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-black text-[#b84a39] ring-1 ring-[#f0e1d2]">
               {heldOrders.length}
             </span>
           </div>
@@ -66,7 +66,7 @@ export function PosCartPanel({
                 key={order.id}
                 type="button"
                 onClick={() => onRestoreHeldOrder(order)}
-                className="shrink-0 rounded-xl border border-[#eadbcc] bg-white px-3 py-2 text-left transition hover:border-[#d85d6c]/50 hover:shadow-sm"
+                className="shrink-0 rounded-xl border border-[#eadbcc] bg-white px-3 py-2 text-left transition hover:border-[#b84a39]/50 hover:shadow-sm"
               >
                 <p className="max-w-32 truncate text-xs font-black text-[#3d2417]">
                   {order.customer.name || "Khách lẻ"}
@@ -105,7 +105,7 @@ export function PosCartPanel({
                     {item.productName}
                   </p>
                   <ItemMeta item={item} />
-                  <p className="mt-1 text-sm font-black text-[#d85d6c]">
+                  <p className="mt-1 text-sm font-black text-[#b84a39]">
                     {formatCurrency(item.price * item.quantity)}
                   </p>
                 </div>
@@ -137,7 +137,7 @@ export function PosCartPanel({
                   <button
                     type="button"
                     onClick={() => onRemoveItem(item.cartItemId)}
-                    className="grid h-7 w-7 place-items-center rounded-full text-[#9b8171] transition hover:bg-white hover:text-[#d85d6c]"
+                    className="grid h-7 w-7 place-items-center rounded-full text-[#9b8171] transition hover:bg-white hover:text-[#b84a39]"
                     aria-label="Xoá món"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -154,7 +154,7 @@ export function PosCartPanel({
           type="button"
           onClick={onHoldOrder}
           disabled={items.length === 0}
-          className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#eadbcc] bg-[#fffaf6] text-sm font-black text-[#3d2417] transition hover:border-[#d85d6c]/40 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-[#eadbcc] bg-[#fffaf6] text-sm font-black text-[#3d2417] transition hover:border-[#b84a39]/40 hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           <PauseCircle className="h-4 w-4" />
           Giữ đơn hiện tại

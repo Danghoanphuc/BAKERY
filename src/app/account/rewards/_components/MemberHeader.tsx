@@ -207,7 +207,7 @@ function PosCustomerVoucherModal({
   return (
     <div className="fixed inset-0 z-[150] flex items-center justify-center bg-[#fff8ef] p-4">
       <div className="w-full max-w-sm rounded-2xl border border-[#f0e1d2] bg-white p-5 text-center shadow-xl">
-        <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#d85d6c] text-white">
+        <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-[#b84a39] text-white">
           <QrCode className="h-8 w-8" />
         </div>
         <h2 className="mt-4 text-xl font-black text-[#3d2417]">

@@ -309,7 +309,7 @@ export function SearchExperience({
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div className="text-center">
-              <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#d85d6c]">
+              <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#b84a39]">
                 Tìm nhanh
               </p>
               <h1 className="text-xl font-black text-[#3d2417]">Chọn bánh</h1>
@@ -321,7 +321,7 @@ export function SearchExperience({
             >
               <ShoppingCart className="h-5 w-5" />
               {totalQuantity > 0 && (
-                <span className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-[#d85d6c] text-[10px] font-black text-white">
+                <span className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-[#b84a39] text-[10px] font-black text-white">
                   {totalQuantity}
                 </span>
               )}
@@ -364,7 +364,7 @@ export function SearchExperience({
                     className={clsx(
                       "h-8 rounded-full border px-3 text-xs font-bold transition",
                       active
-                        ? "border-[#d85d6c] bg-[#d85d6c] text-white"
+                        ? "border-[#b84a39] bg-[#b84a39] text-white"
                         : "border-[#eadbcc] bg-white text-[#7b6254]",
                     )}
                   >
@@ -573,7 +573,7 @@ function SearchProductCard({
           onClick={onToggleFavorite}
           className={clsx(
             "absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-white/95 shadow-sm transition active:scale-95",
-            isFavorite ? "text-[#d85d6c]" : "text-[#c99b9b]",
+            isFavorite ? "text-[#b84a39]" : "text-[#c99b9b]",
           )}
           aria-label={isFavorite ? "Bỏ yêu thích" : "Thêm yêu thích"}
         >
@@ -610,7 +610,7 @@ function SearchProductCard({
           </div>
         )}
         <div className="mt-2 flex items-center justify-between gap-2">
-          <p className="truncate text-[14px] font-black text-[#d85d6c]">
+          <p className="truncate text-[14px] font-black text-[#b84a39]">
             {formatPrice(product.price)}
           </p>
           <span className="rounded-full bg-[#fff4ec] px-2 py-1 text-[10px] font-bold text-[#8c5a42]">
@@ -677,7 +677,7 @@ function NoResults({
 
   return (
     <section className="mt-8 rounded-[22px] border border-dashed border-[#e8d5c5] bg-white px-6 py-12 text-center">
-      <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#fff4ec] text-[#d85d6c]">
+      <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#fff4ec] text-[#b84a39]">
         <Search className="h-7 w-7" />
       </span>
       <h2 className="mt-4 text-lg font-black text-[#3d2417]">
@@ -713,7 +713,7 @@ function NoResults({
 function SectionTitle({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="grid h-7 w-7 place-items-center rounded-full bg-[#fff0f2] text-[#d85d6c]">
+      <span className="grid h-7 w-7 place-items-center rounded-full bg-[#fff0f2] text-[#b84a39]">
         {icon}
       </span>
       <h2 className="text-base font-black text-[#3d2417]">{title}</h2>

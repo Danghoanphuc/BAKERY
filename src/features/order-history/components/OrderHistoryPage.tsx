@@ -175,7 +175,7 @@ export default function OrderHistoryPage() {
         {activeOrders.length > 0 && (
           <section className="mt-3 rounded-[18px] border border-[#f0d8c2] bg-[#fff3df] p-3 shadow-sm">
             <div className="flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-[#e85e69] text-white">
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-[#c35847] text-white">
                 <Clock3 className="h-5 w-5" />
               </span>
               <div className="min-w-0 flex-1">
@@ -274,7 +274,7 @@ function OrderCard({
               {order.fulfillmentLabel} · {order.itemCount} sản phẩm
             </p>
             <div className="mt-2 flex items-center gap-2">
-              <span className="text-base font-black text-[#e85e69]">
+              <span className="text-base font-black text-[#c35847]">
                 {formatPrice(order.totalAmount).replace(" ", "")}
               </span>
               {order.pointsEarned > 0 && order.status !== "cancelled" && (
@@ -298,7 +298,7 @@ function OrderCard({
         <button
           type="button"
           onClick={onPrimaryAction}
-          className="flex h-9 flex-1 items-center justify-center gap-1 rounded-full bg-[#e85e69] text-xs font-black text-white"
+          className="flex h-9 flex-1 items-center justify-center gap-1 rounded-full bg-[#c35847] text-xs font-black text-white"
         >
           {order.action === "buy-again" && <RotateCw className="h-3.5 w-3.5" />}
           {order.action === "pay" && <CreditCard className="h-3.5 w-3.5" />}
@@ -390,7 +390,7 @@ function OrderDetailSheet({
                     </p>
                   )}
                 </div>
-                <span className="text-sm font-black text-[#e85e69]">
+                <span className="text-sm font-black text-[#c35847]">
                   {formatPrice(item.price * item.quantity).replace(" ", "")}
                 </span>
               </div>
@@ -427,7 +427,7 @@ function OrderDetailSheet({
             <button
               type="button"
               onClick={onPay}
-              className="h-11 flex-1 rounded-full bg-[#e85e69] text-sm font-black text-white"
+              className="h-11 flex-1 rounded-full bg-[#c35847] text-sm font-black text-white"
             >
               Thanh toán tiếp
             </button>
@@ -464,7 +464,7 @@ function OrderProgress({ order }: { order: OrderHistoryViewItem }) {
             className={clsx(
               "h-1.5 rounded-full",
               index <= activeIndex && order.status !== "cancelled"
-                ? "bg-[#e85e69]"
+                ? "bg-[#c35847]"
                 : "bg-[#eadbcc]",
             )}
           />
@@ -489,7 +489,7 @@ function PriceRow({
       <span className={clsx("font-semibold text-[#9b715b]", isTotal && "text-[#542413] font-black")}>
         {label}
       </span>
-      <span className={clsx("font-black", isTotal ? "text-[#e85e69]" : "text-[#542413]")}>
+      <span className={clsx("font-black", isTotal ? "text-[#c35847]" : "text-[#542413]")}>
         {value < 0 ? "-" : ""}
         {formatPrice(Math.abs(value)).replace(" ", "")}
       </span>
@@ -523,7 +523,7 @@ function OrderSkeletonList() {
 function EmptyState({ query }: { query: string }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-[22px] border border-dashed border-[#eadbcc] bg-white px-6 py-14 text-center">
-      <span className="grid h-16 w-16 place-items-center rounded-full bg-[#fff3df] text-[#d85d6c]">
+      <span className="grid h-16 w-16 place-items-center rounded-full bg-[#fff3df] text-[#b84a39]">
         <ShoppingBag className="h-8 w-8" />
       </span>
       <h2 className="mt-4 text-lg font-black text-[#542413]">
@@ -536,7 +536,7 @@ function EmptyState({ query }: { query: string }) {
       </p>
       <Link
         href="/search"
-        className="mt-5 rounded-full bg-[#e85e69] px-5 py-3 text-sm font-black text-white"
+        className="mt-5 rounded-full bg-[#c35847] px-5 py-3 text-sm font-black text-white"
       >
         Đặt món ngay
       </Link>

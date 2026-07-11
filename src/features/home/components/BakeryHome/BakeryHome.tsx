@@ -38,6 +38,8 @@ import type { SelectableCustomerVoucher } from "@/features/vouchers/customer-vou
 import { formatPrice } from "@/lib/utils";
 import type { Product } from "@/types/product";
 import type { Category } from "@/types/category";
+import { useHomeRecommendations } from "../../recommendations/use-home-recommendations";
+import type { HomeRecommendationGroup } from "../../recommendations/home-recommendations";
 
 import {
   defaultCategoryVisuals,
@@ -82,7 +84,7 @@ const homeSearchIntentSuggestions = [
 
 interface BakeryHomeProps {
   categories: Category[];
-  favoriteProducts: Product[];
+  products: Product[];
   initialProduct?: Product;
   returnToHomeOnClose?: boolean;
 }
@@ -97,7 +99,7 @@ interface HomeProfileSummary {
 
 export function BakeryHome({
   categories,
-  favoriteProducts,
+  products,
   initialProduct,
   returnToHomeOnClose = false,
 }: BakeryHomeProps) {
@@ -131,13 +133,19 @@ export function BakeryHome({
 
   const visibleFavoriteProducts = useMemo(
     () =>
-      favoriteProducts.filter((product) =>
+      products.filter((product) =>
         config.deliveryMode === "pickup"
           ? product.availableForPickup !== false
           : product.availableForDelivery !== false,
       ),
-    [config.deliveryMode, favoriteProducts],
+    [config.deliveryMode, products],
   );
+
+  const recommendationGroups = useHomeRecommendations({
+    products: visibleFavoriteProducts,
+    favoriteIds,
+    isAuthenticated: profileSummary.isAuthenticated,
+  });
 
   useEffect(() => {
     try {
@@ -272,7 +280,8 @@ export function BakeryHome({
       <div className="pointer-events-none fixed inset-x-0 top-0 h-[360px] bg-[radial-gradient(circle_at_top_left,#fff2dc,transparent_42%),linear-gradient(180deg,#fff8ec_0%,#fffaf5_75%)]" />
 
       <div className="relative mx-auto min-h-screen w-full max-w-[480px] px-4 pb-28">
-        <div className="sticky top-0 z-40 -mx-4 bg-[#fffaf5]/95 px-4 pb-2 pt-1 backdrop-blur">
+        <div className="sticky top-0 z-40 -mx-4 overflow-visible border-b border-white/65 bg-white/[0.26] px-4 pb-2 pt-2 shadow-[0_10px_28px_rgba(83,38,12,0.07),inset_0_-1px_0_rgba(255,255,255,0.7)] backdrop-blur-[26px] backdrop-brightness-[1.06] backdrop-saturate-[1.7]">
+          <span className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(155deg,rgba(255,255,255,0.62),rgba(255,255,255,0.12)_58%,rgba(184,74,57,0.05))]" />
           <HomeHeader
             cartCount={totalQuantity}
             address={deliveryAddress}
@@ -295,8 +304,8 @@ export function BakeryHome({
           isProfileLoading={isProfileLoading}
         />
         <CategoryStrip categories={categoryVisuals} />
-        <FavoriteSection
-          products={visibleFavoriteProducts}
+        <RecommendationSections
+          groups={recommendationGroups}
           favoriteIds={favoriteIds}
           onToggleFavorite={toggleFavorite}
           onProductClick={setSelectedProduct}
@@ -358,10 +367,10 @@ function HomeHeader({
           </h1>
         </div>
 
-        <div className="flex shrink-0 items-center gap-3">
+        <div className="flex shrink-0 items-center gap-2">
           <Link
             href="/favorites"
-            className="relative text-[#542413]"
+            className="relative grid h-10 w-10 place-items-center rounded-full border border-white/70 bg-white/35 text-[#542413] shadow-[0_5px_14px_rgba(83,38,12,0.09),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-xl transition active:scale-90"
             aria-label="Yêu thích"
           >
             <Heart className="h-7 w-7" strokeWidth={1.8} />
@@ -374,7 +383,7 @@ function HomeHeader({
 
           <Link
             href="/cart"
-            className="relative text-[#542413]"
+            className="relative grid h-10 w-10 place-items-center rounded-full border border-white/70 bg-white/35 text-[#542413] shadow-[0_5px_14px_rgba(83,38,12,0.09),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-xl transition active:scale-90"
             aria-label="Giỏ hàng"
           >
             <ShoppingCart className="h-8 w-8" strokeWidth={1.8} />
@@ -725,10 +734,10 @@ function SearchPill({
       <form
         onSubmit={handleSubmit}
         className={clsx(
-          "relative z-[82] flex h-10 items-center gap-2.5 rounded-full border bg-white px-3.5 shadow-[0_2px_10px_rgba(139,75,31,0.04)] transition",
+          "relative z-[82] flex h-11 items-center gap-2.5 overflow-hidden rounded-full border bg-white/[0.34] px-3.5 shadow-[0_6px_18px_rgba(83,38,12,0.09),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-[20px] backdrop-saturate-[1.6] transition-all duration-300",
           isOpen
-            ? "border-[#b84a39] shadow-[0_8px_20px_rgba(184,74,57,0.14)]"
-            : "border-[#f0e3d3]",
+            ? "border-white/90 bg-white/55 shadow-[0_10px_26px_rgba(184,74,57,0.16),0_0_0_2px_rgba(184,74,57,0.1),inset_0_1px_0_white]"
+            : "border-white/75",
         )}
       >
         <Search
@@ -764,14 +773,14 @@ function SearchPill({
         <button
           type="button"
           aria-label="Đóng gợi ý tìm kiếm"
-          className="fixed inset-0 z-[70] cursor-default bg-transparent"
+          className="fixed inset-0 z-[70] cursor-default bg-[#3d2417]/10 backdrop-blur-[2px]"
           onClick={() => setIsOpen(false)}
         />
       )}
 
       <div
         className={clsx(
-          "absolute left-0 right-0 top-[56px] z-[81] max-h-[70vh] overflow-y-auto rounded-[22px] border border-[#f0e3d3] bg-white shadow-[0_18px_36px_rgba(83,38,12,0.14)] transition-all duration-150",
+          "absolute left-0 right-0 top-[58px] z-[81] max-h-[70vh] overflow-y-auto rounded-[23px] border border-white/90 bg-[#fffaf6]/95 shadow-[0_20px_42px_rgba(83,38,12,0.2),inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-[32px] backdrop-saturate-[1.35] transition-all duration-200",
           isOpen
             ? "pointer-events-auto translate-y-0 opacity-100"
             : "pointer-events-none -translate-y-1 opacity-0",
@@ -989,7 +998,7 @@ function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
           <Link
             key={`${category.name}-${index}`}
             href={category.href}
-            className="group w-[calc((100%_-_32px)/5)] min-w-[calc((100%_-_32px)/5)] shrink-0 snap-start overflow-hidden rounded-[10px] border border-[#f0d8c2] bg-[#fff7ed] shadow-sm transition active:scale-[0.98]"
+            className="group w-[calc((100%_-_32px)/5)] min-w-[calc((100%_-_32px)/5)] shrink-0 snap-start overflow-hidden rounded-[12px] border border-white/80 bg-white/35 shadow-[0_6px_16px_rgba(83,38,12,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-[16px] backdrop-saturate-150 transition active:scale-[0.96]"
           >
             <span className="block min-h-[34px] px-2 pt-2 text-[12px] font-black leading-tight text-[#542413]">
               {category.name}
@@ -1007,7 +1016,7 @@ function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
         ))}
         <Link
           href="/category"
-          className="group flex w-[calc((100%_-_32px)/5)] min-w-[calc((100%_-_32px)/5)] shrink-0 snap-start flex-col items-center justify-center gap-2 overflow-hidden rounded-[10px] border-2 border-dashed border-[#e0c4a8] bg-gradient-to-br from-[#fffbf5] to-[#fff7ed] shadow-sm transition hover:border-[#d4b394] hover:from-[#fff9f0] hover:to-[#fff3e4] active:scale-[0.98]"
+          className="group flex w-[calc((100%_-_32px)/5)] min-w-[calc((100%_-_32px)/5)] shrink-0 snap-start flex-col items-center justify-center gap-2 overflow-hidden rounded-[12px] border border-white/80 bg-white/30 shadow-[0_6px_16px_rgba(83,38,12,0.08),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-[16px] transition active:scale-[0.96]"
         >
           <div className="grid h-12 w-12 place-items-center rounded-full bg-[#f0d8c2]/40">
             <LayoutGrid className="h-6 w-6 text-[#8a6855]" strokeWidth={2.5} />
@@ -1071,54 +1080,65 @@ function FeaturedPromo() {
   );
 }
 
-function FavoriteSection({
-  products,
+function RecommendationSections({
+  groups,
   favoriteIds,
   onToggleFavorite,
   onProductClick,
   onQuickAdd,
 }: {
-  products: Product[];
+  groups: HomeRecommendationGroup[];
   favoriteIds: string[];
   onToggleFavorite: (productId: string) => void;
   onProductClick: (product: Product) => void;
   onQuickAdd: (product: Product) => void;
 }) {
   return (
-    <section className="pt-6">
-      <SectionHeader
-        title={
-          <span className="flex items-center gap-1">
-            Gợi ý dành cho bạn <Sparkles className="h-4 w-4 text-[#d9a263]" />
-          </span>
-        }
-        href="/search"
-        action="Xem tất cả"
-      />
-      <div className="mt-3 grid grid-cols-3 items-start gap-2.5">
-        {products.map((product) => (
-          <ProductMiniCard
-            key={product.id}
-            product={product}
-            isFavorite={favoriteIds.includes(product.id)}
-            onToggleFavorite={() => onToggleFavorite(product.id)}
-            onClick={() => onProductClick(product)}
-            onQuickAdd={() => onQuickAdd(product)}
+    <div className="space-y-7 pt-6">
+      {groups.map((group) => (
+        <section key={group.key}>
+          <SectionHeader
+            title={
+              <span className="flex items-center gap-1.5">
+                {group.title}
+                {group.key === "timely" && (
+                  <Sparkles className="h-4 w-4 text-[#d9a263]" />
+                )}
+              </span>
+            }
+            description={group.description}
+            href="/search"
+            action="Xem tất cả"
           />
-        ))}
-      </div>
-    </section>
+          <div className="mt-3 grid grid-cols-3 items-start gap-2.5">
+            {group.products.map((product) => (
+              <ProductMiniCard
+                key={product.id}
+                product={product}
+                reason={group.productReason}
+                isFavorite={favoriteIds.includes(product.id)}
+                onToggleFavorite={() => onToggleFavorite(product.id)}
+                onClick={() => onProductClick(product)}
+                onQuickAdd={() => onQuickAdd(product)}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
   );
 }
 
 function ProductMiniCard({
   product,
+  reason,
   isFavorite,
   onToggleFavorite,
   onClick,
   onQuickAdd,
 }: {
   product: Product;
+  reason?: string;
   isFavorite: boolean;
   onToggleFavorite: () => void;
   onClick: () => void;
@@ -1165,6 +1185,11 @@ function ProductMiniCard({
           <h3 className="line-clamp-2 min-h-[32px] text-[12px] font-semibold leading-tight text-[#542413]">
             {product.name}
           </h3>
+          {reason && (
+            <span className="mt-1 block truncate text-[8px] font-bold text-[#9b715b]">
+              {reason}
+            </span>
+          )}
           <div className="mt-2 pr-7">
             <span className="block w-full whitespace-nowrap text-[9px] font-black leading-tight text-[#c35847]">
               {formatPrice(product.price).replace(" ", "")}
@@ -1186,16 +1211,25 @@ function ProductMiniCard({
 
 function SectionHeader({
   title,
+  description,
   action,
   href,
 }: {
   title: ReactNode;
+  description?: string;
   action: string;
   href: string;
 }) {
   return (
-    <div className="flex items-center justify-between">
-      <h2 className="text-[17px] font-bold text-text-primary">{title}</h2>
+    <div className="flex items-end justify-between gap-3">
+      <div className="min-w-0">
+        <h2 className="text-[17px] font-bold text-text-primary">{title}</h2>
+        {description && (
+          <p className="mt-0.5 truncate text-[10px] font-medium text-text-muted">
+            {description}
+          </p>
+        )}
+      </div>
       <Link
         href={href}
         className="flex items-center gap-0.5 text-[11px] font-medium text-text-muted"

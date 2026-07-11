@@ -281,7 +281,7 @@ export default function CheckoutPage() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#d85d6c]">
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#b84a39]">
               {isPickup ? "Tự đến lấy" : "Giao tận nơi"}
             </p>
             <h1 className="text-xl font-black text-[#3d2417]">Thanh toán</h1>
@@ -370,7 +370,7 @@ export default function CheckoutPage() {
 
           <section className="rounded-[20px] border border-[#f0dfcc] bg-white p-4 shadow-sm">
             <div className="flex items-start gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-[#fff4ec] text-[#d85d6c]">
+              <span className="grid h-10 w-10 place-items-center rounded-full bg-[#fff4ec] text-[#b84a39]">
                 {isPickup ? <Clock3 className="h-5 w-5" /> : <MapPin className="h-5 w-5" />}
               </span>
               <div className="min-w-0 flex-1">
@@ -382,7 +382,7 @@ export default function CheckoutPage() {
                     <button
                       type="button"
                       onClick={() => setIsAddressModalOpen(true)}
-                      className="inline-flex h-8 shrink-0 items-center gap-1 rounded-[10px] bg-[#fff1f0] px-2.5 text-xs font-black text-[#d85d6c]"
+                      className="inline-flex h-8 shrink-0 items-center gap-1 rounded-[10px] bg-[#fff1f0] px-2.5 text-xs font-black text-[#b84a39]"
                     >
                       <LocateFixed className="h-3.5 w-3.5" />
                       Chỉnh vị trí
@@ -402,7 +402,7 @@ export default function CheckoutPage() {
               value={formData.notes}
               onChange={(event) => setFormData({ ...formData, notes: event.target.value })}
               rows={3}
-              className="mt-3 w-full resize-none rounded-[14px] border border-[#eadbcc] px-3 py-2 text-sm outline-none focus:border-[#d85d6c] focus:ring-2 focus:ring-[#d85d6c]/15"
+              className="mt-3 w-full resize-none rounded-[14px] border border-[#eadbcc] px-3 py-2 text-sm outline-none focus:border-[#b84a39] focus:ring-2 focus:ring-[#b84a39]/15"
               placeholder={
                 isPickup
                   ? "Ví dụ: Tôi muốn nhận bánh lúc 17:30"
@@ -413,7 +413,7 @@ export default function CheckoutPage() {
 
           <section className="rounded-[20px] border border-[#f0dfcc] bg-white p-4 shadow-sm">
             <h2 className="mb-3 flex items-center gap-2 text-base font-black text-[#3d2417]">
-              <ShoppingBag className="h-5 w-5 text-[#d85d6c]" />
+              <ShoppingBag className="h-5 w-5 text-[#b84a39]" />
               Đơn hàng
             </h2>
             <div className="space-y-3">
@@ -458,7 +458,7 @@ export default function CheckoutPage() {
                 <span className="text-base font-black text-[#3d2417]">
                   Tổng cộng
                 </span>
-                <span className="text-2xl font-black text-[#d85d6c]">
+                <span className="text-2xl font-black text-[#b84a39]">
                   {formatPrice(finalTotal)}
                 </span>
               </div>
@@ -490,7 +490,7 @@ export default function CheckoutPage() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="h-12 w-full rounded-[16px] bg-[#d85d6c] text-[15px] font-black text-white shadow-[0_8px_18px_rgba(216,93,108,0.26)] transition active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-[#d8c8bd]"
+            className="h-12 w-full rounded-[16px] bg-[#b84a39] text-[15px] font-black text-white shadow-[0_8px_18px_rgba(184,74,57,0.26)] transition active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-[#d8c8bd]"
           >
             {isSubmitting
               ? "Đang xử lý..."
@@ -523,10 +523,10 @@ function PostOrderPinSetup({
     <main className="grid min-h-screen place-items-center bg-[#fff8ef] px-4 py-8 text-[#3d2417]">
       <section className="w-full max-w-[440px] rounded-[24px] border border-[#f0e1d2] bg-white p-5 shadow-[0_18px_50px_rgba(83,38,12,0.12)]">
         <div className="text-center">
-          <span className="mx-auto grid h-14 w-14 place-items-center rounded-[16px] bg-[#d85d6c] text-white">
+          <span className="mx-auto grid h-14 w-14 place-items-center rounded-[16px] bg-[#b84a39] text-white">
             <KeyRound className="h-7 w-7" />
           </span>
-          <p className="mt-4 text-xs font-black uppercase tracking-[0.08em] text-[#d85d6c]">
+          <p className="mt-4 text-xs font-black uppercase tracking-[0.08em] text-[#b84a39]">
             Đã tạo đơn #{orderNumber}
           </p>
           <h1 className="mt-1 text-2xl font-black">Tạo mã PIN đăng nhập</h1>
@@ -589,7 +589,7 @@ function Field({
         required={required}
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-1 h-11 w-full rounded-[14px] border border-[#eadbcc] px-3 text-sm outline-none focus:border-[#d85d6c] focus:ring-2 focus:ring-[#d85d6c]/15"
+        className="mt-1 h-11 w-full rounded-[14px] border border-[#eadbcc] px-3 text-sm outline-none focus:border-[#b84a39] focus:ring-2 focus:ring-[#b84a39]/15"
       />
     </label>
   );
@@ -614,13 +614,13 @@ function PaymentMethodButton({
       onClick={onClick}
       className={`flex items-center gap-3 rounded-[16px] border p-3 text-left transition ${
         active
-          ? "border-[#d85d6c] bg-[#fff1f0]"
-          : "border-[#eadbcc] bg-[#fffaf6] hover:border-[#d85d6c]/40"
+          ? "border-[#b84a39] bg-[#fff1f0]"
+          : "border-[#eadbcc] bg-[#fffaf6] hover:border-[#b84a39]/40"
       }`}
     >
       <span
         className={`grid h-11 w-11 shrink-0 place-items-center rounded-[14px] ${
-          active ? "bg-white text-[#d85d6c]" : "bg-white text-[#7b6254]"
+          active ? "bg-white text-[#b84a39]" : "bg-white text-[#7b6254]"
         }`}
       >
         {icon}

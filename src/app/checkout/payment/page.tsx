@@ -195,7 +195,7 @@ function CheckoutPaymentContent() {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="text-center leading-tight">
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#d85d6c]">
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#b84a39]">
               Thanh toán chuyển khoản
             </p>
             <h1 className="text-lg font-black text-[#3d2417]">
@@ -236,7 +236,7 @@ function CheckoutPaymentContent() {
                   ? "grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[#2f8a45] text-white shadow-[0_14px_30px_rgba(47,138,69,0.24)]"
                   : isCancelled
                     ? "grid h-14 w-14 shrink-0 place-items-center rounded-full bg-white text-[#8a6f5b] shadow-sm"
-                    : "grid h-14 w-14 shrink-0 place-items-center rounded-full bg-white text-[#d85d6c] shadow-sm"
+                    : "grid h-14 w-14 shrink-0 place-items-center rounded-full bg-white text-[#b84a39] shadow-sm"
               }
             >
               {isPaid ? (
@@ -364,7 +364,7 @@ function CheckoutPaymentContent() {
                   type="button"
                   onClick={checkPayment}
                   disabled={isChecking || isPaid}
-                  className="flex h-11 items-center justify-center gap-2 rounded-[14px] bg-[#d85d6c] text-sm font-black text-white shadow-[0_8px_18px_rgba(216,93,108,0.24)] disabled:cursor-not-allowed disabled:bg-[#d8c8bd]"
+                  className="flex h-11 items-center justify-center gap-2 rounded-[14px] bg-[#b84a39] text-sm font-black text-white shadow-[0_8px_18px_rgba(184,74,57,0.24)] disabled:cursor-not-allowed disabled:bg-[#d8c8bd]"
                 >
                   <RefreshCcw
                     className={`h-4 w-4 ${isChecking ? "animate-spin" : ""}`}
@@ -403,7 +403,7 @@ function PaymentInfoRow({
       <span
         className={
           highlight
-            ? "mt-1 block truncate text-lg font-black text-[#d85d6c]"
+            ? "mt-1 block truncate text-lg font-black text-[#b84a39]"
             : "mt-1 block truncate text-sm font-black text-[#3d2417]"
         }
       >

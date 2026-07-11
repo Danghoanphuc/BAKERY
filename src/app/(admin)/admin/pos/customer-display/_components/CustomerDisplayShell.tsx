@@ -120,7 +120,7 @@ function HeroPanel({
           "absolute inset-0",
           isPaymentSuccess
             ? "bg-[linear-gradient(140deg,#f7fff4_0%,#eff9e9_44%,#fff4df_100%)]"
-            : "bg-[radial-gradient(circle_at_20%_10%,rgba(255,241,240,0.18),transparent_34%),linear-gradient(145deg,rgba(216,93,108,0.32),transparent_46%)]",
+            : "bg-[radial-gradient(circle_at_20%_10%,rgba(255,241,240,0.18),transparent_34%),linear-gradient(145deg,rgba(184,74,57,0.32),transparent_46%)]",
         )}
       />
       {isPaymentSuccess && <SuccessConfetti />}
@@ -134,7 +134,7 @@ function HeroPanel({
           <div className="absolute inset-0 bg-gradient-to-br from-[#3d2417]/70 via-[#3d2417]/48 to-[#3d2417]/76" />
         </div>
       ) : !isPaymentSuccess ? (
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,#4a2b1c_0%,#7a3f32_46%,#d85d6c_100%)] opacity-80" />
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,#4a2b1c_0%,#7a3f32_46%,#b84a39_100%)] opacity-80" />
       ) : null}
 
       <div className="relative z-10 flex items-center justify-between gap-4">
@@ -142,7 +142,7 @@ function HeroPanel({
           <span
             className={clsx(
               "grid h-14 w-14 place-items-center rounded-3xl bg-white text-xl font-black shadow-2xl",
-              isPaymentSuccess ? "text-[#2f8a45]" : "text-[#d85d6c]",
+              isPaymentSuccess ? "text-[#2f8a45]" : "text-[#b84a39]",
             )}
           >
             B
@@ -304,11 +304,11 @@ function SuccessConfetti() {
   const pieces = [
     "left-[8%] top-[18%] h-3 w-8 rotate-12 bg-[#f8d78d]",
     "left-[18%] top-[34%] h-2 w-6 -rotate-12 bg-[#82cf91]",
-    "left-[35%] top-[14%] h-2 w-7 rotate-45 bg-[#d85d6c]",
+    "left-[35%] top-[14%] h-2 w-7 rotate-45 bg-[#b84a39]",
     "left-[54%] top-[25%] h-3 w-3 rotate-12 rounded-full bg-[#2f8a45]",
     "left-[72%] top-[16%] h-2 w-8 -rotate-45 bg-[#f8d78d]",
     "left-[86%] top-[38%] h-3 w-6 rotate-12 bg-[#82cf91]",
-    "left-[62%] top-[76%] h-2 w-7 rotate-45 bg-[#d85d6c]",
+    "left-[62%] top-[76%] h-2 w-7 rotate-45 bg-[#b84a39]",
     "left-[24%] top-[78%] h-3 w-3 rounded-full bg-[#2f8a45]",
   ];
 
@@ -337,7 +337,7 @@ function HeroPaymentQr({
   return (
     <div className="grid max-w-2xl items-center gap-6 rounded-[2rem] bg-white/94 p-5 text-[#3d2417] shadow-[0_24px_70px_rgba(0,0,0,0.24)] ring-1 ring-white/60 backdrop-blur sm:grid-cols-[minmax(0,1fr)_240px] md:p-6">
       <div className="min-w-0">
-        <p className="text-sm font-black uppercase tracking-[0.16em] text-[#d85d6c]">
+        <p className="text-sm font-black uppercase tracking-[0.16em] text-[#b84a39]">
           Thanh toán QR / CK
         </p>
         <h1 className="mt-3 text-4xl font-black leading-none tracking-normal text-[#3d2417] md:text-5xl">
@@ -387,13 +387,13 @@ function OrderPanel({
     <section className="flex min-h-screen flex-col bg-[#fffaf6] p-6 text-[#3d2417] lg:p-8">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-black uppercase tracking-[0.16em] text-[#d85d6c]">
+          <p className="text-sm font-black uppercase tracking-[0.16em] text-[#b84a39]">
             {statusLabel}
           </p>
           {snapshot.customerName ? (
             <h2 className="mt-1 text-3xl font-black leading-tight">
               Xin chào{" "}
-              <span className="font-dancing-script text-5xl uppercase leading-none text-[#d85d6c]">
+              <span className="font-dancing-script text-5xl uppercase leading-none text-[#b84a39]">
                 {snapshot.customerName.toUpperCase()}
               </span>
             </h2>
@@ -475,7 +475,7 @@ function DisplayLineItem({
             {details.join(" / ")}
           </p>
         )}
-        <p className="mt-2 text-sm font-black text-[#d85d6c]">
+        <p className="mt-2 text-sm font-black text-[#b84a39]">
           {formatCurrency(item.price)} x {item.quantity}
         </p>
       </div>
@@ -502,7 +502,7 @@ function Totals({ snapshot }: { snapshot: PosDisplaySnapshot }) {
           <>
             <TotalRow label="Voucher" value={-snapshot.discountAmount} accent />
             {snapshot.voucher && (
-              <div className="rounded-2xl bg-[#fff1f0] px-4 py-3 text-sm font-black text-[#d85d6c]">
+              <div className="rounded-2xl bg-[#fff1f0] px-4 py-3 text-sm font-black text-[#b84a39]">
                 Đã áp dụng {snapshot.voucher.code} - {snapshot.voucher.title}
               </div>
             )}
@@ -554,7 +554,7 @@ function TotalRow({
     <div
       className={clsx(
         "flex items-center justify-between",
-        accent && "text-[#d85d6c]",
+        accent && "text-[#b84a39]",
       )}
     >
       <span>{label}</span>
@@ -567,7 +567,7 @@ function IdleOrderCard() {
   return (
     <div className="grid h-full place-items-center p-8 text-center">
       <div>
-        <div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-[#fff1f0] text-[#d85d6c]">
+        <div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-[#fff1f0] text-[#b84a39]">
           <ReceiptText className="h-9 w-9" />
         </div>
         <h3 className="mt-5 text-2xl font-black">Đơn hàng sẽ hiển thị tại đây</h3>

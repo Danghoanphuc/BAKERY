@@ -89,7 +89,7 @@ export default function RegisterPage() {
                 setError(null);
                 setStep((prev) => (prev - 1) as 1 | 2);
               }}
-              className="flex items-center gap-1 text-[14px] font-bold text-[#7b6254] hover:text-[#d85d6c] transition-colors"
+              className="flex items-center gap-1 text-[14px] font-bold text-[#7b6254] hover:text-[#b84a39] transition-colors"
             >
               <ArrowLeft className="h-4 w-4" /> Quay lại
             </button>
@@ -97,7 +97,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="mb-6">
-          <div className="grid h-14 w-14 place-items-center rounded-[16px] bg-[#d85d6c] text-white shadow-[0_12px_24px_rgba(216,93,108,0.24)] transition-transform">
+          <div className="grid h-14 w-14 place-items-center rounded-[16px] bg-[#b84a39] text-white shadow-[0_12px_24px_rgba(184,74,57,0.24)] transition-transform">
             <Gift className="h-7 w-7" />
           </div>
           <h1 className="mt-5 text-[28px] font-black leading-tight animate-in fade-in slide-in-from-bottom-2">
@@ -115,7 +115,7 @@ export default function RegisterPage() {
               <div
                 key={item}
                 className={`h-1.5 w-10 rounded-full transition-all duration-300 ${
-                  step >= item ? "bg-[#d85d6c]" : "bg-[#eadbcc]"
+                  step >= item ? "bg-[#b84a39]" : "bg-[#eadbcc]"
                 }`}
               />
             ))}
@@ -143,13 +143,13 @@ export default function RegisterPage() {
                     required
                     placeholder="Ví dụ: Minh Hằng"
                     onChange={(e) => setName(e.target.value)}
-                    className="h-14 w-full rounded-xl border-2 border-[#eadbcc] bg-[#fffaf6] px-4 text-[16px] font-bold outline-none focus:border-[#d85d6c] transition-colors"
+                    className="h-14 w-full rounded-xl border-2 border-[#eadbcc] bg-[#fffaf6] px-4 text-[16px] font-bold outline-none focus:border-[#b84a39] transition-colors"
                   />
                 </label>
 
                 <button
                   type="submit"
-                  className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#d85d6c] text-[15px] font-black text-white shadow-[0_8px_16px_rgba(216,93,108,0.2)] transition-all active:scale-[0.98]"
+                  className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#b84a39] text-[15px] font-black text-white shadow-[0_8px_16px_rgba(184,74,57,0.2)] transition-all active:scale-[0.98]"
                 >
                   Tiếp tục <ArrowRight className="h-5 w-5" />
                 </button>
@@ -171,13 +171,13 @@ export default function RegisterPage() {
                     value={phone}
                     onChange={(e) => setPhone(sanitizePhone(e.target.value))}
                     placeholder="Ví dụ: 0901234567"
-                    className="h-14 w-full rounded-xl border-2 border-[#eadbcc] bg-[#fffaf6] px-4 text-[16px] font-bold outline-none focus:border-[#d85d6c] transition-colors"
+                    className="h-14 w-full rounded-xl border-2 border-[#eadbcc] bg-[#fffaf6] px-4 text-[16px] font-bold outline-none focus:border-[#b84a39] transition-colors"
                   />
                 </label>
 
                 <button
                   type="submit"
-                  className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#d85d6c] text-[15px] font-black text-white shadow-[0_8px_16px_rgba(216,93,108,0.2)] transition-all active:scale-[0.98]"
+                  className="flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#b84a39] text-[15px] font-black text-white shadow-[0_8px_16px_rgba(184,74,57,0.2)] transition-all active:scale-[0.98]"
                 >
                   Tiếp tục <ArrowRight className="h-5 w-5" />
                 </button>
@@ -198,7 +198,7 @@ export default function RegisterPage() {
           <div className="mt-6 text-center">
             <Link
               href="/account/login"
-              className="text-[14px] font-bold text-[#7b6254] hover:text-[#d85d6c] transition-colors"
+              className="text-[14px] font-bold text-[#7b6254] hover:text-[#b84a39] transition-colors"
             >
               Đã có tài khoản? Đăng nhập ngay
             </Link>

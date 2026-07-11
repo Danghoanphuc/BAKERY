@@ -65,7 +65,7 @@ export function PosProductCustomizerModal({
           <button
             type="button"
             onClick={onClose}
-            className="grid h-10 w-10 place-items-center rounded-full text-[#9b8171] transition hover:bg-[#fff1f0] hover:text-[#d85d6c]"
+            className="grid h-10 w-10 place-items-center rounded-full text-[#9b8171] transition hover:bg-[#fff1f0] hover:text-[#b84a39]"
             aria-label="Đóng"
           >
             <X className="h-5 w-5" />
@@ -125,7 +125,7 @@ export function PosProductCustomizerModal({
                       maxLength={100}
                       rows={3}
                       placeholder="Ví dụ: Chúc mừng sinh nhật"
-                      className="w-full resize-none rounded-2xl border border-[#eadbcc] bg-[#fffaf6] px-3 py-2 text-sm font-semibold text-[#3d2417] outline-none focus:border-[#d85d6c]"
+                      className="w-full resize-none rounded-2xl border border-[#eadbcc] bg-[#fffaf6] px-3 py-2 text-sm font-semibold text-[#3d2417] outline-none focus:border-[#b84a39]"
                     />
                   </label>
                   <label className="block">
@@ -140,7 +140,7 @@ export function PosProductCustomizerModal({
                       onChange={(event) =>
                         setCandles(Number(event.target.value) || 0)
                       }
-                      className="h-11 w-full rounded-2xl border border-[#eadbcc] bg-[#fffaf6] px-3 text-sm font-semibold text-[#3d2417] outline-none focus:border-[#d85d6c]"
+                      className="h-11 w-full rounded-2xl border border-[#eadbcc] bg-[#fffaf6] px-3 text-sm font-semibold text-[#3d2417] outline-none focus:border-[#b84a39]"
                     />
                   </label>
                 </div>
@@ -179,7 +179,7 @@ export function PosProductCustomizerModal({
                 candles: candles || undefined,
               })
             }
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#d85d6c] text-sm font-black text-white shadow-[0_10px_22px_rgba(216,93,108,0.25)] transition hover:bg-[#c94f60]"
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#b84a39] text-sm font-black text-white shadow-[0_10px_22px_rgba(184,74,57,0.25)] transition hover:bg-[#9e3e2f]"
           >
             <ShoppingCart className="h-4 w-4" />
             Thêm vào giỏ - {formatCurrency(unitPrice * quantity)}
@@ -221,8 +221,8 @@ function OptionButton({
       className={clsx(
         "rounded-full border px-3 py-2 text-sm font-black transition",
         active
-          ? "border-[#d85d6c] bg-[#fff1f0] text-[#d85d6c]"
-          : "border-[#eadbcc] bg-white text-[#65483a] hover:border-[#d85d6c]/50",
+          ? "border-[#b84a39] bg-[#fff1f0] text-[#b84a39]"
+          : "border-[#eadbcc] bg-white text-[#65483a] hover:border-[#b84a39]/50",
       )}
     >
       {children}

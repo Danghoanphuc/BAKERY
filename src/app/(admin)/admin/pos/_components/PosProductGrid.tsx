@@ -44,7 +44,7 @@ export function PosProductGrid({
             <button
               type="button"
               onClick={onOpenCustomerDisplay}
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#eadbcc] bg-[#fffaf6] text-[#7b6254] transition hover:border-[#d85d6c]/50 hover:bg-white hover:text-[#d85d6c]"
+              className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#eadbcc] bg-[#fffaf6] text-[#7b6254] transition hover:border-[#b84a39]/50 hover:bg-white hover:text-[#b84a39]"
               aria-label="Mở màn hình khách"
               title="Mở màn hình khách"
             >
@@ -95,7 +95,7 @@ export function PosProductGrid({
                   className={clsx(
                     "group flex h-[168px] flex-col overflow-hidden rounded-xl border bg-white text-left shadow-sm transition active:scale-[0.98]",
                     sellable
-                      ? "border-[#eadbcc] hover:border-[#d85d6c]/50 hover:shadow-md"
+                      ? "border-[#eadbcc] hover:border-[#b84a39]/50 hover:shadow-md"
                       : "cursor-not-allowed border-[#eadbcc] opacity-55",
                   )}
                 >
@@ -115,7 +115,7 @@ export function PosProductGrid({
                     <h3 className="line-clamp-2 min-h-[34px] text-xs font-medium leading-[17px] text-[#3d2417]">
                       {product.name}
                     </h3>
-                    <p className="mt-auto pt-1 text-[13px] font-bold leading-none text-[#d85d6c]">
+                    <p className="mt-auto pt-1 text-[13px] font-bold leading-none text-[#b84a39]">
                       {formatCurrency(product.price)}
                     </p>
                   </div>
@@ -144,13 +144,13 @@ function SearchBox({
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder="Tìm bánh, SKU, tag, dịp sử dụng..."
-        className="h-10 w-full rounded-xl border border-[#eadbcc] bg-[#fffaf6] pl-10 pr-10 text-sm font-semibold text-[#3d2417] shadow-inner outline-none transition placeholder:text-[#b49a8a] focus:border-[#d85d6c] focus:bg-white focus:ring-4 focus:ring-[#d85d6c]/10"
+        className="h-10 w-full rounded-xl border border-[#eadbcc] bg-[#fffaf6] pl-10 pr-10 text-sm font-semibold text-[#3d2417] shadow-inner outline-none transition placeholder:text-[#b49a8a] focus:border-[#b84a39] focus:bg-white focus:ring-4 focus:ring-[#b84a39]/10"
       />
       {value && (
         <button
           type="button"
           onClick={() => onChange("")}
-          className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#9b8171] transition hover:bg-[#fff1f0] hover:text-[#d85d6c]"
+          className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#9b8171] transition hover:bg-[#fff1f0] hover:text-[#b84a39]"
           aria-label="Xoá tìm kiếm"
         >
           <X className="h-4 w-4" />
@@ -180,8 +180,8 @@ function CategoryButton({
       className={clsx(
         "flex h-9 shrink-0 items-center gap-2 rounded-full px-3 text-xs font-black transition",
         active
-          ? "bg-[#d85d6c] text-white shadow-sm"
-          : "border border-[#eadbcc] bg-white text-[#65483a] hover:border-[#d85d6c]/50",
+          ? "bg-[#b84a39] text-white shadow-sm"
+          : "border border-[#eadbcc] bg-white text-[#65483a] hover:border-[#b84a39]/50",
       )}
     >
       {icon}
@@ -189,7 +189,7 @@ function CategoryButton({
       <span
         className={clsx(
           "rounded-full px-1.5 py-0.5 text-[10px]",
-          active ? "bg-white/20 text-white" : "bg-[#fff1f0] text-[#d85d6c]",
+          active ? "bg-white/20 text-white" : "bg-[#fff1f0] text-[#b84a39]",
         )}
       >
         {count}

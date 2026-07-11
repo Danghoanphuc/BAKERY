@@ -5,10 +5,14 @@ import { getCategories } from "@/lib/db";
 import { defaultCategoryVisuals } from "@/features/home/data/homeContent";
 import type { Category } from "@/types/category";
 
+// Revalidate every 60 seconds to ensure fresh data
+export const revalidate = 60;
+
 async function loadCategories(): Promise<Category[]> {
   try {
     const categories = await getCategories();
-    return categories.filter((category) => category.isVisible ?? true);
+    // Show all categories on this page, including hidden ones
+    return categories;
   } catch (error) {
     console.error("Error loading categories page:", error);
     return [];
@@ -55,27 +59,40 @@ export default async function CategoryPage() {
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {categoryCards.map((category) => (
-            <Link
-              key={category.id}
-              href={category.href}
-              className="group overflow-hidden rounded-[18px] border border-[#efcfad] bg-white shadow-[0_8px_18px_rgba(116,63,25,0.08)]"
-            >
-              <div className="relative aspect-[1.25] bg-[#fff1d8]">
-                <Image
-                  src={category.imageUrl}
-                  alt={category.name}
-                  fill
-                  sizes="(max-width: 640px) 50vw, 220px"
-                  className="object-cover transition duration-300 group-hover:scale-105"
-                />
-              </div>
-              <div className="flex items-center justify-between px-3 py-3">
-                <span className="font-bold">{category.name}</span>
-                <ChevronRight className="h-4 w-4 text-[#8a461f]" />
-              </div>
-            </Link>
-          ))}
+          {categoryCards.map((category) => {
+            const originalCategory = categories.find(
+              (c) => c.id === category.id,
+            );
+            const isHidden =
+              originalCategory && originalCategory.isVisible === false;
+
+            return (
+              <Link
+                key={category.id}
+                href={category.href}
+                className="group overflow-hidden rounded-[18px] border border-[#efcfad] bg-white shadow-[0_8px_18px_rgba(116,63,25,0.08)]"
+              >
+                <div className="relative aspect-[1.25] bg-[#fff1d8]">
+                  <Image
+                    src={category.imageUrl}
+                    alt={category.name}
+                    fill
+                    sizes="(max-width: 640px) 50vw, 220px"
+                    className="object-cover transition duration-300 group-hover:scale-105"
+                  />
+                  {isHidden && (
+                    <div className="absolute right-2 top-2 rounded-full bg-neutral-900/80 px-2.5 py-1 text-[10px] font-bold text-white">
+                      Ẩn
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center justify-between px-3 py-3">
+                  <span className="font-bold">{category.name}</span>
+                  <ChevronRight className="h-4 w-4 text-[#8a461f]" />
+                </div>
+              </Link>
+            );
+          })}
         </div>
       </div>
     </div>

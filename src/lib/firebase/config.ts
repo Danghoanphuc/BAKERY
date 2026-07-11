@@ -118,7 +118,7 @@ export async function updateCategory(
     updatedAt:
       categoryData.updatedAt?.toDate?.()?.toISOString() ||
       new Date().toISOString(),
-  } as Category;
+  } as unknown as Category;
 }
 
 export async function deleteCategory(id: string): Promise<void> {

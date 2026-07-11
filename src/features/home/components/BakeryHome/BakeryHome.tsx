@@ -933,7 +933,6 @@ function FavoriteSection({
           <ProductMiniCard
             key={product.id}
             product={product}
-            rating={(4.8 + index * 0.03).toFixed(1)}
             index={index}
             isFavorite={favoriteIds.includes(product.id)}
             onToggleFavorite={() => onToggleFavorite(product.id)}
@@ -948,7 +947,6 @@ function FavoriteSection({
 
 function ProductMiniCard({
   product,
-  rating,
   index,
   isFavorite,
   onToggleFavorite,
@@ -956,7 +954,6 @@ function ProductMiniCard({
   onQuickAdd,
 }: {
   product: Product;
-  rating: string;
   index: number;
   isFavorite: boolean;
   onToggleFavorite: () => void;
@@ -1004,13 +1001,9 @@ function ProductMiniCard({
           <h3 className="line-clamp-2 min-h-[32px] text-[12px] font-semibold leading-tight text-[#542413]">
             {product.name}
           </h3>
-          <div className="mt-2 flex flex-col items-start gap-0.5 pr-7">
+          <div className="mt-2 pr-7">
             <span className="block w-full whitespace-nowrap text-[9px] font-black leading-tight text-[#e85e69]">
               {formatPrice(product.price).replace(" ", "")}
-            </span>
-            <span className="flex shrink-0 items-center gap-0.5 text-[8px] font-bold leading-tight text-[#9b715b]">
-              <Star className="h-2.5 w-2.5 fill-accent-star text-accent-star" />
-              {rating}
             </span>
           </div>
         </button>

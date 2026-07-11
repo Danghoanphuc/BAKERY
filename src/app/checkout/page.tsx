@@ -20,7 +20,7 @@ import { AddressModal } from "@/components/layout/Header/AddressModal";
 import { formatPrice } from "@/lib/utils";
 import { getShippingBenefit } from "@/lib/order-pricing";
 import { calculateVoucherPricing } from "@/lib/vouchers";
-import { getPhoneError, sanitizePhone } from "@/features/auth/pin-ui";
+import { getPhoneError, sanitizePhone, sanitizePin } from "@/features/auth/pin-ui";
 import type { Customer, CustomerAddressBookEntry, OrderConfig } from "@/types";
 
 function getAddressText(address?: OrderConfig["deliveryAddress"]) {
@@ -63,6 +63,8 @@ export default function CheckoutPage() {
     email: "",
     birthday: "",
     gender: "",
+    pin: "",
+    confirmPin: "",
     notes: "",
   });
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "bank_transfer">(
@@ -171,6 +173,17 @@ export default function CheckoutPage() {
         return;
       }
 
+      if (!customer) {
+        if (formData.pin.length !== 4) {
+          setError("Vui lòng tạo mã PIN gồm 4 chữ số để đăng nhập lần sau.");
+          return;
+        }
+        if (formData.pin !== formData.confirmPin) {
+          setError("Mã PIN nhập lại chưa khớp.");
+          return;
+        }
+      }
+
       const deliveryAddressString =
         !isPickup && config.deliveryAddress
           ? getAddressText(config.deliveryAddress)
@@ -209,6 +222,7 @@ export default function CheckoutPage() {
             (formData.gender as Customer["gender"]) ||
             customer?.gender ||
             undefined,
+          customerPin: !customer ? formData.pin : undefined,
           notes: formData.notes || undefined,
           paymentMethod,
           items,
@@ -224,15 +238,7 @@ export default function CheckoutPage() {
       setHasSubmittedOrder(true);
       clearCart();
       clearSelectedVoucher();
-      if (order.paymentMethod === "bank_transfer") {
-        router.push(
-          `/checkout/payment?orderId=${encodeURIComponent(
-            order.id,
-          )}&orderNumber=${encodeURIComponent(order.orderNumber)}`,
-        );
-        return;
-      }
-      router.push(`/order-success?orderNumber=${order.orderNumber}`);
+      router.push(`/order?orderId=${encodeURIComponent(order.id)}`);
     } catch (err) {
       console.error(err);
       setError(
@@ -328,6 +334,33 @@ export default function CheckoutPage() {
                   value={formData.email}
                   onChange={(value) => setFormData({ ...formData, email: value })}
                 />
+                <div className="grid grid-cols-2 gap-3">
+                  <Field
+                    label="Tạo mã PIN"
+                    required
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={formData.pin}
+                    onChange={(value) =>
+                      setFormData({ ...formData, pin: sanitizePin(value) })
+                    }
+                  />
+                  <Field
+                    label="Nhập lại PIN"
+                    required
+                    type="password"
+                    inputMode="numeric"
+                    maxLength={4}
+                    value={formData.confirmPin}
+                    onChange={(value) =>
+                      setFormData({ ...formData, confirmPin: sanitizePin(value) })
+                    }
+                  />
+                </div>
+                <p className="text-xs font-semibold text-[#9a7a66]">
+                  PIN này dùng cùng số điện thoại để đăng nhập và xem lại đơn hàng.
+                </p>
                 {selectedVoucher && (
                   <>
                     <Field

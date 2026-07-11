@@ -73,7 +73,13 @@ export default function OrderHistoryPage() {
       if (!response.ok) throw new Error("Không thể tải lịch sử đơn hàng.");
 
       const payload = (await response.json()) as Order[];
-      setOrders(payload.map(mapOrderToHistoryItem));
+      const nextOrders = payload.map(mapOrderToHistoryItem);
+      setOrders(nextOrders);
+
+      const requestedOrderId = new URLSearchParams(window.location.search).get("orderId");
+      if (requestedOrderId) {
+        setSelectedOrder(nextOrders.find((order) => order.id === requestedOrderId) ?? null);
+      }
     } catch (loadError) {
       console.error("Order history failed:", loadError);
       setError("Không thể tải lịch sử đơn hàng. Vui lòng thử lại.");

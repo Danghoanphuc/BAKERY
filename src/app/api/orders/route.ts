@@ -19,6 +19,7 @@ import {
   getMarketingCampaigns,
   getMarketingSettings,
   recordVoucherRedemption,
+  updateCustomer,
 } from "@/lib/firebase";
 import {
   estimateOrderCostOfGoods,
@@ -27,6 +28,7 @@ import {
 } from "@/lib/finance";
 import { expireUnpaidBankTransferOrder } from "@/lib/payment-expiry";
 import type { Order } from "@/types";
+import type { OrderConfig, CustomerAddressBookEntry } from "@/types";
 import type { VoucherUseChannel } from "@/types";
 import {
   getPublicVouchers,
@@ -128,6 +130,7 @@ export async function POST(request: Request) {
     const data = stripUndefinedDeep(await request.json()) as Partial<Order> & {
       customerBirthday?: string;
       customerGender?: "male" | "female" | "other";
+      deliveryAddressDetails?: OrderConfig["deliveryAddress"];
     };
     const sessionValue = readCookie(
       request.headers.get("cookie"),
@@ -229,8 +232,39 @@ export async function POST(request: Request) {
             personalization: {},
           })
         : null;
+    const selectedAddress = data.deliveryAddressDetails;
+    if (
+      customer &&
+      selectedAddress?.formattedAddress &&
+      !(customer.personalization.addressBook?.length) &&
+      !customer.personalization.defaultDeliveryAddress
+    ) {
+      const now = new Date().toISOString();
+      const addressEntry: CustomerAddressBookEntry = {
+        id: crypto.randomUUID(),
+        label: "Nhà",
+        street: selectedAddress.street,
+        district: selectedAddress.district,
+        city: selectedAddress.city,
+        formattedAddress: selectedAddress.formattedAddress,
+        lat: selectedAddress.lat,
+        lng: selectedAddress.lng,
+        placeId: selectedAddress.placeId,
+        isDefault: true,
+        createdAt: now,
+        updatedAt: now,
+      };
+      await updateCustomer(customer.id, {
+        personalization: {
+          ...customer.personalization,
+          defaultDeliveryAddress: selectedAddress.formattedAddress,
+          addressBook: [addressEntry],
+        },
+      });
+    }
     const orderPayload = stripUndefinedDeep({
       ...data,
+      deliveryAddressDetails: undefined,
       orderNumber,
       customerId: customer?.id ?? data.customerId,
       totalAmount: serverTotalAmount,

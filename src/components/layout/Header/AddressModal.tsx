@@ -73,7 +73,7 @@ type GoongMarker = {
   remove: () => void;
 };
 
-const DEFAULT_CENTER = { lat: 21.028, lng: 105.83991 };
+const DEFAULT_CENTER = { lat: 14.03886, lng: 108.25011 };
 const GOONG_SCRIPT_ID = "goong-js-sdk";
 const GOONG_CSS_ID = "goong-js-css";
 const GOONG_STYLE_URL = "https://tiles.goong.io/assets/goong_light_v2.json";
@@ -357,6 +357,11 @@ export const AddressModal: React.FC<AddressModalProps> = ({
     };
 
     setDeliveryAddress(nextAddress);
+    void fetch("/api/profile/address", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(nextAddress),
+    }).catch(() => undefined);
     onConfirm?.(nextAddress);
     onClose();
   }
@@ -367,23 +372,41 @@ export const AddressModal: React.FC<AddressModalProps> = ({
 
   const isFormValid = street.trim() && district.trim() && city.trim();
 
+  const searchHeader = (
+    <div className="relative">
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9b8171]" />
+      <input
+        id="address-search"
+        value={searchTerm}
+        onChange={(event) => setSearchTerm(event.target.value)}
+        placeholder="Nhập số nhà, tên đường, quận..."
+        className="h-11 w-full rounded-[14px] border border-[#eadbcc] bg-white pl-10 pr-3 text-sm font-semibold outline-none focus:border-[#d85d6c] focus:ring-2 focus:ring-[#d85d6c]/15"
+      />
+    </div>
+  );
+
+  const footer = (
+    <div className="flex gap-3">
+      <button type="button" onClick={handleCancel} className="h-11 flex-1 rounded-[14px] border border-[#eadbcc] bg-white text-sm font-black text-[#3d2417]">
+        Hủy
+      </button>
+      <button type="button" onClick={handleConfirm} disabled={!isFormValid} className="h-11 flex-1 rounded-[14px] bg-[#d85d6c] text-sm font-black text-white shadow-[0_8px_18px_rgba(216,93,108,0.20)] disabled:cursor-not-allowed disabled:bg-[#d8c8bd]">
+        Lưu địa chỉ
+      </button>
+    </div>
+  );
+
   return (
-    <Modal isOpen={isOpen} onClose={handleCancel} title="Địa chỉ giao hàng">
+    <Modal
+      isOpen={isOpen}
+      onClose={handleCancel}
+      title="Tìm và ghim địa chỉ của bạn"
+      headerContent={searchHeader}
+      footer={footer}
+      className="flex h-[85dvh] max-h-[85dvh] flex-col lg:h-[85vh] lg:max-h-[85vh] lg:max-w-xl"
+    >
       <div className="space-y-4">
         <div className="space-y-2">
-          <label htmlFor="address-search" className="text-sm font-black text-[#3d2417]">
-            Tìm địa chỉ hoặc ghim trên bản đồ
-          </label>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9b8171]" />
-            <input
-              id="address-search"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Nhập số nhà, tên đường, quận..."
-              className="h-11 w-full rounded-[14px] border border-[#eadbcc] bg-white pl-10 pr-3 text-sm font-semibold outline-none focus:border-[#d85d6c] focus:ring-2 focus:ring-[#d85d6c]/15"
-            />
-          </div>
           {predictions.length > 0 && (
             <div className="max-h-48 overflow-y-auto rounded-[14px] border border-[#eadbcc] bg-white shadow-sm">
               {predictions.map((prediction) => (
@@ -414,7 +437,7 @@ export const AddressModal: React.FC<AddressModalProps> = ({
         </div>
 
         <div className="overflow-hidden rounded-[18px] border border-[#eadbcc] bg-[#fffaf6]">
-          <div ref={mapContainerRef} className="h-56 w-full" />
+          <div ref={mapContainerRef} className="h-42 w-full" />
           {mapError && (
             <div className="border-t border-[#eadbcc] px-3 py-2 text-xs font-bold text-amber-800">
               {mapError}
@@ -428,96 +451,25 @@ export const AddressModal: React.FC<AddressModalProps> = ({
               type="button"
               onClick={useCurrentLocation}
               disabled={isLocating}
-              className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-[12px] bg-[#3d2417] px-3 text-xs font-black text-white disabled:opacity-60"
+              className="inline-flex min-h-9 shrink-0 animate-pulse items-center gap-1.5 rounded-[12px] bg-[#b84a39] px-3 py-2 text-[11px] font-black leading-tight text-white shadow-[0_0_0_4px_rgba(184,74,57,0.10)] disabled:opacity-60"
             >
               <LocateFixed className="h-4 w-4" />
-              {isLocating ? "Đang lấy..." : "Vị trí của tôi"}
+              {isLocating ? "Đang tìm..." : "Nhấn nút để tìm vị trí ngay"}
             </button>
-          </div>
-        </div>
-
-        <div className="grid gap-3">
-          <Field
-            label="Địa chỉ cụ thể"
-            value={street}
-            onChange={setStreet}
-            placeholder="Số nhà, tên đường..."
-            required
-          />
-          <div className="grid grid-cols-2 gap-3">
-            <Field
-              label="Quận/Huyện"
-              value={district}
-              onChange={setDistrict}
-              placeholder="Quận/Huyện"
-              required
-            />
-            <Field
-              label="Tỉnh/Thành"
-              value={city}
-              onChange={setCity}
-              placeholder="Tỉnh/Thành"
-              required
-            />
           </div>
         </div>
 
         {formattedAddress && (
           <div className="rounded-[14px] bg-[#fff8ef] px-3 py-2 text-xs font-bold leading-5 text-[#7a4b12] ring-1 ring-[#f5ddb0]">
+            <span className="mb-0.5 block text-[9px] uppercase tracking-[0.12em] text-[#a17864]">Vị trí đã ghim của bạn</span>
             {formattedAddress}
           </div>
         )}
 
-        <div className="flex gap-3 pt-1">
-          <button
-            type="button"
-            onClick={handleCancel}
-            className="h-11 flex-1 rounded-[14px] border border-[#eadbcc] bg-white text-sm font-black text-[#3d2417]"
-          >
-            Hủy
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={!isFormValid}
-            className="h-11 flex-1 rounded-[14px] bg-[#d85d6c] text-sm font-black text-white shadow-[0_8px_18px_rgba(216,93,108,0.20)] disabled:cursor-not-allowed disabled:bg-[#d8c8bd]"
-          >
-            Lưu địa chỉ
-          </button>
-        </div>
       </div>
     </Modal>
   );
 };
-
-function Field({
-  label,
-  value,
-  onChange,
-  placeholder,
-  required = false,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  required?: boolean;
-}) {
-  return (
-    <label className="block">
-      <span className="text-xs font-black uppercase tracking-[0.04em] text-[#7b6254]">
-        {label}
-        {required ? " *" : ""}
-      </span>
-      <input
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="mt-1 h-11 w-full rounded-[14px] border border-[#eadbcc] px-3 text-sm font-semibold outline-none focus:border-[#d85d6c] focus:ring-2 focus:ring-[#d85d6c]/15"
-      />
-    </label>
-  );
-}
 
 function parseAddress(
   formattedAddress: string,

@@ -193,6 +193,7 @@ export default function CheckoutPage() {
           totalAmount: finalTotal,
           orderType: config.deliveryMode,
           deliveryAddress: deliveryAddressString,
+          deliveryAddressDetails: !isPickup ? config.deliveryAddress : undefined,
           pickupTime: pickupTimeDate,
           deliveryFee,
           discountAmount: voucherPricing.discountAmount,

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 
 import { CustomerVoucherPicker } from "@/features/vouchers";
+import { AddressModal } from "@/components/layout/Header/AddressModal";
 import { useCartStore } from "@/store/cartStore";
 import { useOrderConfigStore } from "@/store/orderConfigStore";
 import { useVoucherStore } from "@/store/voucherStore";
@@ -41,6 +42,7 @@ export default function CartPage() {
   const { config } = useOrderConfigStore();
   const { selectedVoucher, clearSelectedVoucher } = useVoucherStore();
   const [isVoucherPickerOpen, setIsVoucherPickerOpen] = useState(false);
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
 
   const voucherPricing = calculateVoucherPricing(totalPrice, selectedVoucher);
   const voucherAllocations = getVoucherAllocations(
@@ -234,6 +236,8 @@ export default function CartPage() {
           voucherCode={selectedVoucher?.code}
           discountLines={discountLines}
           mode={config.deliveryMode}
+          deliveryAddress={config.deliveryAddress?.formattedAddress || config.deliveryAddress?.street}
+          onChooseAddress={() => setIsAddressModalOpen(true)}
           onCheckout={() => router.push("/checkout")}
         />
       </div>
@@ -241,6 +245,10 @@ export default function CartPage() {
       <CustomerVoucherPicker
         isOpen={isVoucherPickerOpen}
         onClose={() => setIsVoucherPickerOpen(false)}
+      />
+      <AddressModal
+        isOpen={isAddressModalOpen}
+        onClose={() => setIsAddressModalOpen(false)}
       />
     </main>
   );
@@ -370,6 +378,8 @@ function CheckoutSummary({
   voucherCode,
   discountLines,
   mode,
+  deliveryAddress,
+  onChooseAddress,
   onCheckout,
 }: {
   totalQuantity: number;
@@ -378,6 +388,8 @@ function CheckoutSummary({
   voucherCode?: string;
   discountLines: DiscountLine[];
   mode: "delivery" | "pickup";
+  deliveryAddress?: string;
+  onChooseAddress: () => void;
   onCheckout: () => void;
 }) {
   const isPickup = mode === "pickup";
@@ -420,11 +432,23 @@ function CheckoutSummary({
               ))}
             </div>
           )}
-          <div className="rounded-[14px] bg-[#fff8ec] px-3 py-2 text-[12px] font-semibold text-[#8a4a28]">
-            {isPickup
-              ? "Bạn sẽ chọn giờ nhận bánh ở bước thanh toán."
-              : "Đơn giao tận nơi cần có địa chỉ nhận bánh."}
-          </div>
+          {isPickup ? (
+            <div className="rounded-[14px] bg-[#fff8ec] px-3 py-2 text-[12px] font-semibold text-[#8a4a28]">
+              Bạn sẽ chọn giờ nhận bánh ở bước thanh toán.
+            </div>
+          ) : deliveryAddress ? (
+            <button type="button" onClick={onChooseAddress} className="w-full rounded-[14px] bg-[#f2faf7] px-3 py-2 text-left text-[12px] font-semibold text-[#52766f]">
+              <span className="block text-[10px] font-black uppercase tracking-wide text-[#278477]">Giao đến</span>
+              <span className="mt-0.5 block truncate">{deliveryAddress}</span>
+            </button>
+          ) : (
+            <div className="flex items-center justify-between gap-3 rounded-[14px] bg-[#fff8ec] px-3 py-2 text-[12px] font-semibold text-[#8a4a28]">
+              <span className="min-w-0 flex-1">Đơn giao tận nơi cần có địa chỉ nhận bánh.</span>
+              <button type="button" onClick={onChooseAddress} className="shrink-0 rounded-full bg-[#b84a39] px-3 py-2 text-[10px] font-black text-white shadow-sm">
+                Nhấn vào đây để chọn vị trí
+              </button>
+            </div>
+          )}
           <div className="flex items-center justify-between border-t border-[#f0dfd4] pt-3">
             <span className="text-[15px] font-black">Tổng cộng</span>
             <span className="text-[22px] font-black text-[#d85d6c]">

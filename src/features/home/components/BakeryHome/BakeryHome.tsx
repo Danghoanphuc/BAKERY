@@ -32,6 +32,8 @@ import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import { useToast } from "@/hooks/useToast";
 import { useCartStore } from "@/store/cartStore";
 import { useOrderConfigStore } from "@/store/orderConfigStore";
+import { useAvailableVouchers } from "@/features/vouchers/useAvailableVouchers";
+import type { SelectableCustomerVoucher } from "@/features/vouchers/customer-vouchers";
 import { formatPrice } from "@/lib/utils";
 import type { Product } from "@/types/product";
 import type { Category } from "@/types/category";
@@ -42,6 +44,7 @@ import {
 } from "../../data/homeContent";
 
 const FAVORITE_STORAGE_KEY = "bakery-favorite-products";
+const HOME_PROFILE_STORAGE_KEY = "bakery-home-profile-summary";
 
 const homeCategoryFallbacks: HomeCategoryVisual[] = [
   ...defaultCategoryVisuals,
@@ -84,6 +87,8 @@ interface BakeryHomeProps {
 }
 
 interface HomeProfileSummary {
+  isAuthenticated: boolean;
+  memberCode?: string;
   name?: string;
   points: number;
   address?: string;
@@ -104,8 +109,11 @@ export function BakeryHome({
   );
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [profileSummary, setProfileSummary] = useState<HomeProfileSummary>({
+    isAuthenticated: false,
     points: 0,
   });
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const { vouchers: guestVouchers, isLoading: areVouchersLoading } = useAvailableVouchers();
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
 
   const categoryVisuals = useMemo(
@@ -145,32 +153,62 @@ export function BakeryHome({
       setFavoriteIds([]);
     }
 
+    try {
+      const cachedProfile = window.sessionStorage.getItem(HOME_PROFILE_STORAGE_KEY);
+      if (cachedProfile) {
+        const parsed = JSON.parse(cachedProfile) as HomeProfileSummary;
+        if (parsed.isAuthenticated) setProfileSummary(parsed);
+      }
+    } catch {
+      // Continue with the fresh profile request if session storage is unavailable.
+    }
+
     let cancelled = false;
 
     fetch("/api/profile")
       .then((response) => {
-        if (!response.ok) return null;
+        if (!response.ok) {
+          if (response.status === 401) {
+            window.sessionStorage.removeItem(HOME_PROFILE_STORAGE_KEY);
+          }
+          return null;
+        }
         return response.json();
       })
       .then((data) => {
-        if (!data || cancelled) return;
+        if (cancelled) return;
+        if (!data) {
+          setProfileSummary({ isAuthenticated: false, points: 0 });
+          return;
+        }
         const addressBook = data.customer?.personalization?.addressBook;
         const defaultAddress = Array.isArray(addressBook)
           ? addressBook.find((address) => address?.isDefault) || addressBook[0]
           : undefined;
 
-        setProfileSummary({
+        const nextProfile = {
+          isAuthenticated: true,
+          memberCode: data.customer?.id,
           name: data.customer?.name,
           points: data.rewards?.points?.current ?? 0,
           address:
             defaultAddress?.formattedAddress ||
             data.customer?.personalization?.defaultDeliveryAddress,
-        });
+        };
+        setProfileSummary(nextProfile);
+        try {
+          window.sessionStorage.setItem(HOME_PROFILE_STORAGE_KEY, JSON.stringify(nextProfile));
+        } catch {
+          // The fresh state still works when session storage is blocked.
+        }
       })
       .catch(() => {
         if (!cancelled) {
           setProfileSummary((current) => current);
         }
+      })
+      .finally(() => {
+        if (!cancelled) setIsProfileLoading(false);
       });
 
     return () => {
@@ -228,8 +266,8 @@ export function BakeryHome({
     <div className="min-h-screen bg-[#fffaf5] text-[#542413]">
       <div className="pointer-events-none fixed inset-x-0 top-0 h-[360px] bg-[radial-gradient(circle_at_top_left,#fff2dc,transparent_42%),linear-gradient(180deg,#fff8ec_0%,#fffaf5_75%)]" />
 
-      <div className="relative mx-auto min-h-screen w-full max-w-[480px] px-4 pb-28 pt-5">
-        <div className="sticky top-0 z-40 -mx-4 bg-[#fffaf5]/95 px-4 pb-2 pt-3 backdrop-blur">
+      <div className="relative mx-auto min-h-screen w-full max-w-[480px] px-4 pb-28">
+        <div className="sticky top-0 z-40 -mx-4 bg-[#fffaf5]/95 px-4 pb-2 pt-1 backdrop-blur">
           <HomeHeader
             cartCount={totalQuantity}
             address={deliveryAddress}
@@ -239,7 +277,15 @@ export function BakeryHome({
           />
           <SearchPill products={visibleFavoriteProducts} categories={categories} />
         </div>
-        <MemberCard name={profileSummary.name} points={profileSummary.points} />
+        <MemberCard
+          isAuthenticated={profileSummary.isAuthenticated}
+          memberCode={profileSummary.memberCode}
+          name={profileSummary.name}
+          points={profileSummary.points}
+          guestVouchers={guestVouchers}
+          areVouchersLoading={areVouchersLoading}
+          isProfileLoading={isProfileLoading}
+        />
         <CategoryStrip categories={categoryVisuals} />
         <FavoriteSection
           products={visibleFavoriteProducts}
@@ -293,8 +339,11 @@ function HomeHeader({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h1 className="truncate text-[21px] font-black leading-tight text-[#542413]">
-            <span className="font-semibold">Chào mừng</span>{" "}
-            {name || "Hoàn Phúc"} <span className="text-[#f17a86]">♥</span>
+            {name ? (
+              <><span className="font-semibold">Chào mừng</span>{" "}{name}</>
+            ) : (
+              <span className="font-semibold">Xin chào quý khách</span>
+            )}{" "}<span className="text-[#f17a86]">♥</span>
           </h1>
         </div>
 
@@ -334,7 +383,22 @@ function HomeHeader({
   );
 }
 
-function MemberCard({ name, points }: { name?: string; points: number }) {
+function MemberCard({
+  isAuthenticated, memberCode, name, points, guestVouchers, areVouchersLoading, isProfileLoading,
+}: {
+  isAuthenticated: boolean;
+  memberCode?: string;
+  name?: string;
+  points: number;
+  guestVouchers: SelectableCustomerVoucher[];
+  areVouchersLoading: boolean;
+  isProfileLoading: boolean;
+}) {
+  if (isProfileLoading && !isAuthenticated) return <MemberCardSkeleton />;
+  if (!isAuthenticated) {
+    return <GuestMemberCard vouchers={guestVouchers} isLoading={areVouchersLoading} />;
+  }
+
   return (
     <section className="relative overflow-hidden rounded-[15px] border border-[#efc79e] bg-[#fff3df] p-2.5 shadow-[0_4px_10px_rgba(151,76,31,0.07)]">
       <div className="absolute right-4 top-2 h-12 w-20 rounded-[22px] bg-[radial-gradient(circle_at_30%_30%,#ffc1b8,transparent_38%),linear-gradient(135deg,#ffb3a5,#fff2dd)] opacity-55" />
@@ -347,9 +411,9 @@ function MemberCard({ name, points }: { name?: string; points: number }) {
             Đưa mã cho nhân viên để tích điểm hoặc sử dụng điểm thưởng
           </p>
           <div className="mt-1.5 rounded-[11px] bg-white px-3 py-1.5 shadow-[0_4px_10px_rgba(116,57,21,0.07)]">
-            <div className="h-8 rounded bg-[repeating-linear-gradient(90deg,#111_0_3px,transparent_3px_7px,#111_7px_10px,transparent_10px_16px)]" />
+            <MemberBarcode value={memberCode || name || "MEMBER"} />
             <p className="mt-1 text-center text-[11px] font-black tracking-wide text-[#1e120d]">
-              1654 8792 3187
+              {formatMemberCode(memberCode || name || "MEMBER")}
             </p>
           </div>
         </div>
@@ -361,6 +425,74 @@ function MemberCard({ name, points }: { name?: string; points: number }) {
       </div>
     </section>
   );
+}
+
+function MemberCardSkeleton() {
+  return (
+    <section className="h-[142px] animate-pulse overflow-hidden rounded-[18px] border border-[#efdfcf] bg-[#fff3df] p-3" aria-label="Đang tải thông tin thành viên">
+      <div className="h-4 w-40 rounded-full bg-white/80" />
+      <div className="mt-3 h-9 w-full rounded-[12px] bg-white/75" />
+      <div className="mt-2 h-12 w-full rounded-[12px] bg-white/65" />
+    </section>
+  );
+}
+
+function GuestMemberCard({ vouchers, isLoading }: { vouchers: SelectableCustomerVoucher[]; isLoading: boolean }) {
+  return (
+    <section className="overflow-hidden rounded-[18px] border border-[#efc79e] bg-[#fff3df] p-3 shadow-[0_4px_10px_rgba(151,76,31,0.07)]">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-[14px] font-black text-[#542413]">Thành viên Ngọt & Trà</h2>
+          <p className="mt-1 text-[10px] font-medium text-[#7d513d]">Đăng nhập để tích điểm, nhận quà và lưu ưu đãi.</p>
+        </div>
+        <span className="text-2xl" aria-hidden="true">🎁</span>
+      </div>
+      <div className="mt-2 flex gap-2">
+        <Link href="/account/login" className="flex h-9 flex-1 items-center justify-center rounded-full bg-[#e85e69] text-[11px] font-black text-white">Đăng nhập</Link>
+        <Link href="/account/register" className="flex h-9 flex-1 items-center justify-center rounded-full border border-[#e85e69] bg-white text-[11px] font-black text-[#c64f5b]">Đăng ký</Link>
+      </div>
+      <div className="-mx-3 mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {isLoading && <div className="h-16 w-full shrink-0 animate-pulse rounded-[12px] bg-white/70" />}
+        {!isLoading && vouchers.length === 0 && <div className="w-full shrink-0 rounded-[12px] bg-white/80 p-3 text-center text-[11px] font-bold text-[#8b614c]">Ưu đãi mới sẽ sớm xuất hiện tại đây.</div>}
+        {vouchers.map((voucher) => (
+          <Link key={voucher.id} href="/account/register" className="w-[82%] shrink-0 snap-start rounded-[12px] border border-[#f1d6bc] bg-white p-3 shadow-sm">
+            <span className="block text-[12px] font-black text-[#c64f5b]">{voucher.title}</span>
+            <span className="mt-1 block line-clamp-2 text-[10px] font-medium text-[#7d513d]">{voucher.description}</span>
+            <span className="mt-1.5 block text-[10px] font-black tracking-wide text-[#542413]">Mã: {voucher.code}</span>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+const CODE39: Record<string, string> = {
+  "0":"nnnwwnwnn","1":"wnnwnnnnw","2":"nnwwnnnnw","3":"wnwwnnnnn","4":"nnnwwnnnw","5":"wnnwwnnnn","6":"nnwwwnnnn","7":"nnnwnnwnw","8":"wnnwnnwnn","9":"nnwwnnwnn",
+  A:"wnnnnwnnw",B:"nnwnnwnnw",C:"wnwnnwnnn",D:"nnnnwwnnw",E:"wnnnwwnnn",F:"nnwnwwnnn",G:"nnnnnwwnw",H:"wnnnnwwnn",I:"nnwnnwwnn",J:"nnnnwwwnn",K:"wnnnnnnww",L:"nnwnnnnww",M:"wnwnnnnwn",N:"nnnnwnnww",O:"wnnnwnnwn",P:"nnwnwnnwn",Q:"nnnnnnwww",R:"wnnnnnwwn",S:"nnwnnnwwn",T:"nnnnwnwwn",U:"wwnnnnnnw",V:"nwwnnnnnw",W:"wwwnnnnnn",X:"nwnnwnnnw",Y:"wwnnwnnnn",Z:"nwwnwnnnn","-":"nwnnnnwnw",".":"wwnnnnwnn"," ":"nwwnnnwnn","*":"nwnnwnwnn",
+};
+
+function MemberBarcode({ value }: { value: string }) {
+  const encoded = `*${value.toUpperCase().replace(/[^A-Z0-9. -]/g, "").slice(0, 24) || "MEMBER"}*`;
+  const bars: { x: number; width: number }[] = [];
+  let x = 8;
+  for (const character of encoded) {
+    [...(CODE39[character] || CODE39["-"])].forEach((unit, index) => {
+      const width = unit === "w" ? 3 : 1;
+      if (index % 2 === 0) bars.push({ x, width });
+      x += width;
+    });
+    x += 1;
+  }
+  return (
+    <svg viewBox={`0 0 ${x + 8} 34`} className="h-8 w-full" role="img" aria-label={`Mã thành viên ${value}`} preserveAspectRatio="none">
+      <rect width="100%" height="34" fill="white" />
+      {bars.map((bar, index) => <rect key={index} x={bar.x} y="1" width={bar.width} height="32" fill="#111" />)}
+    </svg>
+  );
+}
+
+function formatMemberCode(value: string) {
+  return value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 20).replace(/(.{4})/g, "$1 ").trim();
 }
 
 function MemberStat({
@@ -687,14 +819,23 @@ function normalizeSuggestionText(value: string) {
 }
 
 function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
+  const items: HomeCategoryVisual[] = [
+    ...categories,
+    {
+      name: "Xem tất cả",
+      href: "/category",
+      imageUrl: categories[0]?.imageUrl || homeCategoryFallbacks[0].imageUrl,
+    },
+  ];
   return (
     <section className="pt-4">
-      <div className="grid grid-cols-6 gap-2">
-        {categories.slice(0, 6).map((category) => (
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#a17864]">Danh mục sản phẩm</p>
+      <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {items.map((category, index) => (
           <Link
-            key={category.name}
+            key={`${category.name}-${index}`}
             href={category.href}
-            className="group min-w-0 overflow-hidden rounded-[10px] border border-[#f0d8c2] bg-[#fff7ed] shadow-sm transition active:scale-[0.98]"
+            className="group w-[calc((100%_-_32px)/5)] min-w-[calc((100%_-_32px)/5)] shrink-0 snap-start overflow-hidden rounded-[10px] border border-[#f0d8c2] bg-[#fff7ed] shadow-sm transition active:scale-[0.98]"
           >
             <span className="block min-h-[34px] px-2 pt-2 text-[12px] font-black leading-tight text-[#542413]">
               {category.name}
@@ -787,12 +928,13 @@ function FavoriteSection({
         href="/search"
         action="Xem tất cả"
       />
-      <div className="mt-3 grid grid-cols-4 gap-2.5">
+      <div className="mt-3 columns-3 gap-2.5">
         {products.slice(0, 8).map((product, index) => (
           <ProductMiniCard
             key={product.id}
             product={product}
             rating={(4.8 + index * 0.03).toFixed(1)}
+            index={index}
             isFavorite={favoriteIds.includes(product.id)}
             onToggleFavorite={() => onToggleFavorite(product.id)}
             onClick={() => onProductClick(product)}
@@ -807,6 +949,7 @@ function FavoriteSection({
 function ProductMiniCard({
   product,
   rating,
+  index,
   isFavorite,
   onToggleFavorite,
   onClick,
@@ -814,14 +957,15 @@ function ProductMiniCard({
 }: {
   product: Product;
   rating: string;
+  index: number;
   isFavorite: boolean;
   onToggleFavorite: () => void;
   onClick: () => void;
   onQuickAdd: () => void;
 }) {
   return (
-    <article className="relative min-w-0 overflow-hidden rounded-[12px] bg-white shadow-[0_4px_12px_rgba(116,57,21,0.1)]">
-      <div className="relative aspect-[1.08/1] w-full overflow-hidden bg-[#fdf9f4]">
+    <article className="relative mb-2.5 inline-block w-full break-inside-avoid overflow-hidden rounded-[12px] bg-white shadow-[0_4px_12px_rgba(116,57,21,0.1)]">
+      <div className={clsx("relative w-full overflow-hidden bg-[#fdf9f4]", index % 3 === 0 ? "aspect-[0.82/1]" : index % 3 === 1 ? "aspect-square" : "aspect-[1/1.16]")}>
         <button
           type="button"
           onClick={onClick}
@@ -932,7 +1076,7 @@ function isValidUrl(string: string) {
 
 function mapCategoriesToVisuals(categories: Category[]): HomeCategoryVisual[] {
   if (categories.length === 0) return homeCategoryFallbacks;
-  const mapped = categories.slice(0, 6).map((category, index) => ({
+  const mapped = categories.map((category, index) => ({
     name: category.name,
     href: `/category/${category.id}`,
     imageUrl: isValidUrl(category.iconUrl)
@@ -940,5 +1084,5 @@ function mapCategoriesToVisuals(categories: Category[]): HomeCategoryVisual[] {
       : (homeCategoryFallbacks[index]?.imageUrl ??
         homeCategoryFallbacks[0].imageUrl),
   }));
-  return [...mapped, ...homeCategoryFallbacks.slice(mapped.length)].slice(0, 6);
+  return mapped;
 }

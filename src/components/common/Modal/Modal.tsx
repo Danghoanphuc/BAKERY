@@ -9,7 +9,10 @@ export interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  headerContent?: React.ReactNode;
+  footer?: React.ReactNode;
   className?: string;
+  contentClassName?: string;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -17,7 +20,10 @@ export const Modal: React.FC<ModalProps> = ({
   onClose,
   title,
   children,
+  headerContent,
+  footer,
   className,
+  contentClassName,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
@@ -112,7 +118,7 @@ export const Modal: React.FC<ModalProps> = ({
   // Portal rendering for proper z-index
   return createPortal(
     <div
-      className="fixed inset-0 z-[120] flex items-end lg:items-center justify-center lg:p-4"
+      className="fixed inset-0 z-[140] flex items-end lg:items-center justify-center lg:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
@@ -142,18 +148,16 @@ export const Modal: React.FC<ModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-neutral-200">
-          <h2
-            id="modal-title"
-            className="text-lg font-semibold text-neutral-900"
-          >
-            {title}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-2 -mr-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded-full transition-colors touch-target"
-            aria-label="Đóng"
-          >
+        <div className="shrink-0 border-b border-neutral-200 p-4">
+          <div className="flex items-center justify-between">
+            <h2 id="modal-title" className="text-lg font-semibold text-neutral-900">
+              {title}
+            </h2>
+            <button
+              onClick={onClose}
+              className="p-2 -mr-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded-full transition-colors touch-target"
+              aria-label="Đóng"
+            >
             <svg
               width="20"
               height="20"
@@ -169,13 +173,20 @@ export const Modal: React.FC<ModalProps> = ({
                 strokeLinejoin="round"
               />
             </svg>
-          </button>
+            </button>
+          </div>
+          {headerContent && <div className="mt-3">{headerContent}</div>}
         </div>
 
         {/* Content */}
-        <div className="p-4 lg:p-6 max-h-[70vh] lg:max-h-[calc(90vh-5rem)] overflow-y-auto">
+        <div className={clsx("min-h-0 flex-1 overflow-y-auto p-4 lg:p-6", contentClassName)}>
           {children}
         </div>
+        {footer && (
+          <div className="shrink-0 border-t border-neutral-200 bg-white px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_22px_rgba(61,36,23,0.08)] lg:px-6">
+            {footer}
+          </div>
+        )}
       </div>
     </div>,
     document.body,

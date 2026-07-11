@@ -23,6 +23,7 @@ import { clsx } from "clsx";
 
 import { BottomSheet } from "@/components/common";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
+import { AddressModal } from "@/components/layout/Header/AddressModal";
 import { ProductOffers } from "@/features/product/components/ProductOffers";
 import { ProductShareButton } from "@/features/product/components/ProductShareButton";
 import {
@@ -62,6 +63,7 @@ export function ProductDetailModal({
   const [customMessage, setCustomMessage] = useState("");
   const [candles, setCandles] = useState(0);
   const [isPersonalizationOpen, setIsPersonalizationOpen] = useState(false);
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [errors, setErrors] = useState<ProductCustomizationErrors>({});
   const sizeSectionRef = useRef<HTMLDivElement>(null);
   const flavorSectionRef = useRef<HTMLDivElement>(null);
@@ -169,6 +171,7 @@ export function ProductDetailModal({
               headline={fulfillment.headline}
               detail={fulfillment.detail}
               address={config.deliveryAddress?.formattedAddress}
+              onChooseAddress={() => setIsAddressModalOpen(true)}
             />
 
             {product.sizeOptions?.length ? (
@@ -234,6 +237,10 @@ export function ProductDetailModal({
           </div>
         </div>
       </div>
+      <AddressModal
+        isOpen={isAddressModalOpen}
+        onClose={() => setIsAddressModalOpen(false)}
+      />
     </BottomSheet>
   );
 }
@@ -350,11 +357,13 @@ function FulfillmentCard({
   headline,
   detail,
   address,
+  onChooseAddress,
 }: {
   mode: "delivery" | "pickup";
   headline: string;
   detail: string;
   address?: string;
+  onChooseAddress: () => void;
 }) {
   const Icon = mode === "pickup" ? Store : Truck;
   return (
@@ -369,10 +378,10 @@ function FulfillmentCard({
         </div>
       </div>
       {mode === "delivery" && (
-        <p className="mt-2 flex items-center gap-1.5 border-t border-[#dcece7] pt-2 text-[11px] font-bold text-[#52766f]">
+        <button type="button" onClick={onChooseAddress} className="mt-2 flex w-full items-center gap-1.5 border-t border-[#dcece7] pt-2 text-left text-[11px] font-bold text-[#52766f]">
           <MapPin className="h-3.5 w-3.5 shrink-0" />
-          <span className="truncate">{address || "Chọn địa chỉ ở trang chủ để xác nhận thời gian"}</span>
-        </p>
+          <span className="truncate">{address || "Nhấn vào đây để chọn vị trí"}</span>
+        </button>
       )}
     </section>
   );

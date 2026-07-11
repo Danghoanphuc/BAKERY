@@ -95,12 +95,30 @@ export async function createCategory(data: {
 export async function updateCategory(
   id: string,
   data: Partial<Category>,
-): Promise<void> {
+): Promise<Category> {
   const docRef = doc(db, "categories", id);
   await updateDoc(docRef, {
     ...data,
     updatedAt: Timestamp.now(),
   });
+
+  // Fetch and return the updated category
+  const updatedDoc = await getDoc(docRef);
+  if (!updatedDoc.exists()) {
+    throw new Error("Category not found after update");
+  }
+
+  const categoryData = updatedDoc.data();
+  return {
+    id: updatedDoc.id,
+    ...categoryData,
+    createdAt:
+      categoryData.createdAt?.toDate?.()?.toISOString() ||
+      new Date().toISOString(),
+    updatedAt:
+      categoryData.updatedAt?.toDate?.()?.toISOString() ||
+      new Date().toISOString(),
+  } as Category;
 }
 
 export async function deleteCategory(id: string): Promise<void> {

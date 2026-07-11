@@ -32,7 +32,7 @@ export const Modal: React.FC<ModalProps> = ({
 
   // Handle focus trap
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || typeof document === "undefined") return;
 
     // Store the currently focused element
     previousActiveElement.current = document.activeElement as HTMLElement;
@@ -60,6 +60,8 @@ export const Modal: React.FC<ModalProps> = ({
 
   // Handle body scroll lock
   useEffect(() => {
+    if (typeof document === "undefined") return;
+
     if (isOpen) {
       // Lock body scroll
       document.body.style.overflow = "hidden";
@@ -79,7 +81,7 @@ export const Modal: React.FC<ModalProps> = ({
 
   // Handle escape key
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || typeof document === "undefined") return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -113,7 +115,7 @@ export const Modal: React.FC<ModalProps> = ({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === "undefined") return null;
 
   // Portal rendering for proper z-index
   return createPortal(
@@ -150,7 +152,10 @@ export const Modal: React.FC<ModalProps> = ({
         {/* Header */}
         <div className="shrink-0 border-b border-neutral-200 p-4">
           <div className="flex items-center justify-between">
-            <h2 id="modal-title" className="text-lg font-semibold text-neutral-900">
+            <h2
+              id="modal-title"
+              className="text-lg font-semibold text-neutral-900"
+            >
               {title}
             </h2>
             <button
@@ -158,28 +163,33 @@ export const Modal: React.FC<ModalProps> = ({
               className="p-2 -mr-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded-full transition-colors touch-target"
               aria-label="Đóng"
             >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 20 20"
-              fill="none"
-              className="w-5 h-5"
-            >
-              <path
-                d="M15 5L5 15M5 5L15 15"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 20 20"
+                fill="none"
+                className="w-5 h-5"
+              >
+                <path
+                  d="M15 5L5 15M5 5L15 15"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </button>
           </div>
           {headerContent && <div className="mt-3">{headerContent}</div>}
         </div>
 
         {/* Content */}
-        <div className={clsx("min-h-0 flex-1 overflow-y-auto p-4 lg:p-6", contentClassName)}>
+        <div
+          className={clsx(
+            "min-h-0 flex-1 overflow-y-auto p-4 lg:p-6",
+            contentClassName,
+          )}
+        >
           {children}
         </div>
         {footer && (

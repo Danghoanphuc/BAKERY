@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Gift,
   Heart,
+  LayoutGrid,
   MapPin,
   Plus,
   Search,
@@ -113,7 +114,8 @@ export function BakeryHome({
     points: 0,
   });
   const [isProfileLoading, setIsProfileLoading] = useState(true);
-  const { vouchers: guestVouchers, isLoading: areVouchersLoading } = useAvailableVouchers();
+  const { vouchers: guestVouchers, isLoading: areVouchersLoading } =
+    useAvailableVouchers();
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
 
   const categoryVisuals = useMemo(
@@ -123,10 +125,7 @@ export function BakeryHome({
 
   const deliveryAddress = useMemo(
     () =>
-      getDeliveryAddressLabel(
-        config.deliveryAddress,
-        profileSummary.address,
-      ),
+      getDeliveryAddressLabel(config.deliveryAddress, profileSummary.address),
     [config.deliveryAddress, profileSummary.address],
   );
 
@@ -142,7 +141,8 @@ export function BakeryHome({
 
   useEffect(() => {
     try {
-      const savedFavoriteIds = window.localStorage.getItem(FAVORITE_STORAGE_KEY);
+      const savedFavoriteIds =
+        window.localStorage.getItem(FAVORITE_STORAGE_KEY);
       if (savedFavoriteIds) {
         const parsed = JSON.parse(savedFavoriteIds);
         if (Array.isArray(parsed)) {
@@ -154,7 +154,9 @@ export function BakeryHome({
     }
 
     try {
-      const cachedProfile = window.sessionStorage.getItem(HOME_PROFILE_STORAGE_KEY);
+      const cachedProfile = window.sessionStorage.getItem(
+        HOME_PROFILE_STORAGE_KEY,
+      );
       if (cachedProfile) {
         const parsed = JSON.parse(cachedProfile) as HomeProfileSummary;
         if (parsed.isAuthenticated) setProfileSummary(parsed);
@@ -197,7 +199,10 @@ export function BakeryHome({
         };
         setProfileSummary(nextProfile);
         try {
-          window.sessionStorage.setItem(HOME_PROFILE_STORAGE_KEY, JSON.stringify(nextProfile));
+          window.sessionStorage.setItem(
+            HOME_PROFILE_STORAGE_KEY,
+            JSON.stringify(nextProfile),
+          );
         } catch {
           // The fresh state still works when session storage is blocked.
         }
@@ -275,7 +280,10 @@ export function BakeryHome({
             name={profileSummary.name}
             onAddressClick={() => setIsAddressModalOpen(true)}
           />
-          <SearchPill products={visibleFavoriteProducts} categories={categories} />
+          <SearchPill
+            products={visibleFavoriteProducts}
+            categories={categories}
+          />
         </div>
         <MemberCard
           isAuthenticated={profileSummary.isAuthenticated}
@@ -340,27 +348,38 @@ function HomeHeader({
         <div className="min-w-0">
           <h1 className="truncate text-[21px] font-black leading-tight text-[#542413]">
             {name ? (
-              <><span className="font-semibold">Chào mừng</span>{" "}{name}</>
+              <>
+                <span className="font-semibold">Chào mừng</span> {name}
+              </>
             ) : (
               <span className="font-semibold">Xin chào quý khách</span>
-            )}{" "}<span className="text-[#f17a86]">♥</span>
+            )}{" "}
+            <span className="text-[#e86a5c]">♥</span>
           </h1>
         </div>
 
         <div className="flex shrink-0 items-center gap-3">
-          <Link href="/favorites" className="relative text-[#542413]" aria-label="Yêu thích">
+          <Link
+            href="/favorites"
+            className="relative text-[#542413]"
+            aria-label="Yêu thích"
+          >
             <Heart className="h-7 w-7" strokeWidth={1.8} />
             {favoriteCount > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#e85e69] px-1 text-[11px] font-black text-white">
+              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#c35847] px-1 text-[11px] font-black text-white">
                 {favoriteCount}
               </span>
             )}
           </Link>
 
-          <Link href="/cart" className="relative text-[#542413]" aria-label="Giỏ hàng">
+          <Link
+            href="/cart"
+            className="relative text-[#542413]"
+            aria-label="Giỏ hàng"
+          >
             <ShoppingCart className="h-8 w-8" strokeWidth={1.8} />
             {cartCount > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-7 min-w-7 items-center justify-center rounded-full bg-[#e85e69] px-1.5 text-sm font-black text-white max-sm:h-5 max-sm:min-w-5 max-sm:text-[11px]">
+              <span className="absolute -right-1.5 -top-1.5 flex h-7 min-w-7 items-center justify-center rounded-full bg-[#c35847] px-1.5 text-sm font-black text-white max-sm:h-5 max-sm:min-w-5 max-sm:text-[11px]">
                 {cartCount}
               </span>
             )}
@@ -384,7 +403,13 @@ function HomeHeader({
 }
 
 function MemberCard({
-  isAuthenticated, memberCode, name, points, guestVouchers, areVouchersLoading, isProfileLoading,
+  isAuthenticated,
+  memberCode,
+  name,
+  points,
+  guestVouchers,
+  areVouchersLoading,
+  isProfileLoading,
 }: {
   isAuthenticated: boolean;
   memberCode?: string;
@@ -396,7 +421,12 @@ function MemberCard({
 }) {
   if (isProfileLoading && !isAuthenticated) return <MemberCardSkeleton />;
   if (!isAuthenticated) {
-    return <GuestMemberCard vouchers={guestVouchers} isLoading={areVouchersLoading} />;
+    return (
+      <GuestMemberCard
+        vouchers={guestVouchers}
+        isLoading={areVouchersLoading}
+      />
+    );
   }
 
   return (
@@ -418,9 +448,21 @@ function MemberCard({
           </div>
         </div>
         <div className="relative flex flex-col justify-end gap-1 pt-5">
-          <div className="absolute right-2 top-0 text-[26px] leading-none">🎁</div>
-          <MemberStat icon={<Star className="h-3.5 w-3.5 fill-current" />} label={`${points.toLocaleString("vi-VN")} điểm`} detail="Lịch sử" href="/rewards" />
-          <MemberStat icon={<Gift className="h-3.5 w-3.5" />} label="0 quà" detail={name ? "Quà của bạn" : "Khám phá"} href="/rewards" />
+          <div className="absolute right-2 top-0 text-[26px] leading-none">
+            🎁
+          </div>
+          <MemberStat
+            icon={<Star className="h-3.5 w-3.5 fill-current" />}
+            label={`${points.toLocaleString("vi-VN")} điểm`}
+            detail="Lịch sử"
+            href="/rewards"
+          />
+          <MemberStat
+            icon={<Gift className="h-3.5 w-3.5" />}
+            label="0 quà"
+            detail={name ? "Quà của bạn" : "Khám phá"}
+            href="/rewards"
+          />
         </div>
       </div>
     </section>
@@ -429,7 +471,10 @@ function MemberCard({
 
 function MemberCardSkeleton() {
   return (
-    <section className="h-[142px] animate-pulse overflow-hidden rounded-[18px] border border-[#efdfcf] bg-[#fff3df] p-3" aria-label="Đang tải thông tin thành viên">
+    <section
+      className="h-[142px] animate-pulse overflow-hidden rounded-[18px] border border-[#efdfcf] bg-[#fff3df] p-3"
+      aria-label="Đang tải thông tin thành viên"
+    >
       <div className="h-4 w-40 rounded-full bg-white/80" />
       <div className="mt-3 h-9 w-full rounded-[12px] bg-white/75" />
       <div className="mt-2 h-12 w-full rounded-[12px] bg-white/65" />
@@ -437,28 +482,66 @@ function MemberCardSkeleton() {
   );
 }
 
-function GuestMemberCard({ vouchers, isLoading }: { vouchers: SelectableCustomerVoucher[]; isLoading: boolean }) {
+function GuestMemberCard({
+  vouchers,
+  isLoading,
+}: {
+  vouchers: SelectableCustomerVoucher[];
+  isLoading: boolean;
+}) {
   return (
     <section className="overflow-hidden rounded-[18px] border border-[#efc79e] bg-[#fff3df] p-3 shadow-[0_4px_10px_rgba(151,76,31,0.07)]">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 className="text-[14px] font-black text-[#542413]">Thành viên Ngọt & Trà</h2>
-          <p className="mt-1 text-[10px] font-medium text-[#7d513d]">Đăng nhập để tích điểm, nhận quà và lưu ưu đãi.</p>
+          <h2 className="text-[14px] font-black text-[#542413]">
+            Thành viên Ngọt & Trà
+          </h2>
+          <p className="mt-1 text-[10px] font-medium text-[#7d513d]">
+            Đăng nhập để tích điểm, nhận quà và lưu ưu đãi.
+          </p>
         </div>
-        <span className="text-2xl" aria-hidden="true">🎁</span>
+        <span className="text-2xl" aria-hidden="true">
+          🎁
+        </span>
       </div>
       <div className="mt-2 flex gap-2">
-        <Link href="/account/login" className="flex h-9 flex-1 items-center justify-center rounded-full bg-[#e85e69] text-[11px] font-black text-white">Đăng nhập</Link>
-        <Link href="/account/register" className="flex h-9 flex-1 items-center justify-center rounded-full border border-[#e85e69] bg-white text-[11px] font-black text-[#c64f5b]">Đăng ký</Link>
+        <Link
+          href="/account/login"
+          className="flex h-9 flex-1 items-center justify-center rounded-full bg-[#c35847] text-[11px] font-black text-white"
+        >
+          Đăng nhập
+        </Link>
+        <Link
+          href="/account/register"
+          className="flex h-9 flex-1 items-center justify-center rounded-full border border-[#c35847] bg-white text-[11px] font-black text-[#9e3e2f]"
+        >
+          Đăng ký
+        </Link>
       </div>
       <div className="-mx-3 mt-3 flex snap-x snap-mandatory gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {isLoading && <div className="h-16 w-full shrink-0 animate-pulse rounded-[12px] bg-white/70" />}
-        {!isLoading && vouchers.length === 0 && <div className="w-full shrink-0 rounded-[12px] bg-white/80 p-3 text-center text-[11px] font-bold text-[#8b614c]">Ưu đãi mới sẽ sớm xuất hiện tại đây.</div>}
+        {isLoading && (
+          <div className="h-16 w-full shrink-0 animate-pulse rounded-[12px] bg-white/70" />
+        )}
+        {!isLoading && vouchers.length === 0 && (
+          <div className="w-full shrink-0 rounded-[12px] bg-white/80 p-3 text-center text-[11px] font-bold text-[#8b614c]">
+            Ưu đãi mới sẽ sớm xuất hiện tại đây.
+          </div>
+        )}
         {vouchers.map((voucher) => (
-          <Link key={voucher.id} href="/account/register" className="w-[82%] shrink-0 snap-start rounded-[12px] border border-[#f1d6bc] bg-white p-3 shadow-sm">
-            <span className="block text-[12px] font-black text-[#c64f5b]">{voucher.title}</span>
-            <span className="mt-1 block line-clamp-2 text-[10px] font-medium text-[#7d513d]">{voucher.description}</span>
-            <span className="mt-1.5 block text-[10px] font-black tracking-wide text-[#542413]">Mã: {voucher.code}</span>
+          <Link
+            key={voucher.id}
+            href="/account/register"
+            className="w-[82%] shrink-0 snap-start rounded-[12px] border border-[#f1d6bc] bg-white p-3 shadow-sm"
+          >
+            <span className="block text-[12px] font-black text-[#9e3e2f]">
+              {voucher.title}
+            </span>
+            <span className="mt-1 block line-clamp-2 text-[10px] font-medium text-[#7d513d]">
+              {voucher.description}
+            </span>
+            <span className="mt-1.5 block text-[10px] font-black tracking-wide text-[#542413]">
+              Mã: {voucher.code}
+            </span>
           </Link>
         ))}
       </div>
@@ -467,12 +550,55 @@ function GuestMemberCard({ vouchers, isLoading }: { vouchers: SelectableCustomer
 }
 
 const CODE39: Record<string, string> = {
-  "0":"nnnwwnwnn","1":"wnnwnnnnw","2":"nnwwnnnnw","3":"wnwwnnnnn","4":"nnnwwnnnw","5":"wnnwwnnnn","6":"nnwwwnnnn","7":"nnnwnnwnw","8":"wnnwnnwnn","9":"nnwwnnwnn",
-  A:"wnnnnwnnw",B:"nnwnnwnnw",C:"wnwnnwnnn",D:"nnnnwwnnw",E:"wnnnwwnnn",F:"nnwnwwnnn",G:"nnnnnwwnw",H:"wnnnnwwnn",I:"nnwnnwwnn",J:"nnnnwwwnn",K:"wnnnnnnww",L:"nnwnnnnww",M:"wnwnnnnwn",N:"nnnnwnnww",O:"wnnnwnnwn",P:"nnwnwnnwn",Q:"nnnnnnwww",R:"wnnnnnwwn",S:"nnwnnnwwn",T:"nnnnwnwwn",U:"wwnnnnnnw",V:"nwwnnnnnw",W:"wwwnnnnnn",X:"nwnnwnnnw",Y:"wwnnwnnnn",Z:"nwwnwnnnn","-":"nwnnnnwnw",".":"wwnnnnwnn"," ":"nwwnnnwnn","*":"nwnnwnwnn",
+  "0": "nnnwwnwnn",
+  "1": "wnnwnnnnw",
+  "2": "nnwwnnnnw",
+  "3": "wnwwnnnnn",
+  "4": "nnnwwnnnw",
+  "5": "wnnwwnnnn",
+  "6": "nnwwwnnnn",
+  "7": "nnnwnnwnw",
+  "8": "wnnwnnwnn",
+  "9": "nnwwnnwnn",
+  A: "wnnnnwnnw",
+  B: "nnwnnwnnw",
+  C: "wnwnnwnnn",
+  D: "nnnnwwnnw",
+  E: "wnnnwwnnn",
+  F: "nnwnwwnnn",
+  G: "nnnnnwwnw",
+  H: "wnnnnwwnn",
+  I: "nnwnnwwnn",
+  J: "nnnnwwwnn",
+  K: "wnnnnnnww",
+  L: "nnwnnnnww",
+  M: "wnwnnnnwn",
+  N: "nnnnwnnww",
+  O: "wnnnwnnwn",
+  P: "nnwnwnnwn",
+  Q: "nnnnnnwww",
+  R: "wnnnnnwwn",
+  S: "nnwnnnwwn",
+  T: "nnnnwnwwn",
+  U: "wwnnnnnnw",
+  V: "nwwnnnnnw",
+  W: "wwwnnnnnn",
+  X: "nwnnwnnnw",
+  Y: "wwnnwnnnn",
+  Z: "nwwnwnnnn",
+  "-": "nwnnnnwnw",
+  ".": "wwnnnnwnn",
+  " ": "nwwnnnwnn",
+  "*": "nwnnwnwnn",
 };
 
 function MemberBarcode({ value }: { value: string }) {
-  const encoded = `*${value.toUpperCase().replace(/[^A-Z0-9. -]/g, "").slice(0, 24) || "MEMBER"}*`;
+  const encoded = `*${
+    value
+      .toUpperCase()
+      .replace(/[^A-Z0-9. -]/g, "")
+      .slice(0, 24) || "MEMBER"
+  }*`;
   const bars: { x: number; width: number }[] = [];
   let x = 8;
   for (const character of encoded) {
@@ -484,15 +610,35 @@ function MemberBarcode({ value }: { value: string }) {
     x += 1;
   }
   return (
-    <svg viewBox={`0 0 ${x + 8} 34`} className="h-8 w-full" role="img" aria-label={`Mã thành viên ${value}`} preserveAspectRatio="none">
+    <svg
+      viewBox={`0 0 ${x + 8} 34`}
+      className="h-8 w-full"
+      role="img"
+      aria-label={`Mã thành viên ${value}`}
+      preserveAspectRatio="none"
+    >
       <rect width="100%" height="34" fill="white" />
-      {bars.map((bar, index) => <rect key={index} x={bar.x} y="1" width={bar.width} height="32" fill="#111" />)}
+      {bars.map((bar, index) => (
+        <rect
+          key={index}
+          x={bar.x}
+          y="1"
+          width={bar.width}
+          height="32"
+          fill="#111"
+        />
+      ))}
     </svg>
   );
 }
 
 function formatMemberCode(value: string) {
-  return value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 20).replace(/(.{4})/g, "$1 ").trim();
+  return value
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 20)
+    .replace(/(.{4})/g, "$1 ")
+    .trim();
 }
 
 function MemberStat({
@@ -556,7 +702,9 @@ function SearchPill({
 
   const goToSearch = (value: string) => {
     const nextQuery = value.trim();
-    const target = nextQuery ? `/search?q=${encodeURIComponent(nextQuery)}` : "/search";
+    const target = nextQuery
+      ? `/search?q=${encodeURIComponent(nextQuery)}`
+      : "/search";
     router.push(target);
   };
 
@@ -578,10 +726,15 @@ function SearchPill({
         onSubmit={handleSubmit}
         className={clsx(
           "relative z-[82] flex h-10 items-center gap-2.5 rounded-full border bg-white px-3.5 shadow-[0_2px_10px_rgba(139,75,31,0.04)] transition",
-          isOpen ? "border-[#d85d6c] shadow-[0_8px_20px_rgba(216,93,108,0.14)]" : "border-[#f0e3d3]",
+          isOpen
+            ? "border-[#b84a39] shadow-[0_8px_20px_rgba(184,74,57,0.14)]"
+            : "border-[#f0e3d3]",
         )}
       >
-        <Search className="h-[18px] w-[18px] shrink-0 text-[#9b715b]" strokeWidth={1.8} />
+        <Search
+          className="h-[18px] w-[18px] shrink-0 text-[#9b715b]"
+          strokeWidth={1.8}
+        />
         <input
           ref={inputRef}
           value={query}
@@ -632,7 +785,7 @@ function SearchPill({
               onClick={() => goToSearch(query)}
               className="flex h-11 w-full items-center gap-2 rounded-[14px] bg-[#fff4ec] px-3 text-left text-[13px] font-black text-[#3d2417]"
             >
-              <Search className="h-4 w-4 shrink-0 text-[#d85d6c]" />
+              <Search className="h-4 w-4 shrink-0 text-[#b84a39]" />
               <span className="truncate">Tìm “{query.trim()}”</span>
               <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-[#9b8171]" />
             </button>
@@ -646,7 +799,7 @@ function SearchPill({
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => goToSearch(action.query)}
-                  className="min-h-[72px] rounded-[14px] border border-[#f0e3d3] bg-[#fffaf6] p-3 text-left transition hover:border-[#d85d6c]"
+                  className="min-h-[72px] rounded-[14px] border border-[#f0e3d3] bg-[#fffaf6] p-3 text-left transition hover:border-[#b84a39]"
                 >
                   <span className="block text-[13px] font-black leading-tight text-[#3d2417]">
                     {action.label}
@@ -660,7 +813,9 @@ function SearchPill({
           </AssistSection>
 
           {assist.products.length > 0 && (
-            <AssistSection title={query.trim() ? "Món khớp gần nhất" : "Đáng mua lúc này"}>
+            <AssistSection
+              title={query.trim() ? "Món khớp gần nhất" : "Đáng mua lúc này"}
+            >
               <div className="space-y-2">
                 {assist.products.map(({ product, reason }) => (
                   <button
@@ -682,7 +837,7 @@ function SearchPill({
                         {product.name}
                       </span>
                       <span className="mt-1 flex items-center gap-2">
-                        <span className="text-[12px] font-black text-[#d85d6c]">
+                        <span className="text-[12px] font-black text-[#b84a39]">
                           {formatPrice(product.price)}
                         </span>
                         <span className="truncate text-[11px] font-bold text-[#9b8171]">
@@ -706,7 +861,7 @@ function SearchPill({
                     type="button"
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => goToSearch(category)}
-                    className="rounded-full border border-[#eadbcc] px-3 py-2 text-xs font-black text-[#65483a] transition hover:border-[#d85d6c] hover:text-[#d85d6c]"
+                    className="rounded-full border border-[#eadbcc] px-3 py-2 text-xs font-black text-[#65483a] transition hover:border-[#b84a39] hover:text-[#b84a39]"
                   >
                     {category}
                   </button>
@@ -759,13 +914,16 @@ function buildSearchAssist(
   const matchedActions = homeSearchIntentSuggestions.filter(
     (action) =>
       !normalizedQuery ||
-      normalizeSuggestionText(`${action.label} ${action.query} ${action.tone}`).includes(
-        normalizedQuery,
-      ),
+      normalizeSuggestionText(
+        `${action.label} ${action.query} ${action.tone}`,
+      ).includes(normalizedQuery),
   );
 
   return {
-    actions: matchedActions.length > 0 ? matchedActions : homeSearchIntentSuggestions.slice(0, 2),
+    actions:
+      matchedActions.length > 0
+        ? matchedActions
+        : homeSearchIntentSuggestions.slice(0, 2),
     products: matchedProducts,
     categories: visibleCategories
       .filter(
@@ -789,7 +947,8 @@ function getAssistProductScore(product: Product, normalizedQuery: string) {
     ].join(" "),
   );
 
-  const relevance = normalizedQuery && haystack.includes(normalizedQuery) ? 20 : 0;
+  const relevance =
+    normalizedQuery && haystack.includes(normalizedQuery) ? 20 : 0;
   return (
     relevance +
     Number(product.isBestseller) * 8 +
@@ -800,7 +959,8 @@ function getAssistProductScore(product: Product, normalizedQuery: string) {
   );
 }
 function getAssistProductReason(product: Product) {
-  if (product.availableToday !== false && !product.requiresPreorder) return "Có hôm nay";
+  if (product.availableToday !== false && !product.requiresPreorder)
+    return "Có hôm nay";
   if (product.isBestseller) return "Best seller";
   if (product.requiresMessage) return "Ghi lời chúc";
   if (product.isNew) return "Mới ra lò";
@@ -819,19 +979,13 @@ function normalizeSuggestionText(value: string) {
 }
 
 function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
-  const items: HomeCategoryVisual[] = [
-    ...categories,
-    {
-      name: "Xem tất cả",
-      href: "/category",
-      imageUrl: categories[0]?.imageUrl || homeCategoryFallbacks[0].imageUrl,
-    },
-  ];
   return (
     <section className="pt-4">
-      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#a17864]">Danh mục sản phẩm</p>
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#a17864]">
+        Danh mục sản phẩm
+      </p>
       <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {items.map((category, index) => (
+        {categories.map((category, index) => (
           <Link
             key={`${category.name}-${index}`}
             href={category.href}
@@ -851,6 +1005,17 @@ function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
             </span>
           </Link>
         ))}
+        <Link
+          href="/category"
+          className="group flex w-[calc((100%_-_32px)/5)] min-w-[calc((100%_-_32px)/5)] shrink-0 snap-start flex-col items-center justify-center gap-2 overflow-hidden rounded-[10px] border-2 border-dashed border-[#e0c4a8] bg-gradient-to-br from-[#fffbf5] to-[#fff7ed] shadow-sm transition hover:border-[#d4b394] hover:from-[#fff9f0] hover:to-[#fff3e4] active:scale-[0.98]"
+        >
+          <div className="grid h-12 w-12 place-items-center rounded-full bg-[#f0d8c2]/40">
+            <LayoutGrid className="h-6 w-6 text-[#8a6855]" strokeWidth={2.5} />
+          </div>
+          <span className="px-2 text-center text-[11px] font-black leading-tight text-[#8a6855]">
+            Xem tất cả
+          </span>
+        </Link>
       </div>
     </section>
   );
@@ -873,7 +1038,7 @@ function FeaturedPromo() {
           </p>
           <Link
             href="/search?q=combo trà bánh"
-            className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-[#e85e69] px-5 text-[14px] font-black text-white shadow-sm max-sm:h-10 max-sm:text-sm"
+            className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-[#c35847] px-5 text-[14px] font-black text-white shadow-sm max-sm:h-10 max-sm:text-sm"
           >
             Khám phá ngay
             <ChevronRight className="h-4 w-4" />
@@ -887,15 +1052,17 @@ function FeaturedPromo() {
             className="rounded-[28px] object-cover"
           />
           <div className="absolute left-4 top-4 grid h-28 w-28 place-items-center rounded-full bg-white/90 text-center shadow-sm">
-            <span className="text-[15px] font-bold text-[#d85d6c]">
+            <span className="text-[15px] font-bold text-[#b84a39]">
               Giảm đến
-              <span className="block text-[40px] font-black leading-none">25%</span>
+              <span className="block text-[40px] font-black leading-none">
+                25%
+              </span>
             </span>
           </div>
         </div>
       </div>
       <div className="relative z-10 mt-4 flex justify-center gap-2">
-        <span className="h-2 w-2 rounded-full bg-[#e85e69]" />
+        <span className="h-2 w-2 rounded-full bg-[#c35847]" />
         <span className="h-2 w-2 rounded-full bg-[#e8d9ce]" />
         <span className="h-2 w-2 rounded-full bg-[#e8d9ce]" />
         <span className="h-2 w-2 rounded-full bg-[#e8d9ce]" />
@@ -977,7 +1144,7 @@ function ProductMiniCard({
           onClick={onToggleFavorite}
           className={clsx(
             "absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-white/90 text-[#b98f80] shadow-sm transition active:scale-95",
-            isFavorite ? "text-[#d85d6c]" : "text-[#c99b9b]",
+            isFavorite ? "text-[#b84a39]" : "text-[#c99b9b]",
           )}
           aria-label={isFavorite ? "Bỏ yêu thích" : "Thêm yêu thích"}
         >
@@ -999,7 +1166,7 @@ function ProductMiniCard({
             {product.name}
           </h3>
           <div className="mt-2 pr-7">
-            <span className="block w-full whitespace-nowrap text-[9px] font-black leading-tight text-[#e85e69]">
+            <span className="block w-full whitespace-nowrap text-[9px] font-black leading-tight text-[#c35847]">
               {formatPrice(product.price).replace(" ", "")}
             </span>
           </div>
@@ -1007,7 +1174,7 @@ function ProductMiniCard({
         <button
           type="button"
           onClick={onQuickAdd}
-          className="absolute bottom-2 right-2 grid h-7 w-7 place-items-center rounded-full bg-[#e85e69] text-white shadow-sm transition active:scale-95"
+          className="absolute bottom-2 right-2 grid h-7 w-7 place-items-center rounded-full bg-[#c35847] text-white shadow-sm transition active:scale-95"
           aria-label={`Thêm nhanh ${product.name}`}
         >
           <Plus className="h-4 w-4" />

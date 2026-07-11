@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   Clock3,
   CreditCard,
+  KeyRound,
   LocateFixed,
   MapPin,
   QrCode,
@@ -20,7 +21,8 @@ import { AddressModal } from "@/components/layout/Header/AddressModal";
 import { formatPrice } from "@/lib/utils";
 import { getShippingBenefit } from "@/lib/order-pricing";
 import { calculateVoucherPricing } from "@/lib/vouchers";
-import { getPhoneError, sanitizePhone, sanitizePin } from "@/features/auth/pin-ui";
+import { getPhoneError, sanitizePhone } from "@/features/auth/pin-ui";
+import PinSetupFlow from "@/features/auth/PinSetupFlow";
 import type { Customer, CustomerAddressBookEntry, OrderConfig } from "@/types";
 
 function getAddressText(address?: OrderConfig["deliveryAddress"]) {
@@ -60,11 +62,6 @@ export default function CheckoutPage() {
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
-    email: "",
-    birthday: "",
-    gender: "",
-    pin: "",
-    confirmPin: "",
     notes: "",
   });
   const [paymentMethod, setPaymentMethod] = useState<"cod" | "bank_transfer">(
@@ -74,6 +71,8 @@ export default function CheckoutPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [hasSubmittedOrder, setHasSubmittedOrder] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingOrder, setPendingOrder] = useState<{ id: string; orderNumber: string } | null>(null);
+  const [isSavingPin, setIsSavingPin] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
   const isPickup = config.deliveryMode === "pickup";
@@ -105,13 +104,6 @@ export default function CheckoutPage() {
           ...current,
           name: current.name || nextCustomer.name,
           phone: current.phone || nextCustomer.phone,
-          email: current.email || nextCustomer.email || "",
-          birthday:
-            current.birthday ||
-            nextCustomer.personalization.birthday ||
-            nextCustomer.birthday ||
-            "",
-          gender: current.gender || nextCustomer.gender || "",
         }));
 
         if (!config.deliveryAddress) {
@@ -158,6 +150,42 @@ export default function CheckoutPage() {
     );
   }
 
+  const handlePinComplete = useCallback(async (pin: string) => {
+    if (!pendingOrder || isSavingPin) return;
+    setIsSavingPin(true);
+    setError(null);
+
+    try {
+      const response = await fetch("/api/auth/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newPin: pin }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) {
+        throw new Error(payload?.error || "Không thể lưu mã PIN.");
+      }
+      const completedOrderId = pendingOrder.id;
+      setPendingOrder(null);
+      router.replace(`/order?orderId=${encodeURIComponent(completedOrderId)}`);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Không thể lưu mã PIN.");
+    } finally {
+      setIsSavingPin(false);
+    }
+  }, [isSavingPin, pendingOrder, router]);
+
+  if (pendingOrder) {
+    return (
+      <PostOrderPinSetup
+        orderNumber={pendingOrder.orderNumber}
+        error={error}
+        isSaving={isSavingPin}
+        onComplete={handlePinComplete}
+      />
+    );
+  }
+
   if (items.length === 0) return null;
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -171,17 +199,6 @@ export default function CheckoutPage() {
       if (phoneError) {
         setError(phoneError);
         return;
-      }
-
-      if (!customer) {
-        if (formData.pin.length !== 4) {
-          setError("Vui lòng tạo mã PIN gồm 4 chữ số để đăng nhập lần sau.");
-          return;
-        }
-        if (formData.pin !== formData.confirmPin) {
-          setError("Mã PIN nhập lại chưa khớp.");
-          return;
-        }
       }
 
       const deliveryAddressString =
@@ -202,7 +219,7 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           customerName: formData.name || customer?.name,
           customerPhone: submittedPhone,
-          customerEmail: formData.email || customer?.email || undefined,
+          customerEmail: customer?.email || undefined,
           totalAmount: finalTotal,
           orderType: config.deliveryMode,
           deliveryAddress: deliveryAddressString,
@@ -213,16 +230,6 @@ export default function CheckoutPage() {
           voucherCode: selectedVoucher?.code,
           voucherId: selectedVoucher?.id,
           voucherUseMode: selectedVoucher?.useMode,
-          customerBirthday:
-            formData.birthday ||
-            customer?.personalization.birthday ||
-            customer?.birthday ||
-            undefined,
-          customerGender:
-            (formData.gender as Customer["gender"]) ||
-            customer?.gender ||
-            undefined,
-          customerPin: !customer ? formData.pin : undefined,
           notes: formData.notes || undefined,
           paymentMethod,
           items,
@@ -238,7 +245,11 @@ export default function CheckoutPage() {
       setHasSubmittedOrder(true);
       clearCart();
       clearSelectedVoucher();
-      router.push(`/order?orderId=${encodeURIComponent(order.id)}`);
+      if (customer) {
+        router.push(`/order?orderId=${encodeURIComponent(order.id)}`);
+        return;
+      }
+      setPendingOrder({ id: order.id, orderNumber: order.orderNumber });
     } catch (err) {
       console.error(err);
       setError(
@@ -328,64 +339,6 @@ export default function CheckoutPage() {
                 <p className="text-xs font-semibold text-[#9a7a66]">
                   Tiệm sẽ gọi xác nhận nếu đơn hàng cần kiểm tra thêm.
                 </p>
-                <Field
-                  label="Email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(value) => setFormData({ ...formData, email: value })}
-                />
-                <div className="grid grid-cols-2 gap-3">
-                  <Field
-                    label="Tạo mã PIN"
-                    required
-                    type="password"
-                    inputMode="numeric"
-                    maxLength={4}
-                    value={formData.pin}
-                    onChange={(value) =>
-                      setFormData({ ...formData, pin: sanitizePin(value) })
-                    }
-                  />
-                  <Field
-                    label="Nhập lại PIN"
-                    required
-                    type="password"
-                    inputMode="numeric"
-                    maxLength={4}
-                    value={formData.confirmPin}
-                    onChange={(value) =>
-                      setFormData({ ...formData, confirmPin: sanitizePin(value) })
-                    }
-                  />
-                </div>
-                <p className="text-xs font-semibold text-[#9a7a66]">
-                  PIN này dùng cùng số điện thoại để đăng nhập và xem lại đơn hàng.
-                </p>
-                {selectedVoucher && (
-                  <>
-                    <Field
-                      label="Ngày sinh"
-                      type="date"
-                      value={formData.birthday}
-                      onChange={(value) => setFormData({ ...formData, birthday: value })}
-                    />
-                    <label className="block">
-                      <span className="text-sm font-bold text-[#65483a]">Giới tính</span>
-                      <select
-                        value={formData.gender}
-                        onChange={(event) =>
-                          setFormData({ ...formData, gender: event.target.value })
-                        }
-                        className="mt-1 h-11 w-full rounded-[14px] border border-[#eadbcc] px-3 text-sm outline-none focus:border-[#d85d6c] focus:ring-2 focus:ring-[#d85d6c]/15"
-                      >
-                        <option value="">Chưa chọn</option>
-                        <option value="female">Nữ</option>
-                        <option value="male">Nam</option>
-                        <option value="other">Khác</option>
-                      </select>
-                    </label>
-                  </>
-                )}
               </div>
             )}
           </section>
@@ -543,6 +496,57 @@ export default function CheckoutPage() {
         isOpen={isAddressModalOpen}
         onClose={() => setIsAddressModalOpen(false)}
       />
+    </main>
+  );
+}
+
+function PostOrderPinSetup({
+  orderNumber,
+  error,
+  isSaving,
+  onComplete,
+}: {
+  orderNumber: string;
+  error: string | null;
+  isSaving: boolean;
+  onComplete: (pin: string) => void;
+}) {
+  return (
+    <main className="grid min-h-screen place-items-center bg-[#fff8ef] px-4 py-8 text-[#3d2417]">
+      <section className="w-full max-w-[440px] rounded-[24px] border border-[#f0e1d2] bg-white p-5 shadow-[0_18px_50px_rgba(83,38,12,0.12)]">
+        <div className="text-center">
+          <span className="mx-auto grid h-14 w-14 place-items-center rounded-[16px] bg-[#d85d6c] text-white">
+            <KeyRound className="h-7 w-7" />
+          </span>
+          <p className="mt-4 text-xs font-black uppercase tracking-[0.08em] text-[#d85d6c]">
+            Đã tạo đơn #{orderNumber}
+          </p>
+          <h1 className="mt-1 text-2xl font-black">Tạo mã PIN đăng nhập</h1>
+          <p className="mt-2 text-sm font-semibold leading-5 text-[#7b6254]">
+            Hoàn tất bước này để lưu tài khoản và xem ngay đơn hàng vừa đặt.
+          </p>
+        </div>
+
+        {error && (
+          <p className="mt-4 rounded-[12px] bg-red-50 px-3 py-2 text-center text-sm font-bold text-red-700">
+            {error}
+          </p>
+        )}
+
+        <div className="mt-3">
+          <PinSetupFlow
+            key={error || "pin-setup"}
+            onComplete={onComplete}
+            isLoading={isSaving}
+          />
+        </div>
+
+        {isSaving && (
+          <p className="text-center text-xs font-bold text-[#9a7a66]">
+            Đang lưu mã PIN và mở đơn hàng...
+          </p>
+        )}
+      </section>
     </main>
   );
 }

@@ -22,8 +22,6 @@ import {
   recordVoucherRedemption,
   updateCustomer,
 } from "@/lib/firebase";
-import { validatePin } from "@/lib/auth/password";
-import { setCustomerPin } from "@/lib/firebase/customer-auth";
 import {
   estimateOrderCostOfGoods,
   getOrderProductSubtotal,
@@ -134,7 +132,6 @@ export async function POST(request: Request) {
       customerBirthday?: string;
       customerGender?: "male" | "female" | "other";
       deliveryAddressDetails?: OrderConfig["deliveryAddress"];
-      customerPin?: string;
     };
     const sessionValue = readCookie(
       request.headers.get("cookie"),
@@ -228,21 +225,14 @@ export async function POST(request: Request) {
       : null;
     const isGuestCheckout = !session;
 
-    if (isGuestCheckout) {
-      const pinError = validatePin(data.customerPin ?? "");
-      if (pinError) {
-        return NextResponse.json({ error: pinError }, { status: 400 });
-      }
-
-      if (existingCustomer?.hasPassword) {
-        return NextResponse.json(
-          {
-            error: "Số điện thoại này đã có tài khoản. Vui lòng đăng nhập trước khi đặt hàng.",
-            code: "account_exists",
-          },
-          { status: 409 },
-        );
-      }
+    if (isGuestCheckout && existingCustomer?.hasPassword) {
+      return NextResponse.json(
+        {
+          error: "Số điện thoại này đã có tài khoản. Vui lòng đăng nhập trước khi đặt hàng.",
+          code: "account_exists",
+        },
+        { status: 409 },
+      );
     }
 
     const customer =
@@ -258,9 +248,6 @@ export async function POST(request: Request) {
             personalization: {},
           })
         : null;
-    if (customer && isGuestCheckout && data.customerPin) {
-      await setCustomerPin(customer.id, data.customerPin);
-    }
     const selectedAddress = data.deliveryAddressDetails;
     if (
       customer &&
@@ -293,7 +280,6 @@ export async function POST(request: Request) {
     }
     const orderPayload = stripUndefinedDeep({
       ...data,
-      customerPin: undefined,
       deliveryAddressDetails: undefined,
       orderNumber,
       customerId: customer?.id ?? data.customerId,

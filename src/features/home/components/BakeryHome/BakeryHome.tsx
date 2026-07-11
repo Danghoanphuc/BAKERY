@@ -928,12 +928,11 @@ function FavoriteSection({
         href="/search"
         action="Xem tất cả"
       />
-      <div className="mt-3 columns-3 gap-2.5">
-        {products.map((product, index) => (
+      <div className="mt-3 grid grid-cols-3 items-start gap-2.5">
+        {products.map((product) => (
           <ProductMiniCard
             key={product.id}
             product={product}
-            index={index}
             isFavorite={favoriteIds.includes(product.id)}
             onToggleFavorite={() => onToggleFavorite(product.id)}
             onClick={() => onProductClick(product)}
@@ -947,22 +946,20 @@ function FavoriteSection({
 
 function ProductMiniCard({
   product,
-  index,
   isFavorite,
   onToggleFavorite,
   onClick,
   onQuickAdd,
 }: {
   product: Product;
-  index: number;
   isFavorite: boolean;
   onToggleFavorite: () => void;
   onClick: () => void;
   onQuickAdd: () => void;
 }) {
   return (
-    <article className="relative mb-2.5 inline-block w-full break-inside-avoid overflow-hidden rounded-[12px] bg-white shadow-[0_4px_12px_rgba(116,57,21,0.1)]">
-      <div className={clsx("relative w-full overflow-hidden bg-[#fdf9f4]", index % 3 === 0 ? "aspect-[0.82/1]" : index % 3 === 1 ? "aspect-square" : "aspect-[1/1.16]")}>
+    <article className="relative w-full min-w-0 overflow-hidden rounded-[12px] bg-white shadow-[0_4px_12px_rgba(116,57,21,0.1)]">
+      <div className="relative aspect-[0.82/1] w-full overflow-hidden bg-[#fdf9f4]">
         <button
           type="button"
           onClick={onClick}

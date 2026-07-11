@@ -1,7 +1,7 @@
 import { ChangeEvent, Dispatch, FormEvent, SetStateAction, useState } from "react";
 import { Bot, ImagePlus, Loader2, Plus, Star, Trash2, X } from "lucide-react";
 import { clsx } from "clsx";
-import type { Category, Product, SizeOption } from "@/types";
+import type { Category, FlavorOption, Product, SizeOption } from "@/types";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import type { ProductFormData } from "../_lib/product-form";
 import { splitTags } from "../_lib/product-form";
@@ -68,10 +68,10 @@ export function ProductFormModal({
     }));
   };
 
-  const updateFlavorOption = (index: number, label: string) => {
+  const updateFlavorOption = (index: number, field: keyof FlavorOption, value: string) => {
     setFormData((prev) => {
       const nextFlavors = [...prev.flavorOptions];
-      nextFlavors[index] = { ...nextFlavors[index], label };
+      nextFlavors[index] = { ...nextFlavors[index], [field]: value };
       return { ...prev, flavorOptions: nextFlavors };
     });
   };
@@ -423,7 +423,7 @@ function VariantSection({
   ) => void;
   removeSizeOption: (index: number) => void;
   addFlavorOption: () => void;
-  updateFlavorOption: (index: number, label: string) => void;
+  updateFlavorOption: (index: number, field: keyof FlavorOption, value: string) => void;
   removeFlavorOption: (index: number) => void;
 }) {
   return (
@@ -465,17 +465,18 @@ function VariantSection({
         </div>
 
         <OptionHeader label="Vị / nhân bánh" onAdd={addFlavorOption} />
-        <div className="space-y-2">
+        <div className="flex snap-x gap-3 overflow-x-auto pb-2">
           {formData.flavorOptions.map((flavor, index) => (
-            <div key={flavor.id} className="grid gap-2 md:grid-cols-[1fr_40px]">
+            <div key={flavor.id} className="w-48 shrink-0 snap-start rounded-xl border border-neutral-200 bg-neutral-50 p-2">
+              <FlavorImageUploader flavor={flavor} onChange={(imageUrl) => updateFlavorOption(index, "imageUrl", imageUrl)} />
               <input
                 type="text"
                 placeholder="Ví dụ: Socola, Matcha, Vanilla"
                 value={flavor.label}
-                onChange={(event) => updateFlavorOption(index, event.target.value)}
-                className="h-10 rounded-lg border border-neutral-300 px-3 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+                onChange={(event) => updateFlavorOption(index, "label", event.target.value)}
+                className="mt-2 h-9 w-full rounded-lg border border-neutral-300 px-2 text-sm outline-none focus:border-brand-500"
               />
-              <IconButton label="Xóa vị" onClick={() => removeFlavorOption(index)} />
+              <button type="button" onClick={() => removeFlavorOption(index)} className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-red-600"><Trash2 className="h-3.5 w-3.5" /> Xóa vị</button>
             </div>
           ))}
           {formData.flavorOptions.length === 0 && (
@@ -484,6 +485,37 @@ function VariantSection({
         </div>
       </div>
     </FormSection>
+  );
+}
+
+function FlavorImageUploader({ flavor, onChange }: { flavor: FlavorOption; onChange: (url: string) => void }) {
+  const [isUploading, setIsUploading] = useState(false);
+  async function upload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const response = await fetch("/api/uploads/cloudinary", { method: "POST", body });
+      const result = await response.json() as { url?: string };
+      if (response.ok && result.url) onChange(result.url);
+    } finally {
+      setIsUploading(false);
+      event.target.value = "";
+    }
+  }
+  return flavor.imageUrl ? (
+    <div className="relative aspect-square overflow-hidden rounded-lg bg-white">
+      <ProductImage src={flavor.imageUrl} alt={flavor.label || "Ảnh vị bánh"} className="object-cover" />
+      <button type="button" onClick={() => onChange("")} className="absolute right-1 top-1 grid h-7 w-7 place-items-center rounded-full bg-white text-red-600 shadow"><X className="h-3.5 w-3.5" /></button>
+    </div>
+  ) : (
+    <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-lg border border-dashed border-neutral-300 bg-white text-xs font-bold text-neutral-500">
+      {isUploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-6 w-6" />}
+      <span className="mt-1">Tải ảnh vị</span>
+      <input type="file" accept="image/*" onChange={upload} className="sr-only" />
+    </label>
   );
 }
 

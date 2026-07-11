@@ -12,13 +12,17 @@ export async function loadHomeData(featuredProduct?: Product): Promise<HomeData>
     loadProducts(),
   ]);
   const curated = products
-    .filter((product) => product.isFeatured || product.isBestseller)
-    .slice(0, 8);
+    .filter((product) => product.isAvailable !== false)
+    .sort((left, right) =>
+      Number(Boolean(right.isFeatured || right.isBestseller)) -
+        Number(Boolean(left.isFeatured || left.isBestseller)) ||
+      (right.sortPriority ?? 0) - (left.sortPriority ?? 0),
+    );
 
   return {
     categories,
     favoriteProducts: featuredProduct
-      ? [featuredProduct, ...curated.filter((product) => product.id !== featuredProduct.id)].slice(0, 8)
+      ? [featuredProduct, ...curated.filter((product) => product.id !== featuredProduct.id)]
       : curated,
   };
 }

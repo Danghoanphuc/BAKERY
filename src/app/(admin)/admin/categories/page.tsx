@@ -1,8 +1,9 @@
 "use client";
 
 import {
+  ChangeEvent,
+  DragEvent,
   FormEvent,
-  PointerEvent,
   useEffect,
   useMemo,
   useRef,
@@ -27,7 +28,6 @@ import {
   X,
 } from "lucide-react";
 import type { Category } from "@/types";
-import { defaultCategoryVisuals } from "@/features/home/data/homeContent";
 
 type CategoryFormData = {
   name: string;
@@ -133,7 +133,7 @@ export default function CategoriesPage() {
     setEditingCategory(null);
     setFormData({
       ...emptyForm,
-      iconUrl: defaultCategoryVisuals[0].imageUrl,
+      iconUrl: "",
       displayOrder: categories.length,
     });
     setIsModalOpen(true);
@@ -235,33 +235,26 @@ export default function CategoriesPage() {
     setHasUnsavedOrder(true);
   }
 
-  function startDrag(event: PointerEvent<HTMLButtonElement>, categoryId: string) {
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
+  function startDrag(event: DragEvent<HTMLDivElement>, categoryId: string) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", categoryId);
     draggingIdRef.current = categoryId;
     setDraggingId(categoryId);
     setError(null);
     setMessage(null);
   }
 
-  function moveDraggedCategory(event: PointerEvent<HTMLButtonElement>) {
+  function moveDraggedCategory(event: DragEvent<HTMLDivElement>, overId: string) {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
     const activeId = draggingIdRef.current;
     if (!activeId) return;
-
-    const target = document
-      .elementFromPoint(event.clientX, event.clientY)
-      ?.closest<HTMLElement>("[data-category-id]");
-    const overId = target?.dataset.categoryId;
-
-    if (overId && overId !== activeId) {
+    if (overId !== activeId) {
       moveCategory(activeId, overId);
     }
   }
 
-  function endDrag(event: PointerEvent<HTMLButtonElement>) {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
+  function endDrag() {
     draggingIdRef.current = null;
     setDraggingId(null);
     if (didDragChangeRef.current) {
@@ -513,7 +506,7 @@ export default function CategoriesPage() {
           ))}
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {filteredCategories.map((category) => (
             <PreviewCard
               key={category.id}
@@ -591,9 +584,9 @@ function CategoryRow({
   category: Category;
   index: number;
   isDragging: boolean;
-  onDragStart: (event: PointerEvent<HTMLButtonElement>, id: string) => void;
-  onDragMove: (event: PointerEvent<HTMLButtonElement>) => void;
-  onDragEnd: (event: PointerEvent<HTMLButtonElement>) => void;
+  onDragStart: (event: DragEvent<HTMLDivElement>, id: string) => void;
+  onDragMove: (event: DragEvent<HTMLDivElement>, id: string) => void;
+  onDragEnd: () => void;
   onEdit: (category: Category) => void;
   onDelete: (category: Category) => void;
   onToggleVisibility: (category: Category) => void;
@@ -604,20 +597,20 @@ function CategoryRow({
   return (
     <div
       data-category-id={category.id}
+      draggable
+      onDragStart={(event) => onDragStart(event, category.id)}
+      onDragOver={(event) => onDragMove(event, category.id)}
+      onDragEnd={onDragEnd}
       className={`grid gap-4 rounded-lg border bg-white p-4 shadow-sm transition-all duration-200 md:grid-cols-[auto_1fr_auto] md:items-center ${
         isDragging
-          ? "scale-[1.01] border-brand-400 shadow-lg"
+          ? "z-20 scale-[1.02] cursor-grabbing border-brand-400 opacity-90 shadow-2xl"
           : "border-neutral-200 hover:shadow-md"
       } ${!isVisible ? "opacity-65" : ""}`}
     >
       <div className="flex items-center gap-3">
         <button
           type="button"
-          onPointerDown={(event) => onDragStart(event, category.id)}
-          onPointerMove={onDragMove}
-          onPointerUp={onDragEnd}
-          onPointerCancel={onDragEnd}
-          className="touch-none rounded-md border border-neutral-200 p-2 text-neutral-400 transition hover:bg-neutral-50 hover:text-neutral-700"
+          className="cursor-grab rounded-md border border-neutral-200 p-2 text-neutral-400 transition hover:bg-neutral-50 hover:text-neutral-700 active:cursor-grabbing"
           aria-label="Kéo để sắp xếp"
         >
           <GripVertical className="h-5 w-5" />
@@ -701,42 +694,32 @@ function PreviewCard({
   const isVisible = category.isVisible ?? true;
 
   return (
-    <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm">
-      <div className="relative aspect-[16/10] bg-neutral-100">
+    <div className={`group overflow-hidden rounded-[10px] border border-[#f0d8c2] bg-[#fff7ed] shadow-sm ${!isVisible ? "opacity-55" : ""}`}>
+      <div className="min-h-[42px] px-2 pt-2 text-[12px] font-black leading-tight text-[#542413]">{category.name}</div>
+      <div className="relative aspect-square bg-neutral-100">
         <img
           src={category.iconUrl}
           alt={category.name}
           className="h-full w-full object-cover"
         />
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent p-4 text-white">
-          <p className="text-lg font-black">{category.name}</p>
-          <p className="text-xs opacity-85">
-            {category.productCount ?? 0} sản phẩm
-          </p>
-        </div>
         {!isVisible && (
-          <div className="absolute right-3 top-3 rounded-full bg-neutral-900/75 px-2.5 py-1 text-xs font-bold text-white">
-            Đang ẩn
-          </div>
+          <div className="absolute right-1.5 top-1.5 rounded-full bg-neutral-900/75 px-2 py-0.5 text-[9px] font-bold text-white">Ẩn</div>
         )}
       </div>
-      <div className="grid grid-cols-3 border-b border-neutral-100 text-center text-xs">
-        <Metric label="Đang bán" value={category.activeProductCount ?? 0} />
-        <Metric label="Hết hàng" value={category.outOfStockProductCount ?? 0} />
-        <Metric label="Thứ tự" value={category.displayOrder ?? 0} />
-      </div>
-      <div className="flex justify-end gap-2 p-3">
+      <div className="flex items-center justify-between gap-1 border-t border-[#f0d8c2] p-1.5">
+        <span className="truncate text-[9px] font-bold text-[#8a6855]">{category.productCount ?? 0} sản phẩm</span>
+        <div className="flex gap-1">
         <button
           onClick={() => onToggleVisibility(category)}
           disabled={isSaving}
-          className="rounded-md border border-neutral-200 p-2 text-neutral-600 hover:bg-neutral-50 disabled:opacity-60"
+          className="rounded-md bg-white p-1.5 text-neutral-600 disabled:opacity-60"
           aria-label="Bật tắt hiển thị"
         >
           {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
         </button>
         <button
           onClick={() => onEdit(category)}
-          className="rounded-md border border-neutral-200 p-2 text-brand-600 hover:bg-brand-50"
+          className="rounded-md bg-white p-1.5 text-brand-600"
           aria-label="Sửa"
         >
           <Edit2 className="h-4 w-4" />
@@ -744,21 +727,13 @@ function PreviewCard({
         <button
           onClick={() => onDelete(category)}
           disabled={isSaving}
-          className="rounded-md border border-red-200 p-2 text-red-600 hover:bg-red-50 disabled:opacity-60"
+          className="rounded-md bg-white p-1.5 text-red-600 disabled:opacity-60"
           aria-label="Xóa"
         >
           <Trash2 className="h-4 w-4" />
         </button>
+        </div>
       </div>
-    </div>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="border-r border-neutral-100 p-3 last:border-r-0">
-      <p className="font-bold text-neutral-900">{value}</p>
-      <p className="mt-0.5 text-neutral-500">{label}</p>
     </div>
   );
 }
@@ -778,6 +753,29 @@ function CategoryModal({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   isSaving: boolean;
 }) {
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  async function uploadImage(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const response = await fetch("/api/uploads/cloudinary", { method: "POST", body });
+      const result = await response.json() as { url?: string; error?: string };
+      if (!response.ok || !result.url) throw new Error(result.error || "Không thể tải ảnh.");
+      setFormData({ ...formData, iconUrl: result.url });
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : "Không thể tải ảnh.");
+    } finally {
+      setIsUploading(false);
+      event.target.value = "";
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-xl bg-white shadow-xl">
@@ -806,24 +804,22 @@ function CategoryModal({
               onChange={(value) => setFormData({ ...formData, name: value })}
               required
             />
-            <Field
-              label="URL ảnh biểu tượng"
-              value={formData.iconUrl}
-              onChange={(value) => setFormData({ ...formData, iconUrl: value })}
-              required
-              placeholder="https://..."
-            />
-            <Field
-              label="Thứ tự hiển thị"
-              type="number"
-              value={formData.displayOrder.toString()}
-              onChange={(value) =>
-                setFormData({
-                  ...formData,
-                  displayOrder: Number(value),
-                })
-              }
-            />
+            <div className="space-y-2">
+              <div className="text-sm font-bold text-neutral-700">Ảnh danh mục <span className="text-red-600">*</span></div>
+              {formData.iconUrl ? (
+                <div className="relative aspect-video overflow-hidden rounded-xl border border-neutral-200 bg-neutral-50">
+                  <img src={formData.iconUrl} alt={formData.name || "Danh mục"} className="h-full w-full object-cover" />
+                  <button type="button" onClick={() => setFormData({ ...formData, iconUrl: "" })} className="absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-white text-red-600 shadow"><Trash2 className="h-4 w-4" /></button>
+                </div>
+              ) : (
+                <label className="flex h-32 cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-neutral-300 bg-neutral-50 text-sm font-bold text-neutral-600 hover:border-brand-400">
+                  {isUploading ? <Loader2 className="h-6 w-6 animate-spin" /> : <ImageIcon className="h-7 w-7" />}
+                  <span className="mt-2">{isUploading ? "Đang tải ảnh..." : "Tải ảnh từ thiết bị"}</span>
+                  <input type="file" accept="image/*" onChange={uploadImage} disabled={isUploading} className="sr-only" />
+                </label>
+              )}
+              {uploadError && <p className="text-xs font-semibold text-red-600">{uploadError}</p>}
+            </div>
             <label className="flex items-center gap-3 rounded-lg border border-neutral-200 px-3 py-3">
               <input
                 type="checkbox"
@@ -838,39 +834,13 @@ function CategoryModal({
               </span>
             </label>
 
-            <div>
-              <p className="mb-2 text-sm font-bold text-neutral-700">
-                Thư viện ảnh gợi ý
-              </p>
-              <div className="grid grid-cols-3 gap-2">
-                {defaultCategoryVisuals.slice(0, 9).map((visual) => (
-                  <button
-                    type="button"
-                    key={visual.imageUrl}
-                    onClick={() =>
-                      setFormData({ ...formData, iconUrl: visual.imageUrl })
-                    }
-                    className={`overflow-hidden rounded-lg border-2 ${
-                      formData.iconUrl === visual.imageUrl
-                        ? "border-brand-500"
-                        : "border-transparent"
-                    }`}
-                  >
-                    <img
-                      src={visual.imageUrl}
-                      alt={visual.name}
-                      className="h-16 w-full object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
 
           <div className="space-y-3">
             <p className="text-sm font-bold text-neutral-700">Xem trước</p>
-            <div className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm">
-              <div className="relative aspect-[4/3] bg-neutral-100">
+            <div className="w-[72px] overflow-hidden rounded-[10px] border border-[#f0d8c2] bg-[#fff7ed] shadow-sm">
+              <span className="block min-h-[34px] px-2 pt-2 text-[12px] font-black leading-tight text-[#542413]">{formData.name || "Tên danh mục"}</span>
+              <div className="relative mt-1 aspect-square w-full overflow-hidden bg-neutral-100">
                 {formData.iconUrl ? (
                   <img
                     src={formData.iconUrl}
@@ -882,14 +852,6 @@ function CategoryModal({
                     <ImageIcon className="h-10 w-10" />
                   </div>
                 )}
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/65 to-transparent p-4 text-white">
-                  <p className="text-lg font-black">
-                    {formData.name || "Tên danh mục"}
-                  </p>
-                  <p className="text-xs opacity-85">
-                    Thứ tự {formData.displayOrder}
-                  </p>
-                </div>
               </div>
             </div>
           </div>

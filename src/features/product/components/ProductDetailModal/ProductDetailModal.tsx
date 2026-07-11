@@ -59,7 +59,7 @@ export function ProductDetailModal({
   const { config } = useOrderConfigStore();
   const [quantity, setQuantity] = useState(1);
   const [selectedSize, setSelectedSize] = useState<string>();
-  const [selectedFlavor, setSelectedFlavor] = useState<string>();
+  const [selectedFlavor, setSelectedFlavor] = useState<string | undefined>(product.flavorOptions?.[0]?.id);
   const [customMessage, setCustomMessage] = useState("");
   const [candles, setCandles] = useState(0);
   const [isPersonalizationOpen, setIsPersonalizationOpen] = useState(false);
@@ -79,7 +79,7 @@ export function ProductDetailModal({
   useEffect(() => {
     setQuantity(1);
     setSelectedSize(undefined);
-    setSelectedFlavor(undefined);
+    setSelectedFlavor(product.flavorOptions?.[0]?.id);
     setCustomMessage("");
     setCandles(0);
     setIsPersonalizationOpen(false);
@@ -200,11 +200,13 @@ export function ProductDetailModal({
                 ref={flavorSectionRef}
                 title="Chọn hương vị / cốt bánh"
                 error={errors.selectedFlavor}
+                carousel
               >
                 {product.flavorOptions.map((flavor) => (
                   <VariantOption
                     key={flavor.id}
                     active={selectedFlavor === flavor.id}
+                    imageCard
                     presentation={{
                       title: flavor.label,
                       description: flavor.description,
@@ -213,7 +215,6 @@ export function ProductDetailModal({
                     }}
                     onClick={() => {
                       setSelectedFlavor(flavor.id);
-                      if (flavor.imageUrl) setSelectedImage(flavor.imageUrl);
                       setErrors((current) => ({ ...current, selectedFlavor: undefined }));
                     }}
                   />
@@ -256,14 +257,26 @@ function ProductGallery({
   selectedImage: string;
   onImageChange: (image: string) => void;
 }) {
+  const currentIndex = Math.max(0, images.indexOf(selectedImage));
   return (
     <div className="lg:sticky lg:top-0 lg:self-start">
-      <div className="relative h-[158px] w-full overflow-hidden bg-[#fdf7f0] sm:h-[180px] lg:h-[280px] lg:rounded-[16px]">
-        <ProductImage
-          src={selectedImage || product.imageUrl}
-          alt={product.name}
-          className="object-cover"
-        />
+      <div
+        className="relative flex aspect-[4/3] w-full snap-x snap-mandatory overflow-x-auto bg-[#fdf7f0] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:aspect-square lg:rounded-[16px]"
+        onScroll={(event) => {
+          const element = event.currentTarget;
+          const index = Math.round(element.scrollLeft / Math.max(1, element.clientWidth));
+          if (images[index] && images[index] !== selectedImage) onImageChange(images[index]);
+        }}
+      >
+        {images.map((imageUrl, index) => (
+          <div key={imageUrl} className="relative h-full w-full shrink-0 snap-center">
+            <ProductImage
+              src={imageUrl}
+              alt={`${product.name} ${index + 1}`}
+              className="object-contain p-2 sm:p-3 lg:p-4"
+            />
+          </div>
+        ))}
         <div className="absolute right-14 top-3 z-10">
           <ProductShareButton
             product={product}
@@ -272,31 +285,8 @@ function ProductGallery({
             className="border-0 bg-white/95 text-[#4f3022] shadow-md backdrop-blur"
           />
         </div>
+        <span className="absolute bottom-3 right-3 z-10 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-black text-white">{currentIndex + 1}/{images.length}</span>
       </div>
-      {images.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto px-4 py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:px-0">
-          {images.map((imageUrl, index) => (
-            <button
-              key={imageUrl}
-              type="button"
-              onClick={() => onImageChange(imageUrl)}
-              className={clsx(
-                "relative h-12 w-12 shrink-0 overflow-hidden rounded-[10px] border bg-[#fdf7f0] transition",
-                selectedImage === imageUrl
-                  ? "border-[#d85d6c] ring-2 ring-[#d85d6c]/15"
-                  : "border-[#eadbcc]",
-              )}
-              aria-label={`Xem ảnh ${index + 1}`}
-            >
-              <ProductImage
-                src={imageUrl}
-                alt={`${product.name} ${index + 1}`}
-                className="object-cover"
-              />
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
@@ -389,8 +379,8 @@ function FulfillmentCard({
 
 const OptionGroup = forwardRef<
   HTMLDivElement,
-  { title: string; error?: string; children: ReactNode }
->(function OptionGroup({ title, error, children }, ref) {
+  { title: string; error?: string; children: ReactNode; carousel?: boolean }
+>(function OptionGroup({ title, error, children, carousel }, ref) {
   return (
     <section ref={ref}>
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -399,7 +389,7 @@ const OptionGroup = forwardRef<
         </h4>
         {error && <span className="text-[11px] font-bold text-[#c94f60]">{error}</span>}
       </div>
-      <div className="grid grid-cols-2 gap-2">{children}</div>
+      <div className={carousel ? "-mx-1 flex snap-x gap-2.5 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&>*]:w-[36%] [&>*]:shrink-0 [&>*]:snap-start [&::-webkit-scrollbar]:hidden" : "grid grid-cols-2 gap-2"}>{children}</div>
     </section>
   );
 });
@@ -408,11 +398,40 @@ function VariantOption({
   active,
   presentation,
   onClick,
+  imageCard = false,
 }: {
   active: boolean;
   presentation: Omit<SizePresentation, "price"> & { price?: number };
   onClick: () => void;
+  imageCard?: boolean;
 }) {
+  if (imageCard) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-pressed={active}
+        className={clsx(
+          "flex aspect-square flex-col overflow-hidden rounded-[14px] border bg-white p-1.5 text-left transition",
+          active
+            ? "border-[#d85d6c] ring-2 ring-[#d85d6c]/15"
+            : "border-[#eadbcc] hover:border-[#d85d6c]/50",
+        )}
+      >
+        <span className="relative min-h-0 w-full flex-1 overflow-hidden rounded-[10px] bg-[#f8eee6]">
+          <ProductImage
+            src={presentation.imageUrl}
+            alt={presentation.title}
+            className="object-cover"
+          />
+        </span>
+        <span className="block w-full shrink-0 truncate px-1 pb-0.5 pt-1.5 text-center text-[11px] font-normal text-[#3d2417]">
+          {presentation.title}
+        </span>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"

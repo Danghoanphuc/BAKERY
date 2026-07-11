@@ -929,7 +929,7 @@ function FavoriteSection({
         action="Xem tất cả"
       />
       <div className="mt-3 columns-3 gap-2.5">
-        {products.slice(0, 8).map((product, index) => (
+        {products.map((product, index) => (
           <ProductMiniCard
             key={product.id}
             product={product}

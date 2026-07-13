@@ -104,7 +104,7 @@ export default {
     const isBotRequest = isBot(userAgent);
     const isProductPath = pathname.startsWith("/san-pham/");
 
-    if (isBotRequest || isProductPath) {
+    if (isBotRequest && isProductPath) {
       // Bot flow: rewrite to /api/bot-meta/san-pham/:id
       const productId = extractProductId(pathname);
       

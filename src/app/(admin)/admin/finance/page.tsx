@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import {
   BarChart3,
   CircleDollarSign,
@@ -10,7 +10,10 @@ import {
   TrendingUp,
   WalletCards,
 } from "lucide-react";
-import type { ExpenseCategory } from "@/types";
+import type {
+  CostBehavior, CostCenter, CostFunction, CostTraceability, ExpenseCategory,
+  ManagementAccountingSummary,
+} from "@/types";
 
 type Period = "today" | "month" | "all";
 
@@ -26,11 +29,16 @@ type FinanceSummary = {
   };
   costs: {
     estimatedCostOfGoods: number;
+    actualCostOfGoods: number;
+    costVariance: number;
     expenses: number;
+    variableSellingExpenses: number;
   };
   profit: {
     grossProfit: number;
     grossMarginPercent: number;
+    contributionProfit: number;
+    contributionMarginPercent: number;
     operatingProfit: number;
   };
   counts: {
@@ -56,6 +64,11 @@ type FinanceSummary = {
     category: ExpenseCategory;
     amount: number;
   }>;
+  costingCoverage: {
+    recipeQuantity: number;
+    legacyQuantity: number;
+    missingQuantity: number;
+  };
 };
 
 type ExpenseForm = {
@@ -64,6 +77,11 @@ type ExpenseForm = {
   amount: number;
   vendor: string;
   note: string;
+  behavior: CostBehavior;
+  traceability: CostTraceability;
+  costFunction: CostFunction;
+  costCenterId: string;
+  variablePortionPercent: number;
 };
 
 const expenseLabels: Record<ExpenseCategory, string> = {
@@ -93,6 +111,11 @@ function createEmptyExpenseForm(): ExpenseForm {
     amount: 0,
     vendor: "",
     note: "",
+    behavior: "variable",
+    traceability: "direct",
+    costFunction: "production",
+    costCenterId: "unclassified",
+    variablePortionPercent: 50,
   };
 }
 
@@ -104,11 +127,32 @@ export default function FinancePage() {
   );
   const [isLoading, setIsLoading] = useState(true);
   const [isSavingExpense, setIsSavingExpense] = useState(false);
+  const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
+  const [managementSummary, setManagementSummary] = useState<ManagementAccountingSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadSummary();
   }, [period]);
+
+  useEffect(() => {
+    fetch("/api/admin/finance/cost-centers")
+      .then((response) => response.ok ? response.json() : [])
+      .then((items: CostCenter[]) => setCostCenters(items.filter((item) => item.isActive)))
+      .catch(() => setCostCenters([]));
+  }, []);
+
+  useEffect(() => {
+    if (period !== "month") {
+      setManagementSummary(null);
+      return;
+    }
+    const managementPeriod = new Date().toISOString().slice(0, 7);
+    fetch(`/api/admin/finance/management-summary?period=${managementPeriod}`)
+      .then((response) => response.ok ? response.json() : null)
+      .then(setManagementSummary)
+      .catch(() => setManagementSummary(null));
+  }, [period, summary]);
 
   async function loadSummary() {
     try {
@@ -134,7 +178,22 @@ export default function FinancePage() {
       const response = await fetch("/api/finance/expenses", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(expenseForm),
+        body: JSON.stringify({
+          date: expenseForm.date,
+          category: expenseForm.category,
+          amount: expenseForm.amount,
+          vendor: expenseForm.vendor,
+          note: expenseForm.note,
+          management: {
+            behavior: expenseForm.behavior,
+            traceability: expenseForm.traceability,
+            function: expenseForm.costFunction,
+            costCenterId: expenseForm.costCenterId,
+            ...(expenseForm.behavior === "mixed"
+              ? { variablePortionBasisPoints: expenseForm.variablePortionPercent * 100 }
+              : {}),
+          },
+        }),
       });
       if (!response.ok) throw new Error("save_failed");
       setExpenseForm(createEmptyExpenseForm());
@@ -146,13 +205,6 @@ export default function FinancePage() {
       setIsSavingExpense(false);
     }
   }
-
-  const breakEvenHint = useMemo(() => {
-    if (!summary) return null;
-    const monthlyFixedEstimate = summary.costs.expenses;
-    const margin = Math.max(summary.profit.grossMarginPercent / 100, 0.01);
-    return Math.round(monthlyFixedEstimate / margin);
-  }, [summary]);
 
   return (
     <div className="space-y-6">
@@ -212,16 +264,16 @@ export default function FinancePage() {
             />
             <MetricCard
               icon={<ReceiptText />}
-              label="Giá vốn ước tính"
-              value={formatPrice(summary.costs.estimatedCostOfGoods)}
-              detail="Từ giá vốn sản phẩm"
+              label="Giá vốn thực tế"
+              value={formatPrice(summary.costs.actualCostOfGoods)}
+              detail={`Định mức ${formatPrice(summary.costs.estimatedCostOfGoods)} · Lệch ${formatPrice(summary.costs.costVariance)}`}
             />
             <MetricCard
               icon={<TrendingUp />}
-              label="Lãi gộp"
-              value={formatPrice(summary.profit.grossProfit)}
-              detail={`Biên lãi ${summary.profit.grossMarginPercent}%`}
-              tone={summary.profit.grossProfit >= 0 ? "good" : "bad"}
+              label="Lãi góp"
+              value={formatPrice(summary.profit.contributionProfit)}
+              detail={`Lãi gộp ${formatPrice(summary.profit.grossProfit)} · Biên ${summary.profit.contributionMarginPercent}%`}
+              tone={summary.profit.contributionProfit >= 0 ? "good" : "bad"}
             />
             <MetricCard
               icon={<WalletCards />}
@@ -325,6 +377,58 @@ export default function FinancePage() {
                     ))}
                   </select>
                 </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <SelectField
+                    label="Hành vi chi phí"
+                    value={expenseForm.behavior}
+                    options={[
+                      ["variable", "Biến đổi"], ["fixed", "Cố định"], ["mixed", "Hỗn hợp"],
+                    ]}
+                    onChange={(behavior) => setExpenseForm((current) => ({
+                      ...current, behavior: behavior as CostBehavior,
+                    }))}
+                  />
+                  <SelectField
+                    label="Khả năng truy nguyên"
+                    value={expenseForm.traceability}
+                    options={[["direct", "Trực tiếp"], ["indirect", "Gián tiếp"]]}
+                    onChange={(traceability) => setExpenseForm((current) => ({
+                      ...current, traceability: traceability as CostTraceability,
+                    }))}
+                  />
+                </div>
+                <SelectField
+                  label="Chức năng"
+                  value={expenseForm.costFunction}
+                  options={[
+                    ["production", "Sản xuất"], ["selling", "Bán hàng"],
+                    ["administration", "Quản lý"],
+                  ]}
+                  onChange={(costFunction) => setExpenseForm((current) => ({
+                    ...current, costFunction: costFunction as CostFunction,
+                  }))}
+                />
+                <SelectField
+                  label="Trung tâm chi phí"
+                  value={expenseForm.costCenterId}
+                  options={[
+                    ["unclassified", "Chưa phân loại"],
+                    ...costCenters.map((center) => [center.id, `${center.code} · ${center.name}`] as [string, string]),
+                  ]}
+                  onChange={(costCenterId) => setExpenseForm((current) => ({
+                    ...current, costCenterId,
+                  }))}
+                />
+                {expenseForm.behavior === "mixed" && (
+                  <NumberField
+                    label="Tỷ lệ biến đổi (%)"
+                    value={expenseForm.variablePortionPercent}
+                    onChange={(variablePortionPercent) => setExpenseForm((current) => ({
+                      ...current,
+                      variablePortionPercent: Math.min(100, variablePortionPercent),
+                    }))}
+                  />
+                )}
                 <NumberField
                   label="Số tiền"
                   value={expenseForm.amount}
@@ -442,9 +546,24 @@ export default function FinancePage() {
               Gợi ý quản trị
             </h2>
             <p className="mt-1 text-sm leading-6 text-amber-800">
-              Với chi phí kỳ này và biên lãi hiện tại, doanh thu hòa vốn ước
-              tính là <strong>{formatPrice(breakEvenHint ?? 0)}</strong>. Số này
-              sẽ chính xác hơn khi tất cả sản phẩm có giá vốn.
+              {managementSummary?.breakEvenRevenue != null
+                ? <>Doanh thu hòa vốn tháng theo lãi góp là <strong>{formatPrice(managementSummary.breakEvenRevenue)}</strong>. Lợi nhuận hoạt động quản trị hiện tại là <strong>{formatPrice(managementSummary.operatingProfit)}</strong>.</>
+                : "Chọn kỳ Tháng này và phân loại chi phí để tính doanh thu hòa vốn quản trị."}
+            </p>
+            {managementSummary && managementSummary.budgetVariances.length > 0 && (
+              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                {managementSummary.budgetVariances.map((variance) => (
+                  <div key={variance.lineId} className="rounded-md bg-white/60 px-3 py-2 text-xs text-amber-900">
+                    {variance.metric}: kế hoạch {formatPrice(variance.plannedAmount)} · thực tế {formatPrice(variance.actualAmount)} ·
+                    <strong className={variance.favorable ? "text-emerald-700" : "text-red-700"}> {variance.variancePercent ?? "—"}%</strong>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="mt-1 text-xs text-amber-700">
+              Bao phủ giá vốn: BOM {summary.costingCoverage.recipeQuantity} SP ·
+              Legacy {summary.costingCoverage.legacyQuantity} SP ·
+              Thiếu giá vốn {summary.costingCoverage.missingQuantity} SP.
             </p>
           </section>
         </>
@@ -550,6 +669,33 @@ function NumberField({
         onChange={(event) => onChange(Number(event.target.value) || 0)}
         className="h-10 w-full rounded-lg border border-neutral-300 px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
       />
+    </label>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: Array<[string, string]>;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-sm font-medium text-neutral-700">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="h-10 w-full rounded-lg border border-neutral-300 px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+      >
+        {options.map(([optionValue, optionLabel]) => (
+          <option key={optionValue} value={optionValue}>{optionLabel}</option>
+        ))}
+      </select>
     </label>
   );
 }

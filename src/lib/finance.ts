@@ -5,6 +5,10 @@ import type {
   Product,
   SalesChannel,
 } from "@/types";
+import {
+  isOrderCancelled,
+  isRevenueRecognized,
+} from "@/features/finance/domain/revenue-policy";
 
 export type FinancePeriod = "today" | "month" | "all";
 
@@ -20,11 +24,16 @@ export type FinanceSummary = {
   };
   costs: {
     estimatedCostOfGoods: number;
+    actualCostOfGoods: number;
+    costVariance: number;
     expenses: number;
+    variableSellingExpenses: number;
   };
   profit: {
     grossProfit: number;
     grossMarginPercent: number;
+    contributionProfit: number;
+    contributionMarginPercent: number;
     operatingProfit: number;
   };
   counts: {
@@ -50,9 +59,12 @@ export type FinanceSummary = {
     category: ExpenseCategory;
     amount: number;
   }>;
+  costingCoverage: {
+    recipeQuantity: number;
+    legacyQuantity: number;
+    missingQuantity: number;
+  };
 };
-
-const completedStatuses = new Set(["completed", "delivered", "confirmed", "preparing", "ready", "processing", "pending"]);
 
 export function calculateProductUnitCost(product: Product) {
   const baseCost =
@@ -85,6 +97,9 @@ export function estimateOrderCostOfGoods(
   order: Order,
   productById: Map<string, Product>,
 ) {
+  if (order.itemFinancialSnapshots?.length) {
+    return order.itemFinancialSnapshots.reduce((sum, item) => sum + item.totalCost, 0);
+  }
   if (typeof order.estimatedCostOfGoods === "number") {
     return order.estimatedCostOfGoods;
   }
@@ -109,11 +124,10 @@ export function buildFinanceSummary({
   now?: Date;
 }): FinanceSummary {
   const productById = new Map(products.map((product) => [product.id, product]));
-  const filteredOrders = orders.filter((order) => {
-    if (!isInPeriod(order.createdAt, period, now)) return false;
-    return completedStatuses.has(order.status);
-  });
-  const activeOrders = filteredOrders.filter((order) => order.status !== "cancelled");
+  const periodOrders = orders.filter((order) =>
+    isInPeriod(order.createdAt, period, now),
+  );
+  const activeOrders = periodOrders.filter(isRevenueRecognized);
   const filteredExpenses = expenses.filter((expense) =>
     isInPeriod(expense.date, period, now),
   );
@@ -134,6 +148,10 @@ export function buildFinanceSummary({
     (sum, order) => sum + estimateOrderCostOfGoods(order, productById),
     0,
   );
+  const actualCostOfGoods = activeOrders.reduce(
+    (sum, order) => sum + (order.actualCostOfGoods ?? estimateOrderCostOfGoods(order, productById)),
+    0,
+  );
   const netProductRevenue = Math.max(0, grossSales - discounts);
   const totalCollected = activeOrders
     .filter((order) => order.paymentStatus === "paid")
@@ -145,9 +163,17 @@ export function buildFinanceSummary({
     (sum, expense) => sum + expense.amount,
     0,
   );
-  const grossProfit = netProductRevenue - estimatedCostOfGoods;
+  const variableSellingExpenses = filteredExpenses
+    .filter((expense) => expense.category === "delivery")
+    .reduce((sum, expense) => sum + expense.amount, 0);
+  const grossProfit = netProductRevenue - actualCostOfGoods;
   const grossMarginPercent =
     netProductRevenue > 0 ? Math.round((grossProfit / netProductRevenue) * 1000) / 10 : 0;
+  const contributionRevenue = netProductRevenue + deliveryFees;
+  const contributionProfit = grossProfit + deliveryFees - variableSellingExpenses;
+  const contributionMarginPercent = contributionRevenue > 0
+    ? Math.round((contributionProfit / contributionRevenue) * 1000) / 10
+    : 0;
 
   return {
     period,
@@ -161,22 +187,49 @@ export function buildFinanceSummary({
     },
     costs: {
       estimatedCostOfGoods,
+      actualCostOfGoods,
+      costVariance: actualCostOfGoods - estimatedCostOfGoods,
       expenses: expenseTotal,
+      variableSellingExpenses,
     },
     profit: {
       grossProfit,
       grossMarginPercent,
-      operatingProfit: grossProfit - expenseTotal,
+      contributionProfit,
+      contributionMarginPercent,
+      operatingProfit: grossProfit + deliveryFees - expenseTotal,
     },
     counts: {
       orders: activeOrders.length,
       paidOrders: activeOrders.filter((order) => order.paymentStatus === "paid").length,
-      cancelledOrders: filteredOrders.filter((order) => order.status === "cancelled").length,
+      cancelledOrders: periodOrders.filter(isOrderCancelled).length,
     },
     byChannel: buildChannelRows(activeOrders, productById),
     topProducts: buildTopProductRows(activeOrders, productById),
     expensesByCategory: buildExpenseRows(filteredExpenses),
+    costingCoverage: buildCostingCoverage(activeOrders, productById),
   };
+}
+
+function buildCostingCoverage(orders: Order[], productById: Map<string, Product>) {
+  const coverage = { recipeQuantity: 0, legacyQuantity: 0, missingQuantity: 0 };
+  for (const order of orders) {
+    if (order.itemFinancialSnapshots?.length) {
+      for (const item of order.itemFinancialSnapshots) {
+        if (item.costingSource === "recipe") coverage.recipeQuantity += item.quantity;
+        else if (item.costingSource === "legacy") coverage.legacyQuantity += item.quantity;
+        else coverage.missingQuantity += item.quantity;
+      }
+      continue;
+    }
+    for (const item of order.items) {
+      const product = productById.get(item.productId);
+      const hasLegacyCost = product && calculateProductUnitCost(product) > 0;
+      if (hasLegacyCost) coverage.legacyQuantity += item.quantity;
+      else coverage.missingQuantity += item.quantity;
+    }
+  }
+  return coverage;
 }
 
 function buildChannelRows(orders: Order[], productById: Map<string, Product>) {
@@ -185,7 +238,9 @@ function buildChannelRows(orders: Order[], productById: Map<string, Product>) {
   for (const order of orders) {
     const channel = inferSalesChannel(order);
     const current = rows.get(channel) ?? { orders: 0, revenue: 0, grossProfit: 0 };
-    const revenue = Math.max(0, getOrderProductSubtotal(order) - (order.discountAmount ?? 0));
+    const revenue = order.itemFinancialSnapshots?.length
+      ? order.itemFinancialSnapshots.reduce((sum, item) => sum + item.netRevenue, 0)
+      : Math.max(0, getOrderProductSubtotal(order) - (order.discountAmount ?? 0));
     current.orders += 1;
     current.revenue += revenue;
     current.grossProfit += revenue - estimateOrderCostOfGoods(order, productById);
@@ -202,6 +257,26 @@ function buildTopProductRows(orders: Order[], productById: Map<string, Product>)
   >();
 
   for (const order of orders) {
+    if (order.itemFinancialSnapshots?.length) {
+      for (const snapshot of order.itemFinancialSnapshots) {
+        const current = rows.get(snapshot.productId) ?? {
+          productId: snapshot.productId,
+          name: snapshot.productName,
+          quantity: 0,
+          revenue: 0,
+          estimatedCost: 0,
+        };
+        current.quantity += snapshot.quantity;
+        current.revenue += snapshot.netRevenue;
+        current.estimatedCost += snapshot.totalCost;
+        rows.set(snapshot.productId, current);
+      }
+      continue;
+    }
+    const subtotal = getOrderProductSubtotal(order);
+    const discountRatio = subtotal > 0
+      ? Math.min(1, Math.max(0, (order.discountAmount ?? 0) / subtotal))
+      : 0;
     for (const item of order.items) {
       const product = productById.get(item.productId);
       const current = rows.get(item.productId) ?? {
@@ -212,7 +287,7 @@ function buildTopProductRows(orders: Order[], productById: Map<string, Product>)
         estimatedCost: 0,
       };
       current.quantity += item.quantity;
-      current.revenue += item.price * item.quantity;
+      current.revenue += item.price * item.quantity * (1 - discountRatio);
       current.estimatedCost += (product ? calculateProductUnitCost(product) : 0) * item.quantity;
       rows.set(item.productId, current);
     }

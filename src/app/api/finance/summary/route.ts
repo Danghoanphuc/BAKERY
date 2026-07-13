@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getOrders, getAllProducts } from "@/lib/db";
 import { getFinanceExpenses } from "@/lib/firebase/finance";
 import { buildFinanceSummary, type FinancePeriod } from "@/lib/finance";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 function getPeriod(value: string | null): FinancePeriod {
   if (value === "today" || value === "month" || value === "all") return value;
@@ -9,6 +10,8 @@ function getPeriod(value: string | null): FinancePeriod {
 }
 
 export async function GET(request: Request) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     const url = new URL(request.url);
     const period = getPeriod(url.searchParams.get("period"));

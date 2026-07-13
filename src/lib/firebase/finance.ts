@@ -49,6 +49,10 @@ function normalizeExpense(id: string, data: Record<string, unknown>): FinanceExp
     createdBy: typeof data.createdBy === "string" ? data.createdBy : undefined,
     createdAt: toDate(data.createdAt as FirestoreDateValue),
     updatedAt: toDate(data.updatedAt as FirestoreDateValue),
+    management:
+      data.management && typeof data.management === "object"
+        ? (data.management as FinanceExpense["management"])
+        : undefined,
   };
 }
 
@@ -70,32 +74,31 @@ function normalizeCategory(value: unknown): ExpenseCategory {
 }
 
 export async function getFinanceExpenses(): Promise<FinanceExpense[]> {
-  try {
-    const expensesQuery = query(
-      collection(db, EXPENSES_COLLECTION),
-      orderBy("date", "desc"),
-    );
-    const snapshot = await getDocs(expensesQuery);
-    return snapshot.docs.map((expenseDoc) =>
-      normalizeExpense(expenseDoc.id, expenseDoc.data()),
-    );
-  } catch (error) {
-    console.error("Error fetching finance expenses:", error);
-    return [];
-  }
+  const expensesQuery = query(
+    collection(db, EXPENSES_COLLECTION),
+    orderBy("date", "desc"),
+  );
+  const snapshot = await getDocs(expensesQuery);
+  return snapshot.docs.map((expenseDoc) =>
+    normalizeExpense(expenseDoc.id, expenseDoc.data()),
+  );
 }
 
 export async function createFinanceExpense(
   input: FinanceExpenseInput,
 ): Promise<FinanceExpense> {
   const date = cleanDate(input.date);
+  if (!Number.isSafeInteger(input.amount) || input.amount <= 0) {
+    throw new Error("INVALID_EXPENSE_AMOUNT");
+  }
   const payload = {
     date,
     category: input.category,
-    amount: Math.max(0, Number(input.amount) || 0),
-    note: input.note?.trim() || undefined,
-    vendor: input.vendor?.trim() || undefined,
-    createdBy: input.createdBy?.trim() || undefined,
+    amount: input.amount,
+    ...(input.note?.trim() ? { note: input.note.trim() } : {}),
+    ...(input.vendor?.trim() ? { vendor: input.vendor.trim() } : {}),
+    ...(input.createdBy?.trim() ? { createdBy: input.createdBy.trim() } : {}),
+    ...(input.management ? { management: input.management } : {}),
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };

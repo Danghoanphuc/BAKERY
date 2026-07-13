@@ -23,10 +23,14 @@ import {
   updateCustomer,
 } from "@/lib/firebase";
 import {
-  estimateOrderCostOfGoods,
   getOrderProductSubtotal,
   inferSalesChannel,
 } from "@/lib/finance";
+import {
+  buildItemFinancialSnapshots,
+  captureOrderFinancials,
+  getStandardCostCatalog,
+} from "@/features/finance";
 import { expireUnpaidBankTransferOrder } from "@/lib/payment-expiry";
 import type { Order } from "@/types";
 import type { OrderConfig, CustomerAddressBookEntry } from "@/types";
@@ -139,13 +143,11 @@ export async function POST(request: Request) {
     );
     const session = parseCustomerSessionValue(sessionValue);
     const orderNumber = generateOrderNumber();
-    const [products, campaigns] = await Promise.all([
+    const [products, campaigns, costCatalog] = await Promise.all([
       getAllProducts(),
       getMarketingCampaigns(),
+      getStandardCostCatalog(),
     ]);
-    const productById = new Map(
-      products.map((product) => [product.id, product]),
-    );
     const draftOrder = {
       ...data,
       orderNumber,
@@ -153,10 +155,6 @@ export async function POST(request: Request) {
       paymentStatus: data.paymentStatus ?? "unpaid",
     } as Order;
     const productSubtotal = getOrderProductSubtotal(draftOrder);
-    const estimatedCostOfGoods = estimateOrderCostOfGoods(
-      draftOrder,
-      productById,
-    );
     const fallbackProductSubtotal = Math.max(
       0,
       (data.totalAmount ?? 0) -
@@ -206,6 +204,17 @@ export async function POST(request: Request) {
     const netProductRevenue = Math.max(
       0,
       safeProductSubtotal - serverDiscountAmount,
+    );
+    const itemFinancialSnapshots = buildItemFinancialSnapshots({
+      items: data.items ?? [],
+      discountAmount: serverDiscountAmount,
+      products,
+      recipes: costCatalog.recipes,
+      ingredients: costCatalog.ingredients,
+    });
+    const estimatedCostOfGoods = itemFinancialSnapshots.reduce(
+      (sum, item) => sum + item.totalCost,
+      0,
     );
     const marketingSettings = await getMarketingSettings();
     const rawLoyaltyPoints = Math.floor(
@@ -293,6 +302,7 @@ export async function POST(request: Request) {
       salesChannel: data.salesChannel ?? inferSalesChannel(draftOrder),
       productSubtotal: safeProductSubtotal,
       estimatedCostOfGoods,
+      itemFinancialSnapshots,
       estimatedGrossProfit: netProductRevenue - estimatedCostOfGoods,
       loyaltyPointsEarned,
       discountAmount: serverDiscountAmount,
@@ -325,6 +335,12 @@ export async function POST(request: Request) {
       payosPayment = paymentLink;
     }
     const postOrderTasks: Array<Promise<void>> = [];
+    postOrderTasks.push(
+      captureOrderFinancials(
+        { ...order, createdAt: new Date(), updatedAt: new Date() },
+        customer?.id ? `customer:${customer.id}` : "guest-checkout",
+      ),
+    );
 
     if (requestedVoucher && serverDiscountAmount > 0) {
       postOrderTasks.push(

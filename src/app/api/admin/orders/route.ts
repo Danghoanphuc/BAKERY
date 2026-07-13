@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { getOrders } from "@/lib/db";
 import { expireUnpaidBankTransferOrder } from "@/lib/payment-expiry";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     const orders = await Promise.all(
       (await getOrders()).map((order) => expireUnpaidBankTransferOrder(order)),

@@ -284,10 +284,17 @@ export function normalizeOrder(id: string, data: FirestoreDocument): Order {
       typeof data.estimatedCostOfGoods === "number"
         ? data.estimatedCostOfGoods
         : undefined,
+    actualCostOfGoods:
+      typeof data.actualCostOfGoods === "number"
+        ? data.actualCostOfGoods
+        : undefined,
     estimatedGrossProfit:
       typeof data.estimatedGrossProfit === "number"
         ? data.estimatedGrossProfit
         : undefined,
+    itemFinancialSnapshots: Array.isArray(data.itemFinancialSnapshots)
+      ? (data.itemFinancialSnapshots as Order["itemFinancialSnapshots"])
+      : undefined,
     loyaltyPointsEarned:
       typeof data.loyaltyPointsEarned === "number"
         ? data.loyaltyPointsEarned

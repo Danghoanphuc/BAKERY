@@ -4,7 +4,6 @@ import {
   generateOrderNumber,
   getAllProducts,
   updateOrder,
-  updateProduct,
 } from "@/lib/db";
 import {
   createOrUpdateCustomerFromPurchase,
@@ -14,7 +13,6 @@ import {
   recordVoucherRedemption,
 } from "@/lib/firebase";
 import {
-  estimateOrderCostOfGoods,
   getOrderProductSubtotal,
 } from "@/lib/finance";
 import {
@@ -31,6 +29,13 @@ import {
   createPayOSOrderCode,
   isPayOSEnabled,
 } from "@/lib/payos";
+import {
+  buildItemFinancialSnapshots,
+  captureOrderFinancials,
+  getStandardCostCatalog,
+  recordProductSaleInventory,
+} from "@/features/finance";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 type PosCheckoutPayload = {
   customerId?: string;
@@ -97,32 +102,9 @@ function getRepricedCartItem(
   } satisfies Omit<CartItem, "cartItemId">;
 }
 
-async function decrementStock(
-  items: Array<Omit<CartItem, "cartItemId">>,
-  products: Product[],
-) {
-  const quantityByProductId = new Map<string, number>();
-
-  for (const item of items) {
-    quantityByProductId.set(
-      item.productId,
-      (quantityByProductId.get(item.productId) ?? 0) + item.quantity,
-    );
-  }
-
-  await Promise.all(
-    [...quantityByProductId.entries()].map(async ([productId, quantity]) => {
-      const product = products.find((item) => item.id === productId);
-      if (typeof product?.stock !== "number") return;
-
-      await updateProduct(productId, {
-        stock: Math.max(0, product.stock - quantity),
-      });
-    }),
-  );
-}
-
 export async function POST(request: Request) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     const payload = (await request.json()) as PosCheckoutPayload;
     const rawItems = payload.items ?? [];
@@ -134,9 +116,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const [products, campaigns] = await Promise.all([
+    const [products, campaigns, costCatalog] = await Promise.all([
       getAllProducts(),
       getMarketingCampaigns(),
+      getStandardCostCatalog(),
     ]);
     const productById = new Map(
       products.map((product) => [product.id, product]),
@@ -224,9 +207,16 @@ export async function POST(request: Request) {
       });
     }
 
-    const estimatedCostOfGoods = estimateOrderCostOfGoods(
-      { items } as Order,
-      productById,
+    const itemFinancialSnapshots = buildItemFinancialSnapshots({
+      items,
+      discountAmount,
+      products,
+      recipes: costCatalog.recipes,
+      ingredients: costCatalog.ingredients,
+    });
+    const estimatedCostOfGoods = itemFinancialSnapshots.reduce(
+      (sum, item) => sum + item.totalCost,
+      0,
     );
     const paymentMethod = payload.paymentMethod ?? "cash";
     const isBankTransfer = paymentMethod === "bank_transfer";
@@ -260,6 +250,7 @@ export async function POST(request: Request) {
       paymentMethod,
       payosOrderCode: isPayOSPayment ? createPayOSOrderCode() : undefined,
       estimatedCostOfGoods,
+      itemFinancialSnapshots,
       estimatedGrossProfit: totalAmount - estimatedCostOfGoods,
       loyaltyPointsEarned,
       statusHistory: [
@@ -273,6 +264,12 @@ export async function POST(request: Request) {
     });
 
     const order = await createOrder(orderPayload);
+    await captureOrderFinancials(
+      { ...order, createdAt: new Date(), updatedAt: new Date() },
+      "pos",
+    ).catch((financeError) => {
+      console.error("POS finance capture failed:", financeError);
+    });
     let payosPayment:
       | {
           checkoutUrl: string;
@@ -328,7 +325,17 @@ export async function POST(request: Request) {
     }
 
     if (!isBankTransfer) {
-      await decrementStock(items, products);
+      const inventorySale = await recordProductSaleInventory({
+        orderId: order.id,
+        items: items.map((item) => ({
+          ...item,
+          unitStandardCost: itemFinancialSnapshots.find(
+            (snapshot) => snapshot.productId === item.productId,
+          )?.unitCost,
+        })),
+        actor: "pos",
+      });
+      await updateOrder(order.id, { actualCostOfGoods: inventorySale.inventoryValue });
     }
 
     return NextResponse.json(

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getOrderById, updateOrder } from "@/lib/db";
 import { expireUnpaidBankTransferOrder } from "@/lib/payment-expiry";
+import { captureOrderFinancials } from "@/features/finance";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 function serializeForJson(value: unknown): unknown {
   if (value instanceof Date) return value.toISOString();
@@ -29,9 +31,11 @@ function serializeForJson(value: unknown): unknown {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     const { id } = await context.params;
     const order = await getOrderById(id);
@@ -54,6 +58,8 @@ export async function PUT(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     const { id } = await context.params;
     const data = await request.json();
@@ -63,6 +69,8 @@ export async function PUT(
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
+
+    await captureOrderFinancials(order, "admin");
 
     return NextResponse.json(serializeForJson(order));
   } catch (error) {

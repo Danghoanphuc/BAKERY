@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 import { getOrderById } from "@/lib/db";
 import { syncPendingOrderFromPayOS } from "@/lib/payos-order-sync";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 type Params = {
   params: Promise<{ orderId: string }>;
 };
 
-export async function GET(_request: Request, { params }: Params) {
+export async function GET(request: Request, { params }: Params) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     const { orderId } = await params;
     if (!orderId) {

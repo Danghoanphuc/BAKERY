@@ -1,0 +1,7 @@
+name = "bakery-edge-router"
+main = "cloudflare-worker.js"
+compatibility_date = "2024-01-01"
+
+[vars]
+ORIGIN = "https://bakery-production-9c75.up.railway.app"
+NEXT_PUBLIC_CUSTOMER_APP_URL = "https://bakery-edge-router.phucdh911.workers.dev"

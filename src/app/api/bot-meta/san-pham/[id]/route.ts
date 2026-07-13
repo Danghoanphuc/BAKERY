@@ -9,12 +9,16 @@ const DEFAULT_META = {
 };
 
 export async function GET(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await context.params;
     const product = await getProductById(id);
+
+    // Get customer app URL from header (priority) or environment variable
+    const customerAppUrl = request.headers.get("X-Customer-App-Url") || 
+                           "http://localhost:3000";
 
     const meta = product
       ? {
@@ -27,7 +31,7 @@ export async function GET(
               currency: "VND",
             }).format(product.price)}`,
           imageUrl: product.social?.imageUrl || product.imageUrl,
-          url: `${process.env.NEXT_PUBLIC_CUSTOMER_APP_URL || "http://localhost:3000"}/san-pham/${id}`,
+          url: `${customerAppUrl}/san-pham/${id}`,
         }
       : DEFAULT_META;
 

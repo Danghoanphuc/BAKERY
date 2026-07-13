@@ -4,7 +4,7 @@
  */
 
 const ORIGIN = typeof ORIGIN !== 'undefined' ? ORIGIN : "https://bakery-production-9c75.up.railway.app";
-const CUSTOMER_APP_URL = typeof NEXT_PUBLIC_CUSTOMER_APP_URL !== 'undefined' ? NEXT_PUBLIC_CUSTOMER_APP_URL : "https://bakery-edge-router.phucdh911.workers.dev";
+const CUSTOMER_APP_URL = typeof NEXT_PUBLIC_CUSTOMER_APP_URL !== 'undefined' ? NEXT_PUBLIC_CUSTOMER_APP_URL : "https://bakery.printz.vn";
 
 // Spam query parameters to remove
 const SPAM_PARAMS = ["fbclid", "zarsrc", "gclid"];

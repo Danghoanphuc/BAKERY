@@ -20,7 +20,13 @@ import {
 function isInAppBrowser(userAgent: string | null): boolean {
   if (!userAgent) return false;
   const ua = userAgent.toLowerCase();
-  return ua.includes('fban') || ua.includes('fbav') || ua.includes('zaloapp');
+  
+  // Facebook in-app browser
+  const isFacebook = ua.includes('fban') || ua.includes('fbav');
+  // Zalo in-app browser (multiple patterns)
+  const isZalo = ua.includes('zalo') || ua.includes('zaloapp') || ua.includes('zalome');
+  
+  return isFacebook || isZalo;
 }
 
 // Simple HTML fallback for in-app browsers
@@ -49,23 +55,6 @@ function InAppBrowserFallback({ product }: { product: any }) {
       </p>
       <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#007bff', marginBottom: '20px' }}>
         {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.price)}
-      </p>
-      <a 
-        href={`https://bakery.printz.vn/san-pham/${product.id}`}
-        style={{
-          display: 'inline-block',
-          padding: '12px 24px',
-          backgroundColor: '#007bff',
-          color: 'white',
-          textDecoration: 'none',
-          borderRadius: '8px',
-          fontWeight: 'bold'
-        }}
-      >
-        Mở trong trình duyệt
-      </a>
-      <p style={{ fontSize: '14px', color: '#999', marginTop: '20px' }}>
-        Để trải nghiệm tốt nhất, vui lòng mở trang này trong trình duyệt mặc định
       </p>
     </div>
   );

@@ -84,29 +84,128 @@ export default async function ProductShareEntry({ params }: ProductShareEntryPro
       />
       {isInAppBrowser(userAgent) ? (
         <div style={{ 
-          padding: '20px', 
+          padding: '16px', 
           fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-          textAlign: 'center',
-          backgroundColor: '#f9fafb',
+          backgroundColor: '#f3f4f6',
           minHeight: '100vh'
         }}>
-          <img 
-            src={product.imageUrl} 
-            alt={product.name}
-            style={{ 
-              maxWidth: '100%', 
-              height: 'auto', 
-              borderRadius: '8px',
-              marginBottom: '20px'
+          {/* Header */}
+          <div style={{ 
+            backgroundColor: 'white', 
+            padding: '16px', 
+            borderRadius: '12px', 
+            marginBottom: '16px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <h1 style={{ 
+              fontSize: '20px', 
+              margin: '0 0 8px 0', 
+              color: '#111827',
+              fontWeight: '600'
+            }}>{product.name}</h1>
+            <p style={{ 
+              fontSize: '14px', 
+              color: '#6b7280', 
+              margin: '0',
+              lineHeight: '1.5'
+            }}>{product.description}</p>
+          </div>
+
+          {/* Product Image */}
+          <div style={{ 
+            backgroundColor: 'white', 
+            borderRadius: '12px', 
+            marginBottom: '16px',
+            overflow: 'hidden',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <img 
+              src={product.imageUrl} 
+              alt={product.name}
+              style={{ 
+                width: '100%', 
+                height: 'auto', 
+                display: 'block'
+              }}
+            />
+          </div>
+
+          {/* Price Card */}
+          <div style={{ 
+            backgroundColor: 'white', 
+            padding: '16px', 
+            borderRadius: '12px', 
+            marginBottom: '16px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center'
+            }}>
+              <span style={{ fontSize: '14px', color: '#6b7280' }}>Giá bán</span>
+              <span style={{ 
+                fontSize: '24px', 
+                fontWeight: 'bold', 
+                color: '#dc2626'
+              }}>
+                {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.price)}
+              </span>
+            </div>
+          </div>
+
+          {/* Info Cards */}
+          <div style={{ 
+            backgroundColor: 'white', 
+            padding: '16px', 
+            borderRadius: '12px', 
+            marginBottom: '16px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+          }}>
+            <div style={{ marginBottom: '12px' }}>
+              <span style={{ fontSize: '12px', color: '#9ca3af', textTransform: 'uppercase' }}>Trạng thái</span>
+              <div style={{ 
+                display: 'inline-block', 
+                padding: '4px 12px', 
+                backgroundColor: '#dcfce7', 
+                color: '#166534', 
+                borderRadius: '9999px',
+                fontSize: '12px',
+                fontWeight: '500',
+                marginLeft: '8px'
+              }}>
+                Còn hàng
+              </div>
+            </div>
+            {product.preparationTimeMinutes && (
+              <div>
+                <span style={{ fontSize: '12px', color: '#9ca3af', textTransform: 'uppercase' }}>Thời gian chuẩn bị</span>
+                <span style={{ fontSize: '14px', color: '#374151', marginLeft: '8px' }}>
+                  {product.preparationTimeMinutes} phút
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* CTA Button */}
+          <a 
+            href={`https://bakery.printz.vn/san-pham/${product.id}`}
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: '16px',
+              backgroundColor: '#2563eb',
+              color: 'white',
+              textDecoration: 'none',
+              borderRadius: '12px',
+              textAlign: 'center',
+              fontWeight: '600',
+              fontSize: '16px',
+              boxShadow: '0 4px 6px rgba(37, 99, 235, 0.2)'
             }}
-          />
-          <h1 style={{ fontSize: '24px', marginBottom: '10px', color: '#1f2937' }}>{product.name}</h1>
-          <p style={{ fontSize: '16px', color: '#666', marginBottom: '20px', lineHeight: '1.5' }}>
-            {product.description}
-          </p>
-          <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#007bff', marginBottom: '20px' }}>
-            {new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(product.price)}
-          </p>
+          >
+            Đặt hàng ngay
+          </a>
         </div>
       ) : (
         <BakeryHome

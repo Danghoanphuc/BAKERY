@@ -28,24 +28,41 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              // Detect in-app browser and disable hydration warnings
+              // Detect in-app browser and provide fallback
               (function() {
                 const userAgent = navigator.userAgent.toLowerCase();
                 const isInAppBrowser = userAgent.includes('fban') || userAgent.includes('fbav') || userAgent.includes('zaloapp');
                 
                 if (isInAppBrowser) {
-                  // Suppress React hydration errors
-                  window.__REACT_DEVTOOLS_GLOBAL_HOOK__ = window.__REACT_DEVTOOLS_GLOBAL_HOOK__ || {};
-                  window.__REACT_DEVTOOLS_GLOBAL_HOOK__.suppressRenderErrorMessage = true;
-                  
-                  // Disable console errors for hydration
-                  const originalError = console.error;
-                  console.error = function(...args) {
-                    if (typeof args[0] === 'string' && args[0].includes('hydration')) {
-                      return;
+                  // Add minimal inline styles for basic rendering
+                  const style = document.createElement('style');
+                  style.textContent = \`
+                    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+                    .fallback-container { padding: 20px; text-align: center; }
+                    .fallback-button { 
+                      display: inline-block; 
+                      padding: 12px 24px; 
+                      background: #007bff; 
+                      color: white; 
+                      text-decoration: none; 
+                      border-radius: 8px; 
+                      margin-top: 20px;
                     }
-                    originalError.apply(console, args);
-                  };
+                  \`;
+                  document.head.appendChild(style);
+                  
+                  // Show fallback if React fails to load
+                  window.addEventListener('error', function(e) {
+                    if (e.message && e.message.includes('script')) {
+                      document.body.innerHTML = \`
+                        <div class="fallback-container">
+                          <h2>Đang tải...</h2>
+                          <p>Vui lòng đợi trong giây lát hoặc mở trong trình duyệt mặc định.</p>
+                          <a href="\${window.location.href}" class="fallback-button">Mở lại</a>
+                        </div>
+                      \`;
+                    }
+                  }, true);
                 }
               })();
             `,

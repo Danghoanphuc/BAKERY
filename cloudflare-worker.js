@@ -44,7 +44,8 @@ function isBot(userAgent) {
   
   // Only match specific crawler patterns, not app browsers
   const isFacebookCrawler = uaLower.includes("facebookexternalhit");
-  const isZaloCrawler = uaLower.includes("zalo") && !uaLower.includes("zaloapp");
+  // Zalo crawler (not Zalo browser app)
+  const isZaloCrawler = uaLower.includes("zalo-crawler") || (uaLower.includes("zalo") && uaLower.includes("crawler"));
   const isGooglebot = uaLower.includes("googlebot");
   
   return isFacebookCrawler || isZaloCrawler || isGooglebot;

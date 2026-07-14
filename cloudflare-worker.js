@@ -9,7 +9,7 @@ const CUSTOMER_APP_URL = typeof NEXT_PUBLIC_CUSTOMER_APP_URL !== 'undefined' ? N
 // Spam query parameters to remove
 const SPAM_PARAMS = ["fbclid", "zarsrc", "gclid"];
 
-// Bot user agent patterns
+// Bot user agent patterns (only for crawlers, not app browsers)
 const BOT_PATTERNS = ["facebookexternalhit", "zalo", "googlebot"];
 
 /**
@@ -36,12 +36,42 @@ function handleSpamParams(url) {
 }
 
 /**
- * Check if user agent matches bot patterns
+ * Check if user agent matches bot patterns (crawlers only, not app browsers)
  */
 function isBot(userAgent) {
   if (!userAgent) return false;
   const uaLower = userAgent.toLowerCase();
-  return BOT_PATTERNS.some((pattern) => uaLower.includes(pattern));
+  
+  // Only match specific crawler patterns, not app browsers
+  const isFacebookCrawler = uaLower.includes("facebookexternalhit");
+  const isZaloCrawler = uaLower.includes("zalo") && !uaLower.includes("zaloapp");
+  const isGooglebot = uaLower.includes("googlebot");
+  
+  return isFacebookCrawler || isZaloCrawler || isGooglebot;
+}
+
+/**
+ * Check if user agent is Facebook/Zalo in-app browser
+ */
+function isInAppBrowser(userAgent) {
+  if (!userAgent) return false;
+  const uaLower = userAgent.toLowerCase();
+  
+  // Facebook in-app browser
+  const isFacebookApp = uaLower.includes("fban") || uaLower.includes("fbav");
+  // Zalo in-app browser
+  const isZaloApp = uaLower.includes("zaloapp");
+  
+  return isFacebookApp || isZaloApp;
+}
+
+/**
+ * Redirect to open in default browser
+ */
+function redirectToDefaultBrowser(url) {
+  // For Facebook: use fb:// protocol or redirect to browser
+  // For Zalo: use zalo:// protocol or redirect to browser
+  return Response.redirect(url, 302);
 }
 
 /**
@@ -100,7 +130,15 @@ export default {
       return spamRedirect;
     }
 
-    // Step 2: Route based on User-Agent and URL path
+    // Step 2: Check if in-app browser - redirect to open in default browser
+    if (isInAppBrowser(userAgent)) {
+      // Add query parameter to indicate should open in external browser
+      const urlWithParam = new URL(request.url);
+      urlWithParam.searchParams.set("open_external", "1");
+      return Response.redirect(urlWithParam.toString(), 302);
+    }
+
+    // Step 3: Route based on User-Agent and URL path
     const isBotRequest = isBot(userAgent);
     const isProductPath = pathname.startsWith("/san-pham/");
 
@@ -113,7 +151,7 @@ export default {
       }
     }
 
-    // Step 3: Regular user flow - fetch from origin
+    // Step 4: Regular user flow - fetch from origin
     return fetchOrigin(request, pathname);
   },
 };

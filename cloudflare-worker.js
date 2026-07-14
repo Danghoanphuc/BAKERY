@@ -130,15 +130,7 @@ export default {
       return spamRedirect;
     }
 
-    // Step 2: Check if in-app browser - redirect to open in default browser
-    if (isInAppBrowser(userAgent)) {
-      // Add query parameter to indicate should open in external browser
-      const urlWithParam = new URL(request.url);
-      urlWithParam.searchParams.set("open_external", "1");
-      return Response.redirect(urlWithParam.toString(), 302);
-    }
-
-    // Step 3: Route based on User-Agent and URL path
+    // Step 2: Route based on User-Agent and URL path
     const isBotRequest = isBot(userAgent);
     const isProductPath = pathname.startsWith("/san-pham/");
 
@@ -151,7 +143,7 @@ export default {
       }
     }
 
-    // Step 4: Regular user flow - fetch from origin
+    // Step 3: Regular user flow - fetch from origin (including in-app browsers)
     return fetchOrigin(request, pathname);
   },
 };

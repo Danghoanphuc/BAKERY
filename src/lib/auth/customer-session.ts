@@ -1,78 +1,86 @@
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHash, randomBytes } from "crypto";
+
+import {
+  createStoredCustomerSession,
+  getStoredCustomerSession,
+  revokeStoredCustomerSession,
+  touchStoredCustomerSession,
+} from "@/lib/firebase/customer-sessions";
+import { getSessionDevice } from "./session-device";
 
 export const CUSTOMER_SESSION_COOKIE = "bakery_customer_session";
 
 const SESSION_TTL_SECONDS = 60 * 60 * 24 * 365;
+const SESSION_TOUCH_INTERVAL_MS = 15 * 60 * 1000;
 
-type SessionPayload = {
+export type CustomerSession = {
   customerId: string;
-  exp: number;
+  sessionId: string;
+  expiresAt: Date;
 };
 
-function getSecret() {
-  return process.env.CUSTOMER_SESSION_SECRET || "dev-customer-session-secret";
+export function hashCustomerSessionToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
 }
 
-function base64UrlEncode(value: string) {
-  return Buffer.from(value).toString("base64url");
-}
+export async function createCustomerSessionCookie(
+  customerId: string,
+  request?: Request,
+) {
+  const token = randomBytes(32).toString("base64url");
+  const sessionId = hashCustomerSessionToken(token);
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + SESSION_TTL_SECONDS * 1000);
+  const device = getSessionDevice(request);
 
-function base64UrlDecode(value: string) {
-  return Buffer.from(value, "base64url").toString("utf8");
-}
-
-function sign(payload: string) {
-  return createHmac("sha256", getSecret()).update(payload).digest("base64url");
-}
-
-export function createCustomerSessionValue(customerId: string) {
-  const payload: SessionPayload = {
+  await createStoredCustomerSession(sessionId, {
     customerId,
-    exp: Math.floor(Date.now() / 1000) + SESSION_TTL_SECONDS,
-  };
-  const encodedPayload = base64UrlEncode(JSON.stringify(payload));
-  return `${encodedPayload}.${sign(encodedPayload)}`;
-}
+    ...device,
+    createdAt: now,
+    lastSeenAt: now,
+    expiresAt,
+  });
 
-export function parseCustomerSessionValue(value?: string | null) {
-  if (!value) return null;
-
-  const [encodedPayload, signature] = value.split(".");
-  if (!encodedPayload || !signature) return null;
-
-  const expectedSignature = sign(encodedPayload);
-  const signatureBuffer = Buffer.from(signature);
-  const expectedBuffer = Buffer.from(expectedSignature);
-
-  if (
-    signatureBuffer.length !== expectedBuffer.length ||
-    !timingSafeEqual(signatureBuffer, expectedBuffer)
-  ) {
-    return null;
-  }
-
-  try {
-    const payload = JSON.parse(base64UrlDecode(encodedPayload)) as SessionPayload;
-
-    if (!payload.customerId || payload.exp < Math.floor(Date.now() / 1000)) {
-      return null;
-    }
-
-    return payload;
-  } catch {
-    return null;
-  }
-}
-
-export function createCustomerSessionCookie(customerId: string) {
-  const value = createCustomerSessionValue(customerId);
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  return `${CUSTOMER_SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL_SECONDS}${secure}`;
+}
 
-  return `${CUSTOMER_SESSION_COOKIE}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_TTL_SECONDS}${secure}`;
+export async function parseCustomerSessionValue(
+  value?: string | null,
+): Promise<CustomerSession | null> {
+  if (!value || value.length < 32 || value.length > 128) return null;
+
+  const sessionId = hashCustomerSessionToken(value);
+  const stored = await getStoredCustomerSession(sessionId);
+  if (!stored || stored.revokedAt || stored.expiresAt.getTime() <= Date.now()) {
+    return null;
+  }
+
+  if (Date.now() - stored.lastSeenAt.getTime() >= SESSION_TOUCH_INTERVAL_MS) {
+    await touchStoredCustomerSession(sessionId, new Date()).catch((error) => {
+      console.error("Failed to touch customer session:", error);
+    });
+  }
+
+  return {
+    customerId: stored.customerId,
+    sessionId,
+    expiresAt: stored.expiresAt,
+  };
+}
+
+export async function revokeCustomerSessionValue(value?: string | null) {
+  if (!value) return;
+  const sessionId = hashCustomerSessionToken(value);
+  const stored = await getStoredCustomerSession(sessionId);
+  if (stored && !stored.revokedAt) {
+    await revokeStoredCustomerSession(sessionId);
+  }
 }
 
 export function createClearCustomerSessionCookie() {
-  return `${CUSTOMER_SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+  return `${CUSTOMER_SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secure}`;
 }
 
 export function readCookie(cookieHeader: string | null, name: string) {
@@ -80,5 +88,10 @@ export function readCookie(cookieHeader: string | null, name: string) {
 
   const cookies = cookieHeader.split(";").map((cookie) => cookie.trim());
   const cookie = cookies.find((item) => item.startsWith(`${name}=`));
-  return cookie ? decodeURIComponent(cookie.slice(name.length + 1)) : null;
+  if (!cookie) return null;
+  try {
+    return decodeURIComponent(cookie.slice(name.length + 1));
+  } catch {
+    return null;
+  }
 }

@@ -12,6 +12,7 @@ import {
   Megaphone,
   Package,
   ScanLine,
+  ShieldCheck,
   ShoppingBag,
   ShoppingCart,
   TicketPercent,
@@ -79,6 +80,12 @@ const menuItems = [
     label: "Marketing",
     icon: Megaphone,
     href: "/admin/marketing",
+  },
+  {
+    id: "security",
+    label: "An toàn",
+    icon: ShieldCheck,
+    href: "/admin/security",
   },
 ];
 

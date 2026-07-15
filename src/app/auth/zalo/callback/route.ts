@@ -80,7 +80,10 @@ export async function GET(request: Request) {
     }
 
     const response = NextResponse.redirect(new URL("/profile", url.origin));
-    response.headers.append("Set-Cookie", createCustomerSessionCookie(customer.id));
+    response.headers.append(
+      "Set-Cookie",
+      await createCustomerSessionCookie(customer.id, request),
+    );
     return response;
   } catch (error) {
     console.error("Zalo login failed:", error);

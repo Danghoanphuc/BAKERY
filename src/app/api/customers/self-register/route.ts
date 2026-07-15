@@ -8,10 +8,21 @@ import {
 import { validatePin } from "@/lib/auth/password";
 import { createCustomer, getCustomerByPhone } from "@/lib/firebase";
 import { setCustomerPin } from "@/lib/firebase/customer-auth";
+import { buildRiskContext } from "@/lib/security/risk-context";
+import {
+  consumeSecurityAction,
+  createSecurityLimitResponse,
+  recordSecurityEvent,
+} from "@/lib/security/security-events";
+import {
+  createChallengeRequiredResponse,
+  passAdaptiveChallenge,
+} from "@/lib/security/adaptive-challenge";
 
 export async function POST(request: Request) {
   try {
-    const { name, phone, pin, confirmPin } = await request.json();
+    const { name, phone, pin, confirmPin, securityChallengeToken } =
+      await request.json();
     const normalizedPhone =
       typeof phone === "string" ? normalizePhoneInput(phone) : "";
 
@@ -44,6 +55,29 @@ export async function POST(request: Request) {
         { error: "Mã PIN nhập lại chưa khớp." },
         { status: 400 },
       );
+    }
+
+    const riskContext = buildRiskContext(request, { phone: normalizedPhone });
+    const securityLimit = await consumeSecurityAction(
+      "registration_attempt",
+      riskContext,
+      [
+        { subject: "visitor", max: 3, windowMs: 24 * 60 * 60_000 },
+        { subject: "network", max: 10, windowMs: 60 * 60_000 },
+      ],
+    );
+    if (!securityLimit.allowed) {
+      const passed = await passAdaptiveChallenge(
+        request,
+        riskContext,
+        securityChallengeToken,
+        "customer_registration",
+      );
+      if (!passed) {
+        return securityChallengeToken
+          ? createSecurityLimitResponse(securityLimit)
+          : createChallengeRequiredResponse("customer_registration");
+      }
     }
 
     const existingCustomer = await getCustomerByPhone(normalizedPhone);
@@ -81,13 +115,19 @@ export async function POST(request: Request) {
     }
     
     await setCustomerPin(customer.id, pin);
+    await recordSecurityEvent("registration_created", riskContext).catch(
+      (error) => console.error("Failed to record registration:", error),
+    );
 
     const response = NextResponse.json({
       ok: true,
       customer: { ...customer, hasPassword: true, passwordSetAt: new Date() },
       message: "Đã tạo hồ sơ thành viên.",
     });
-    response.headers.append("Set-Cookie", createCustomerSessionCookie(customer.id));
+    response.headers.append(
+      "Set-Cookie",
+      await createCustomerSessionCookie(customer.id, request),
+    );
     return response;
   } catch (error) {
     console.error("Self register failed:", error);

@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     request.headers.get("cookie"),
     CUSTOMER_SESSION_COOKIE,
   );
-  const session = parseCustomerSessionValue(sessionValue);
+  const session = await parseCustomerSessionValue(sessionValue);
 
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

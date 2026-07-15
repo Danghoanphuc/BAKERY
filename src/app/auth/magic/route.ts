@@ -37,6 +37,9 @@ export async function GET(request: Request) {
         ? "/profile"
         : "/account/password?setup=1";
   const response = NextResponse.redirect(new URL(safeNext, url.origin));
-  response.headers.append("Set-Cookie", createCustomerSessionCookie(result.customer.id));
+  response.headers.append(
+    "Set-Cookie",
+    await createCustomerSessionCookie(result.customer.id, request),
+  );
   return response;
 }

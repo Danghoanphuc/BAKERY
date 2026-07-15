@@ -5,6 +5,11 @@ import {
   normalizePhoneInput,
 } from "@/lib/auth/phone";
 import { getCustomerByPhone } from "@/lib/firebase";
+import { buildRiskContext } from "@/lib/security/risk-context";
+import {
+  consumeSecurityAction,
+  createSecurityLimitResponse,
+} from "@/lib/security/security-events";
 
 export async function POST(request: Request) {
   try {
@@ -16,6 +21,16 @@ export async function POST(request: Request) {
     if (phoneError) {
       return NextResponse.json({ error: phoneError }, { status: 400 });
     }
+
+    const limit = await consumeSecurityAction(
+      "phone_recognition",
+      buildRiskContext(request, { phone }),
+      [
+        { subject: "visitor", max: 12, windowMs: 15 * 60_000 },
+        { subject: "network", max: 40, windowMs: 15 * 60_000 },
+      ],
+    );
+    if (!limit.allowed) return createSecurityLimitResponse(limit);
 
     const customer = await getCustomerByPhone(phone);
 

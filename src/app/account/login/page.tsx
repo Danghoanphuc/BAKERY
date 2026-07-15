@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, Suspense, useState, useRef } from "react";
 import { ArrowRight, KeyRound, Loader2, Phone } from "lucide-react";
+import { startAuthentication } from "@simplewebauthn/browser";
 import {
   getPhoneError,
   sanitizePhone,
   sanitizePin,
 } from "@/features/auth/pin-ui";
+import { TurnstileChallenge } from "@/components/security/TurnstileChallenge";
 
 type LoginStep = "pin" | "link";
 
@@ -30,9 +32,16 @@ function AccountLoginContent() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [securityChallenge, setSecurityChallenge] = useState<{
+    siteKey: string;
+    action: string;
+  } | null>(null);
 
-  async function loginWithPin(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function loginWithPin(
+    event?: FormEvent<HTMLFormElement>,
+    securityChallengeToken?: string,
+  ) {
+    event?.preventDefault();
     setIsSubmitting(true);
     setError(null);
     setNotice(null);
@@ -54,10 +63,18 @@ function AccountLoginContent() {
       const response = await fetch("/api/auth/password-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, pin }),
+        body: JSON.stringify({ phone, pin, securityChallengeToken }),
       });
       const data = await response.json();
       if (!response.ok) {
+        if (
+          data?.code === "challenge_required" &&
+          typeof data.siteKey === "string" &&
+          typeof data.action === "string"
+        ) {
+          setSecurityChallenge({ siteKey: data.siteKey, action: data.action });
+          return;
+        }
         setError(data.error || "Mã PIN hoặc số điện thoại không chính xác.");
         return;
       }
@@ -96,6 +113,54 @@ function AccountLoginContent() {
       setNotice(data.message || "Đã gửi link đăng nhập qua tin nhắn Zalo/SMS.");
     } catch (err) {
       setError("Lỗi kết nối. Vui lòng thử lại.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function loginWithPasskey() {
+    const phoneError = getPhoneError(phone);
+    if (phoneError) {
+      setError(phoneError);
+      return;
+    }
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const optionsResponse = await fetch(
+        "/api/auth/passkeys/authenticate/options",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone }),
+        },
+      );
+      const options = await optionsResponse.json();
+      if (!optionsResponse.ok) {
+        throw new Error(options.error || "Không thể dùng passkey.");
+      }
+      const authenticationResponse = await startAuthentication({
+        optionsJSON: options,
+      });
+      const verifyResponse = await fetch(
+        "/api/auth/passkeys/authenticate/verify",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ response: authenticationResponse }),
+        },
+      );
+      const result = await verifyResponse.json();
+      if (!verifyResponse.ok) {
+        throw new Error(result.error || "Passkey không hợp lệ.");
+      }
+      window.location.href = nextPath;
+    } catch (passkeyError) {
+      setError(
+        passkeyError instanceof Error && passkeyError.name !== "NotAllowedError"
+          ? passkeyError.message
+          : "Bạn đã hủy hoặc trình duyệt này chưa hỗ trợ passkey.",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -169,6 +234,14 @@ function AccountLoginContent() {
                 )}
                 Đăng nhập
               </button>
+              <button
+                type="button"
+                onClick={loginWithPasskey}
+                disabled={isSubmitting}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#d9c4b5] bg-white text-[14px] font-black text-[#7a4b31] disabled:opacity-60"
+              >
+                Đăng nhập bằng passkey
+              </button>
             </form>
           ) : (
             <form onSubmit={requestMagicLink} className="space-y-5">
@@ -220,6 +293,18 @@ function AccountLoginContent() {
           </Link>
         </div>
       </div>
+      {securityChallenge ? (
+        <TurnstileChallenge
+          siteKey={securityChallenge.siteKey}
+          action={securityChallenge.action}
+          onCancel={() => setSecurityChallenge(null)}
+          onToken={(token) => {
+            if (!token) return;
+            setSecurityChallenge(null);
+            void loginWithPin(undefined, token);
+          }}
+        />
+      ) : null}
     </main>
   );
 }

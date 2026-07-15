@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
+  Fingerprint,
   KeyRound,
   Loader2,
   LocateFixed,
@@ -12,6 +13,7 @@ import {
   Plus,
   Save,
   ShieldCheck,
+  Smartphone,
   Trash2,
 } from "lucide-react";
 
@@ -392,6 +394,22 @@ export default function AccountPage() {
         >
           <KeyRound className="h-4 w-4" />
           Đổi mã PIN
+        </Link>
+
+        <Link
+          href="/account/security/sessions"
+          className="mt-2 flex h-12 items-center justify-center gap-2 rounded-[14px] border border-[#edd8ca] bg-white text-[14px] font-black text-[#7a4b31] shadow-sm"
+        >
+          <Smartphone className="h-4 w-4" />
+          Thiết bị đăng nhập
+        </Link>
+
+        <Link
+          href="/account/security/passkeys"
+          className="mt-2 flex h-12 items-center justify-center gap-2 rounded-[14px] border border-[#edd8ca] bg-white text-[14px] font-black text-[#7a4b31] shadow-sm"
+        >
+          <Fingerprint className="h-4 w-4" />
+          Passkey và sinh trắc học
         </Link>
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">

@@ -46,6 +46,16 @@ import {
   createPayOSOrderCode,
   isPayOSEnabled,
 } from "@/lib/payos";
+import { buildRiskContext } from "@/lib/security/risk-context";
+import {
+  consumeSecurityAction,
+  createSecurityLimitResponse,
+  recordSecurityEvent,
+} from "@/lib/security/security-events";
+import {
+  createChallengeRequiredResponse,
+  passAdaptiveChallenge,
+} from "@/lib/security/adaptive-challenge";
 
 function stripUndefinedDeep<T>(value: T): T {
   if (Array.isArray(value)) {
@@ -70,7 +80,7 @@ export async function GET(request: Request) {
     // Check authentication
     const cookieHeader = request.headers.get("cookie") || "";
     const sessionValue = readCookie(cookieHeader, CUSTOMER_SESSION_COOKIE);
-    const session = parseCustomerSessionValue(sessionValue);
+    const session = await parseCustomerSessionValue(sessionValue);
 
     if (!session) {
       return NextResponse.json(
@@ -136,12 +146,43 @@ export async function POST(request: Request) {
       customerBirthday?: string;
       customerGender?: "male" | "female" | "other";
       deliveryAddressDetails?: OrderConfig["deliveryAddress"];
+      securityChallengeToken?: string;
     };
+    const securityChallengeToken = data.securityChallengeToken;
+    delete data.securityChallengeToken;
     const sessionValue = readCookie(
       request.headers.get("cookie"),
       CUSTOMER_SESSION_COOKIE,
     );
-    const session = parseCustomerSessionValue(sessionValue);
+    const session = await parseCustomerSessionValue(sessionValue);
+    const riskContext = buildRiskContext(request, {
+      sessionId: session?.sessionId,
+      customerId: session?.customerId ?? data.customerId,
+      phone: data.customerPhone,
+      address: data.deliveryAddress,
+    });
+    const orderLimit = await consumeSecurityAction(
+      "order_attempt",
+      riskContext,
+      [
+        { subject: "visitor", max: 8, windowMs: 60 * 60_000 },
+        { subject: "phone", max: 5, windowMs: 60 * 60_000 },
+        { subject: "network", max: 30, windowMs: 60 * 60_000 },
+      ],
+    );
+    if (!orderLimit.allowed) {
+      const passed = await passAdaptiveChallenge(
+        request,
+        riskContext,
+        securityChallengeToken,
+        "create_order",
+      );
+      if (!passed) {
+        return securityChallengeToken
+          ? createSecurityLimitResponse(orderLimit)
+          : createChallengeRequiredResponse("create_order");
+      }
+    }
     const orderNumber = generateOrderNumber();
     const [products, campaigns, costCatalog] = await Promise.all([
       getAllProducts(),
@@ -232,6 +273,25 @@ export async function POST(request: Request) {
     const existingCustomer = data.customerPhone
       ? await getCustomerByPhone(data.customerPhone)
       : null;
+
+    if (data.paymentMethod !== "bank_transfer" && data.customerPhone) {
+      const existingOrders = await getOrdersByPhone(data.customerPhone);
+      const activeCodOrders = existingOrders.filter(
+        (order) =>
+          order.paymentMethod !== "bank_transfer" &&
+          order.paymentStatus !== "paid" &&
+          !["completed", "delivered", "cancelled"].includes(order.status),
+      );
+      if (activeCodOrders.length >= 2) {
+        return NextResponse.json(
+          {
+            error: "Bạn đang có 2 đơn thanh toán khi nhận hàng chưa hoàn tất. Vui lòng hoàn tất đơn cũ hoặc chọn chuyển khoản.",
+            code: "cod_limit_reached",
+          },
+          { status: 409 },
+        );
+      }
+    }
     const isGuestCheckout = !session;
 
     if (isGuestCheckout && existingCustomer?.hasPassword) {
@@ -242,6 +302,32 @@ export async function POST(request: Request) {
         },
         { status: 409 },
       );
+    }
+
+    if (
+      requestedVoucher &&
+      voucherValidation?.ok &&
+      Math.max(0, requestedVoucher.maxUsesPerPhone ?? 1) <= 1
+    ) {
+      const voucherClusterLimit = await consumeSecurityAction(
+        `voucher_claim:${requestedVoucher.id}`,
+        riskContext,
+        [
+          { subject: "visitor", max: 1, windowMs: 30 * 24 * 60 * 60_000 },
+          { subject: "address", max: 2, windowMs: 30 * 24 * 60 * 60_000 },
+          { subject: "network", max: 5, windowMs: 30 * 24 * 60 * 60_000 },
+        ],
+        { voucherId: requestedVoucher.id },
+      );
+      if (!voucherClusterLimit.allowed) {
+        return NextResponse.json(
+          {
+            error: "Ưu đãi này đã được sử dụng bởi tài khoản hoặc địa chỉ liên quan.",
+            code: "voucher_cluster_limit",
+          },
+          { status: 409 },
+        );
+      }
     }
 
     const customer =
@@ -256,6 +342,10 @@ export async function POST(request: Request) {
             loyaltyPoints: loyaltyPointsEarned,
             personalization: {},
           })
+        : null;
+    const guestSessionCookie =
+      customer && !session
+        ? await createCustomerSessionCookie(customer.id, request)
         : null;
     const selectedAddress = data.deliveryAddressDetails;
     if (
@@ -336,6 +426,15 @@ export async function POST(request: Request) {
     }
     const postOrderTasks: Array<Promise<void>> = [];
     postOrderTasks.push(
+      recordSecurityEvent("order_created", riskContext, {
+        paymentMethod: order.paymentMethod ?? "cod",
+        hasVoucher: Boolean(requestedVoucher),
+      }),
+    );
+    if (order.paymentMethod !== "bank_transfer") {
+      postOrderTasks.push(recordSecurityEvent("cod_order_created", riskContext));
+    }
+    postOrderTasks.push(
       captureOrderFinancials(
         { ...order, createdAt: new Date(), updatedAt: new Date() },
         customer?.id ? `customer:${customer.id}` : "guest-checkout",
@@ -343,6 +442,11 @@ export async function POST(request: Request) {
     );
 
     if (requestedVoucher && serverDiscountAmount > 0) {
+      postOrderTasks.push(
+        recordSecurityEvent("voucher_redeemed", riskContext, {
+          voucherId: requestedVoucher.id,
+        }),
+      );
       postOrderTasks.push(
         recordVoucherRedemption({
           voucherId: requestedVoucher.id,
@@ -384,10 +488,10 @@ export async function POST(request: Request) {
       { status: 201 },
     );
 
-    if (customer) {
+    if (guestSessionCookie) {
       response.headers.append(
         "Set-Cookie",
-        createCustomerSessionCookie(customer.id),
+        guestSessionCookie,
       );
     }
 

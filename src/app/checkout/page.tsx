@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { AddressModal } from "@/components/layout/Header/AddressModal";
+import { TurnstileChallenge } from "@/components/security/TurnstileChallenge";
 import { getPhoneError, sanitizePhone } from "@/features/auth/pin-ui";
 import {
   CheckoutContactSheet,
@@ -52,6 +53,10 @@ export default function CheckoutPage() {
   const [hasSubmittedOrder, setHasSubmittedOrder] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [securityChallenge, setSecurityChallenge] = useState<{
+    siteKey: string;
+    action: string;
+  } | null>(null);
 
   const isPickup = config.deliveryMode === "pickup";
   const voucherPricing = calculateVoucherPricing(totalPrice, selectedVoucher);
@@ -133,8 +138,11 @@ export default function CheckoutPage() {
   if (!isClient) return <CheckoutLoading />;
   if (items.length === 0) return null;
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleSubmit = async (
+    event?: React.FormEvent,
+    securityChallengeToken?: string,
+  ) => {
+    event?.preventDefault();
     setError(null);
 
     if (!contact.name.trim()) {
@@ -192,11 +200,23 @@ export default function CheckoutPage() {
           notes: notes.trim() || undefined,
           paymentMethod,
           items,
+          securityChallengeToken,
         }),
       });
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
+        if (
+          payload?.code === "challenge_required" &&
+          typeof payload.siteKey === "string" &&
+          typeof payload.action === "string"
+        ) {
+          setSecurityChallenge({
+            siteKey: payload.siteKey,
+            action: payload.action,
+          });
+          return;
+        }
         if (payload?.code === "account_exists") {
           checkoutIdentity.retryRecognition();
           setIsContactOpen(true);
@@ -319,6 +339,29 @@ export default function CheckoutPage() {
         isOpen={isAddressOpen}
         onClose={() => setIsAddressOpen(false)}
       />
+      {securityChallenge ? (
+        <TurnstileChallenge
+          siteKey={securityChallenge.siteKey}
+          action={securityChallenge.action}
+          onCancel={() => setSecurityChallenge(null)}
+          onToken={(token) => {
+            if (!token) return;
+            setSecurityChallenge(null);
+            void handleSubmit(undefined, token);
+          }}
+        />
+      ) : null}
+      {!securityChallenge && checkoutIdentity.securityChallenge ? (
+        <TurnstileChallenge
+          siteKey={checkoutIdentity.securityChallenge.siteKey}
+          action={checkoutIdentity.securityChallenge.action}
+          onCancel={checkoutIdentity.cancelSecurityChallenge}
+          onToken={(token) => {
+            if (!token) return;
+            void checkoutIdentity.completeSecurityChallenge(token);
+          }}
+        />
+      ) : null}
     </main>
   );
 }

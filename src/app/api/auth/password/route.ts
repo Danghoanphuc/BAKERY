@@ -11,6 +11,12 @@ import {
   getCustomerById,
 } from "@/lib/firebase/customers";
 import { setCustomerPin } from "@/lib/firebase/customer-auth";
+import {
+  checkPinRateLimit,
+  clearPinFailures,
+  createPinRateLimitResponse,
+  recordPinFailure,
+} from "@/lib/auth/pin-rate-limit";
 
 export async function POST(request: Request) {
   try {
@@ -18,7 +24,7 @@ export async function POST(request: Request) {
       request.headers.get("cookie"),
       CUSTOMER_SESSION_COOKIE,
     );
-    const session = parseCustomerSessionValue(sessionValue);
+    const session = await parseCustomerSessionValue(sessionValue);
 
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -57,13 +63,24 @@ export async function POST(request: Request) {
         );
       }
 
+      const rateLimit = await checkPinRateLimit(
+        request,
+        customer.phone,
+        "pin-change",
+      );
+      if (!rateLimit.allowed) return createPinRateLimitResponse(rateLimit);
+
       const authCustomer = await getCustomerAuthByPhone(customer.phone);
       if (!verifyPassword(oldPin, authCustomer?.passwordHash)) {
+        await recordPinFailure(request, customer.phone, "pin-change");
         return NextResponse.json(
           { error: "Mã PIN hiện tại không đúng." },
           { status: 401 },
         );
       }
+      await clearPinFailures(request, customer.phone, "pin-change").catch(
+        (error) => console.error("Failed to clear PIN change failures:", error),
+      );
     }
 
     await setCustomerPin(customer.id, nextPin);

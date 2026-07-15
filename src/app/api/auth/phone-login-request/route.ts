@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 
 import {
-  buildMagicLinkUrl,
-  createMagicLinkForCustomer,
-  getCustomerByPhone,
-} from "@/lib/firebase";
-import {
   getVietnamPhoneValidationError,
   normalizePhoneInput,
 } from "@/lib/auth/phone";
+import { buildRiskContext } from "@/lib/security/risk-context";
+import {
+  consumeSecurityAction,
+  createSecurityLimitResponse,
+} from "@/lib/security/security-events";
 
 export async function POST(request: Request) {
   try {
@@ -21,23 +21,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: phoneError }, { status: 400 });
     }
 
-    const customer = await getCustomerByPhone(normalizedPhone);
-
-    if (customer) {
-      const result = await createMagicLinkForCustomer(customer.id);
-
-      return NextResponse.json({
-        ok: true,
-        message:
-          "Hệ thống đã tạo link đăng nhập mới. Nhân viên có thể gửi link này cho khách.",
-        magicLinkUrl: buildMagicLinkUrl(result.urlPath),
-      });
-    }
+    const limit = await consumeSecurityAction(
+      "magic_link_request",
+      buildRiskContext(request, { phone: normalizedPhone }),
+      [
+        { subject: "phone", max: 3, windowMs: 60 * 60_000 },
+        { subject: "visitor", max: 5, windowMs: 60 * 60_000 },
+        { subject: "network", max: 20, windowMs: 60 * 60_000 },
+      ],
+    );
+    if (!limit.allowed) return createSecurityLimitResponse(limit);
 
     return NextResponse.json({
       ok: true,
       message:
-        "Nếu số điện thoại đã có trong CRM, hệ thống đã tạo magic link mới để nhân viên gửi cho khách.",
+        "Yêu cầu đã được ghi nhận. Vui lòng liên hệ tiệm để được hỗ trợ đăng nhập an toàn.",
     });
   } catch (error) {
     console.error("Phone login request failed:", error);

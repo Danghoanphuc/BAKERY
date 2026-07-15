@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Gift, ArrowRight, ArrowLeft } from "lucide-react";
 import { getPhoneError, sanitizePhone } from "@/features/auth/pin-ui";
 import PinSetupFlow from "@/features/auth/PinSetupFlow";
+import { TurnstileChallenge } from "@/components/security/TurnstileChallenge";
 
 export default function RegisterPage() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -12,6 +13,11 @@ export default function RegisterPage() {
   const [phone, setPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingPin, setPendingPin] = useState("");
+  const [securityChallenge, setSecurityChallenge] = useState<{
+    siteKey: string;
+    action: string;
+  } | null>(null);
 
   // Xử lý chuyển bước 1 -> 2
   function handleNameSubmit(event: FormEvent<HTMLFormElement>) {
@@ -37,7 +43,7 @@ export default function RegisterPage() {
   }
 
   // Xử lý bước 3 (Gọi API sau khi nhập PIN xong)
-  async function handleRegister(pin: string) {
+  async function handleRegister(pin: string, securityChallengeToken?: string) {
     setIsSubmitting(true);
     setError(null);
 
@@ -45,11 +51,26 @@ export default function RegisterPage() {
       const response = await fetch("/api/customers/self-register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone, pin, confirmPin: pin }),
+        body: JSON.stringify({
+          name,
+          phone,
+          pin,
+          confirmPin: pin,
+          securityChallengeToken,
+        }),
       });
       const data = await response.json();
 
       if (!response.ok) {
+        if (
+          data?.code === "challenge_required" &&
+          typeof data.siteKey === "string" &&
+          typeof data.action === "string"
+        ) {
+          setPendingPin(pin);
+          setSecurityChallenge({ siteKey: data.siteKey, action: data.action });
+          return;
+        }
         setError(
           data.error ||
             "Không thể đăng ký. Số điện thoại này có thể đã tồn tại.",
@@ -205,6 +226,18 @@ export default function RegisterPage() {
           </div>
         )}
       </div>
+      {securityChallenge ? (
+        <TurnstileChallenge
+          siteKey={securityChallenge.siteKey}
+          action={securityChallenge.action}
+          onCancel={() => setSecurityChallenge(null)}
+          onToken={(token) => {
+            if (!token || !pendingPin) return;
+            setSecurityChallenge(null);
+            void handleRegister(pendingPin, token);
+          }}
+        />
+      ) : null}
     </main>
   );
 }

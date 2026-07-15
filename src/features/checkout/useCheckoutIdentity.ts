@@ -28,6 +28,10 @@ export function useCheckoutIdentity({
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [recognitionAttempt, setRecognitionAttempt] = useState(0);
+  const [securityChallenge, setSecurityChallenge] = useState<{
+    siteKey: string;
+    action: string;
+  } | null>(null);
   const checkedPhoneRef = useRef("");
 
   useEffect(() => {
@@ -80,7 +84,7 @@ export function useCheckoutIdentity({
     };
   }, [isAuthenticated, phone, recognitionAttempt]);
 
-  async function signIn() {
+  async function signIn(securityChallengeToken?: string) {
     if (status !== "pin_required" || pin.length !== 4) return false;
 
     setStatus("signing_in");
@@ -89,10 +93,22 @@ export function useCheckoutIdentity({
       const response = await fetch("/api/auth/password-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ phone, pin }),
+        body: JSON.stringify({ phone, pin, securityChallengeToken }),
       });
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
+        if (
+          payload?.code === "challenge_required" &&
+          typeof payload.siteKey === "string" &&
+          typeof payload.action === "string"
+        ) {
+          setSecurityChallenge({
+            siteKey: payload.siteKey,
+            action: payload.action,
+          });
+          setStatus("pin_required");
+          return false;
+        }
         throw new Error(payload?.error || "Số điện thoại hoặc mã PIN chưa đúng.");
       }
 
@@ -117,6 +133,12 @@ export function useCheckoutIdentity({
     error,
     setPin: (value: string) => setPin(sanitizePin(value)),
     signIn,
+    securityChallenge,
+    cancelSecurityChallenge: () => setSecurityChallenge(null),
+    completeSecurityChallenge: async (token: string) => {
+      setSecurityChallenge(null);
+      return signIn(token);
+    },
     retryRecognition: () => {
       checkedPhoneRef.current = "";
       setRecognitionAttempt((attempt) => attempt + 1);

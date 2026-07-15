@@ -9,7 +9,7 @@ import { getCustomerById, updateCustomer } from "@/lib/firebase";
 import type { CustomerAddressBookEntry } from "@/types";
 
 export async function PUT(request: Request) {
-  const session = parseCustomerSessionValue(
+  const session = await parseCustomerSessionValue(
     readCookie(request.headers.get("cookie"), CUSTOMER_SESSION_COOKIE),
   );
   if (!session) return NextResponse.json({ skipped: true }, { status: 401 });

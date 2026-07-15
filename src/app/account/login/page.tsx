@@ -13,6 +13,7 @@ import {
 import { TurnstileChallenge } from "@/components/security/TurnstileChallenge";
 import { PasskeyEnrollmentPrompt } from "@/components/security/PasskeyEnrollmentPrompt";
 import { BiometricSignInButton } from "@/components/security/BiometricSignInButton";
+import { assertPasskeyRpMatchesCurrentHost } from "@/lib/auth/passkey-client";
 
 type LoginStep = "pin" | "link";
 
@@ -173,6 +174,7 @@ function AccountLoginContent() {
       if (!optionsResponse.ok) {
         throw new Error(options.error || "Không thể dùng passkey.");
       }
+      assertPasskeyRpMatchesCurrentHost(options.rpId);
       const authenticationResponse = await startAuthentication({
         optionsJSON: options,
       });

@@ -4,6 +4,7 @@ import {
   getCustomerById,
   getMarketingCampaigns,
   getMarketingSettings,
+  getLoyaltyWorkspaceData,
   getVoucherRedemptionUsage,
 } from "@/lib/firebase";
 import { buildCustomerRewards } from "@/lib/customer-rewards";
@@ -30,10 +31,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Customer not found" }, { status: 404 });
   }
 
-  const [allOrders, settings, campaigns] = await Promise.all([
+  const [allOrders, settings, campaigns, loyalty] = await Promise.all([
     getAllOrders(),
     getMarketingSettings(),
     getMarketingCampaigns(),
+    getLoyaltyWorkspaceData(),
   ]);
 
   const rewards = buildCustomerRewards(customer, allOrders, settings, campaigns);
@@ -56,5 +58,10 @@ export async function GET(request: Request) {
   return NextResponse.json({
     ...rewards,
     vouchers: vouchers.filter((voucher) => voucher !== null),
+    rewardCatalog: loyalty.rewards.filter((reward) => reward.enabled),
+    pointHistory: loyalty.ledger
+      .filter((entry) => entry.customerId === customer.id)
+      .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())
+      .slice(0, 50),
   });
 }

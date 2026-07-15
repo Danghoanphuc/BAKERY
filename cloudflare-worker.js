@@ -2,6 +2,7 @@ const DEFAULT_ORIGIN = "https://bakery-production-9c75.up.railway.app";
 const DEFAULT_CUSTOMER_APP_URL = "https://bakery.printz.vn";
 const TRACKING_PARAMS = new Set(["fbclid", "zarsrc", "gclid"]);
 const RETRY_DELAYS_MS = [120, 360];
+const MAX_PUBLIC_RELOADS = 2;
 
 function removeTrackingParams(url) {
   const cleanedUrl = new URL(url);
@@ -133,20 +134,32 @@ async function fetchOriginWithRetry(createRequest, method = "GET") {
   throw lastError || new Error("Origin request failed");
 }
 
-function createFacebookOriginFallback(request, config, pathname) {
+function createFacebookOriginFallback(request, pathname) {
   const incomingUrl = new URL(request.url);
-  const fallbackUrl = new URL(config.origin);
+  const reloadCount = Number.parseInt(
+    incomingUrl.searchParams.get("__edge_retry") || "0",
+    10,
+  );
+
+  if (reloadCount >= MAX_PUBLIC_RELOADS) {
+    return new Response(
+      "Tạm thời không thể tải trang. Vui lòng thử lại sau ít phút.",
+      {
+        status: 503,
+        headers: {
+          "Content-Type": "text/plain; charset=utf-8",
+          "Retry-After": "5",
+        },
+      },
+    );
+  }
+
+  const fallbackUrl = new URL(incomingUrl.origin);
   fallbackUrl.pathname = pathname;
   fallbackUrl.search = incomingUrl.search;
   for (const param of TRACKING_PARAMS) fallbackUrl.searchParams.delete(param);
   fallbackUrl.searchParams.set("__fb_iab", "1");
-
-  if (fallbackUrl.host === incomingUrl.host) {
-    return new Response("Tạm thời không thể tải trang. Vui lòng thử lại.", {
-      status: 503,
-      headers: { "Content-Type": "text/plain; charset=utf-8" },
-    });
-  }
+  fallbackUrl.searchParams.set("__edge_retry", String(reloadCount + 1));
 
   return Response.redirect(fallbackUrl.toString(), 307);
 }
@@ -178,7 +191,6 @@ export default {
         await response.body?.cancel();
         return createFacebookOriginFallback(
           request,
-          config,
           cleanedUrl.pathname,
         );
       }
@@ -188,7 +200,6 @@ export default {
       if (isFacebookInApp) {
         return createFacebookOriginFallback(
           request,
-          config,
           cleanedUrl.pathname,
         );
       }

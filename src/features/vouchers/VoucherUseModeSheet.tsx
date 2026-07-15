@@ -1,9 +1,10 @@
 "use client";
 
-import { X } from "lucide-react";
+import { ShoppingBag, Store, X } from "lucide-react";
 
+import { useOrderConfigStore } from "@/store/orderConfigStore";
 import type { VoucherUseMode } from "@/types/voucher";
-import type { CustomerVoucher } from "./customer-vouchers";
+import { getDefaultVoucherUseMode, type CustomerVoucher } from "./customer-vouchers";
 
 type VoucherUseModeSheetProps = {
   voucher: CustomerVoucher | null;
@@ -11,86 +12,22 @@ type VoucherUseModeSheetProps = {
   onSelect: (voucher: CustomerVoucher, mode: VoucherUseMode) => void;
 };
 
-const modeOptions: Array<{
-  id: VoucherUseMode;
-  title: string;
-  description: string;
-}> = [
-  {
-    id: "pos_pickup_now",
-    title: "Dùng tại cửa hàng",
-    description: "Áp voucher khi mua trực tiếp tại quầy.",
-  },
-  {
-    id: "web_pickup_later",
-    title: "Đặt trước - lấy sau",
-    description: "Chọn bánh trước, đến tiệm nhận sau.",
-  },
-  {
-    id: "web_delivery",
-    title: "Giao tận nơi",
-    description: "Áp voucher cho đơn giao hàng.",
-  },
-];
-
-export function VoucherUseModeSheet({
-  voucher,
-  onClose,
-  onSelect,
-}: VoucherUseModeSheetProps) {
+export function VoucherUseModeSheet({ voucher, onClose, onSelect }: VoucherUseModeSheetProps) {
+  const deliveryMode = useOrderConfigStore((state) => state.config.deliveryMode);
   if (!voucher) return null;
 
-  const channels = voucher.channels?.length
-    ? voucher.channels
-    : modeOptions.map((option) => option.id);
+  const channels = voucher.channels?.length ? voucher.channels : ["pos_pickup_now", "web_pickup_later", "web_delivery"];
+  const canUseAtStore = channels.includes("pos_pickup_now");
+  const canUseOnline = channels.includes("web_pickup_later") || channels.includes("web_delivery");
 
-  return (
-    <div className="fixed inset-0 z-[140] flex items-end justify-center bg-black/35 p-0 sm:items-center sm:p-4">
-      <div className="w-full max-w-md rounded-t-2xl bg-white shadow-xl sm:rounded-2xl">
-        <div className="flex items-start justify-between gap-3 border-b border-[#f0e1d2] px-4 py-3">
-          <div>
-            <p className="text-xs font-black uppercase text-[#b84a39]">
-              {voucher.code}
-            </p>
-            <h2 className="mt-1 text-base font-black text-[#3d2417]">
-              Bạn muốn dùng voucher ở đâu?
-            </h2>
-            <p className="mt-0.5 text-xs font-semibold text-[#7b6254]">
-              {voucher.title}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="grid h-8 w-8 place-items-center rounded-full text-[#7b6254] hover:bg-[#fff7f2]"
-            aria-label="Đóng"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="space-y-2.5 p-4">
-          {modeOptions.map((option) => {
-            const disabled = !channels.includes(option.id);
-            return (
-              <button
-                key={option.id}
-                type="button"
-                disabled={disabled}
-                onClick={() => onSelect(voucher, option.id)}
-                className="w-full rounded-xl border border-[#f0d8b8] bg-[#fffaf0] px-3 py-3 text-left transition hover:border-[#b84a39] hover:bg-[#fff7f2] disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                <span className="block text-sm font-black text-[#3d2417]">
-                  {option.title}
-                </span>
-                <span className="mt-0.5 block text-xs font-semibold leading-5 text-[#7b6254]">
-                  {option.description}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+  return <div className="fixed inset-0 z-[140] flex items-end justify-center bg-[#3d2417]/25 sm:items-center sm:p-4" onClick={onClose}>
+    <div className="w-full max-w-sm rounded-t-2xl border border-[#efdfcf] bg-[#fffaf6] p-4 shadow-xl sm:rounded-2xl" onClick={(event) => event.stopPropagation()}>
+      <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-wider text-[#c35847]">{voucher.code}</p><h2 className="mt-1 text-base font-black text-[#542413]">Bạn muốn dùng voucher thế nào?</h2><p className="mt-1 line-clamp-1 text-[11px] text-[#7b6254]">{voucher.title}</p></div><button type="button" onClick={onClose} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#f7eee7] text-[#7b6254]" aria-label="Đóng"><X className="h-3.5 w-3.5" /></button></div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2">
+        {canUseOnline && <button type="button" onClick={() => onSelect(voucher, getDefaultVoucherUseMode(voucher, deliveryMode))} className="flex items-center gap-3 rounded-xl border border-[#efdfcf] bg-white p-3 text-left transition hover:border-[#c35847]"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#ffe2df] text-[#c35847]"><ShoppingBag className="h-4 w-4" /></span><span><b className="block text-xs text-[#542413]">Mua online</b><small className="mt-0.5 block text-[9px] text-[#7b6254]">Theo lựa chọn giao/nhận hiện tại</small></span></button>}
+        {canUseAtStore && <button type="button" onClick={() => onSelect(voucher, "pos_pickup_now")} className="flex items-center gap-3 rounded-xl border border-[#efdfcf] bg-white p-3 text-left transition hover:border-[#c35847]"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#fff3df] text-[#9b3f24]"><Store className="h-4 w-4" /></span><span><b className="block text-xs text-[#542413]">Dùng tại quầy</b><small className="mt-0.5 block text-[9px] text-[#7b6254]">Hiện QR để nhân viên quét</small></span></button>}
       </div>
+      {voucher.minOrderValue ? <p className="mt-3 text-[9px] text-[#7b6254]">Áp dụng cho đơn từ {voucher.minOrderValue.toLocaleString("vi-VN")}₫</p> : null}
     </div>
-  );
+  </div>;
 }

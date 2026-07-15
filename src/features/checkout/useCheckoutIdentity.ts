@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { startAuthentication } from "@simplewebauthn/browser";
 
 import { isValidVietnamPhone, sanitizePin } from "@/features/auth/pin-ui";
+import { assertPasskeyRpMatchesCurrentHost } from "@/lib/auth/passkey-client";
 import type { Customer } from "@/types";
 
 export type CheckoutIdentityStatus =
@@ -153,6 +154,7 @@ export function useCheckoutIdentity({
       if (!optionsResponse.ok) {
         throw new Error(options.error || "Không thể dùng passkey.");
       }
+      assertPasskeyRpMatchesCurrentHost(options.rpId);
       const authenticationResponse = await startAuthentication({
         optionsJSON: options,
       });

@@ -4,6 +4,7 @@ import {
   getMarketingCampaigns,
   getMarketingSettings,
 } from "@/lib/firebase";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 function buildSummary(campaigns: Awaited<ReturnType<typeof getMarketingCampaigns>>) {
   const activeCampaigns = campaigns.filter(
@@ -30,7 +31,9 @@ function buildSummary(campaigns: Awaited<ReturnType<typeof getMarketingCampaigns
   };
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     const [campaigns, settings] = await Promise.all([
       getMarketingCampaigns(),
@@ -52,6 +55,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     const data = await request.json();
 

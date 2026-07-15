@@ -11,12 +11,14 @@ interface UseHomeRecommendationsOptions {
   products: Product[];
   favoriteIds: string[];
   isAuthenticated: boolean;
+  deliveryMode?: "delivery" | "pickup";
 }
 
 export function useHomeRecommendations({
   products,
   favoriteIds,
   isAuthenticated,
+  deliveryMode = "delivery",
 }: UseHomeRecommendationsOptions) {
   const [orders, setOrders] = useState<PurchaseHistoryOrder[]>([]);
 
@@ -39,7 +41,7 @@ export function useHomeRecommendations({
   }, [isAuthenticated]);
 
   return useMemo(
-    () => buildHomeRecommendations({ products, orders, favoriteIds }),
-    [favoriteIds, orders, products],
+    () => buildHomeRecommendations({ products, orders, favoriteIds, deliveryMode }),
+    [deliveryMode, favoriteIds, orders, products],
   );
 }

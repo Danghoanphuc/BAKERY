@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  async redirects() {
+    return [
+      { source: "/admin/vouchers", destination: "/admin/marketing/vouchers", permanent: false },
+      { source: "/admin/vouchers/new", destination: "/admin/marketing/vouchers/new", permanent: false },
+      { source: "/admin/vouchers/scan", destination: "/admin/pos/vouchers/scan", permanent: false },
+      { source: "/admin/vouchers/:id", destination: "/admin/marketing/vouchers/:id", permanent: false },
+    ];
+  },
   /* config options here */
   images: {
     // Configure allowed external domains for product images

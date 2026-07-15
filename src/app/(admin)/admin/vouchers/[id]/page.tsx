@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { use, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft, Archive, Loader2, Pause, PencilLine, Play, Square } from "lucide-react";
 import type { MarketingCampaign } from "@/types";
 import {
   audienceLabels,
@@ -13,7 +13,11 @@ import {
   getVoucherMetrics,
 } from "../_lib/voucher-admin";
 
-type TabId = "overview" | "rules" | "issued" | "redemptions" | "audit";
+type TabId = "overview" | "rules" | "issued" | "redemptions" | "versions" | "audit";
+
+type VoucherIssueRow = { id: string; customerId?: string; phone?: string; issueMethod: string; status: string; actor?: string; issuedAt?: string; expiresAt?: string };
+type VoucherAuditRow = { id: string; action: string; actor: string; reason?: string; changedFields: string[]; createdAt?: string };
+type VoucherVersionRow = { id: string; version: number; actor: string; reason?: string; createdAt?: string };
 
 type VoucherRedemptionRow = {
   id: string;
@@ -36,6 +40,7 @@ const tabs: Array<{ id: TabId; label: string }> = [
   { id: "rules", label: "Điều kiện" },
   { id: "issued", label: "Khách đã nhận" },
   { id: "redemptions", label: "Lượt sử dụng" },
+  { id: "versions", label: "Phiên bản" },
   { id: "audit", label: "Nhật ký chỉnh sửa" },
 ];
 
@@ -47,9 +52,13 @@ export default function VoucherCampaignDetailPage({
   const { id } = use(params);
   const [campaign, setCampaign] = useState<MarketingCampaign | null>(null);
   const [redemptions, setRedemptions] = useState<VoucherRedemptionRow[]>([]);
+  const [issues, setIssues] = useState<VoucherIssueRow[]>([]);
+  const [auditLog, setAuditLog] = useState<VoucherAuditRow[]>([]);
+  const [versions, setVersions] = useState<VoucherVersionRow[]>([]);
   const [activeTab, setActiveTab] = useState<TabId>("overview");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMutating, setIsMutating] = useState(false);
 
   useEffect(() => {
     async function loadCampaign() {
@@ -69,9 +78,14 @@ export default function VoucherCampaignDetailPage({
         const redemptionsPayload = redemptionsResponse.ok
           ? await redemptionsResponse.json()
           : { redemptions: [] };
+        const lifecycleResponse = await fetch(`/api/admin/vouchers/${id}/lifecycle`, { cache: "no-store" });
+        const lifecyclePayload = lifecycleResponse.ok ? await lifecycleResponse.json() : { issues: [], versions: [], auditLog: [] };
 
         setCampaign(nextCampaign);
         setRedemptions(redemptionsPayload.redemptions ?? []);
+        setIssues(lifecyclePayload.issues ?? []);
+        setVersions(lifecyclePayload.versions ?? []);
+        setAuditLog(lifecyclePayload.auditLog ?? []);
         setError(null);
       } catch (err) {
         console.error("Failed to load voucher detail:", err);
@@ -88,6 +102,23 @@ export default function VoucherCampaignDetailPage({
     () => (campaign ? getVoucherMetrics(campaign) : null),
     [campaign],
   );
+
+  async function changeStatus(status: MarketingCampaign["status"], action: string) {
+    if (!campaign || isMutating) return;
+    setIsMutating(true); setError(null);
+    try {
+      const response = await fetch(`/api/marketing/${campaign.id}`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status, auditAction: action, changeReason: `Chuyển trạng thái sang ${status}` }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Không thể đổi trạng thái.");
+      setCampaign((current) => current ? { ...current, status } : current);
+      const lifecycle = await fetch(`/api/admin/vouchers/${campaign.id}/lifecycle`, { cache: "no-store" }).then((item) => item.json());
+      setAuditLog(lifecycle.auditLog ?? []); setVersions(lifecycle.versions ?? []);
+    } catch (reason) { setError(reason instanceof Error ? reason.message : "Không thể đổi trạng thái."); }
+    finally { setIsMutating(false); }
+  }
 
   if (isLoading) {
     return (
@@ -112,7 +143,7 @@ export default function VoucherCampaignDetailPage({
     <div className="space-y-5">
       <div>
         <Link
-          href="/admin/vouchers"
+          href="/admin/marketing/vouchers"
           className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-neutral-600 hover:text-neutral-950"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -127,19 +158,19 @@ export default function VoucherCampaignDetailPage({
               {campaign.customerDescription || campaign.description}
             </p>
           </div>
-          {campaign.code && (
+          <div className="flex flex-wrap items-center gap-2"><Link href={`/admin/marketing/vouchers/new?campaign=${campaign.id}`} className="inline-flex h-10 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-bold text-neutral-700"><PencilLine className="h-4 w-4" /> Tạo phiên bản mới</Link>{campaign.status === "active" && <button disabled={isMutating} onClick={() => changeStatus("paused", "campaign_paused")} className="inline-flex h-10 items-center gap-2 rounded-lg bg-amber-100 px-3 text-sm font-bold text-amber-800"><Pause className="h-4 w-4" /> Tạm dừng</button>}{campaign.status === "paused" && <button disabled={isMutating} onClick={() => changeStatus("active", "campaign_resumed")} className="inline-flex h-10 items-center gap-2 rounded-lg bg-emerald-100 px-3 text-sm font-bold text-emerald-800"><Play className="h-4 w-4" /> Tiếp tục</button>}{["active", "paused"].includes(campaign.status) && <button disabled={isMutating} onClick={() => changeStatus("completed", "campaign_completed")} className="inline-flex h-10 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-bold text-neutral-700"><Square className="h-4 w-4" /> Kết thúc</button>}{["completed", "expired"].includes(campaign.status) && <button disabled={isMutating} onClick={() => changeStatus("archived", "campaign_archived")} className="inline-flex h-10 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-3 text-sm font-bold text-neutral-700"><Archive className="h-4 w-4" /> Lưu trữ</button>}{campaign.code && (
             <div className="rounded-lg border border-neutral-200 bg-white px-4 py-3 text-sm">
               <span className="text-neutral-500">Mã voucher</span>
               <div className="mt-1 text-lg font-black text-neutral-950">
                 {campaign.code}
               </div>
             </div>
-          )}
+          )}</div>
         </div>
       </div>
 
       <div className="rounded-lg border border-neutral-200 bg-white p-1">
-        <div className="grid gap-1 md:grid-cols-5">
+        <div className="grid gap-1 md:grid-cols-6">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -162,24 +193,14 @@ export default function VoucherCampaignDetailPage({
       )}
       {activeTab === "rules" && <RulesTab campaign={campaign} />}
       {activeTab === "issued" && (
-        <IssuedCustomersTab redemptions={redemptions} />
+        <IssuedCustomersTab issues={issues} />
       )}
       {activeTab === "redemptions" && (
         <RedemptionsTab redemptions={redemptions} />
       )}
+      {activeTab === "versions" && <VersionsTab versions={versions} activeVersionId={campaign.activeVersionId} />}
       {activeTab === "audit" && (
-        <PlaceholderTable
-          title="Nhật ký chỉnh sửa"
-          columns={[
-            "Ai chỉnh",
-            "Chỉnh gì",
-            "Trước đó",
-            "Sau đó",
-            "Lúc nào",
-            "Lý do",
-          ]}
-          note="Tab này dành cho audit log khi campaign đã phát hành."
-        />
+        <AuditTab entries={auditLog} />
       )}
     </div>
   );
@@ -291,21 +312,10 @@ function RulesTab({ campaign }: { campaign: MarketingCampaign }) {
 }
 
 function IssuedCustomersTab({
-  redemptions,
+  issues,
 }: {
-  redemptions: VoucherRedemptionRow[];
+  issues: VoucherIssueRow[];
 }) {
-  const rows = useMemo(() => {
-    const byPhone = new Map<string, VoucherRedemptionRow>();
-
-    for (const redemption of redemptions) {
-      const key = redemption.phone || redemption.customerId || redemption.id;
-      if (!byPhone.has(key)) byPhone.set(key, redemption);
-    }
-
-    return [...byPhone.values()];
-  }, [redemptions]);
-
   return (
     <DataTable
       title="Khách đã nhận"
@@ -318,23 +328,31 @@ function IssuedCustomersTab({
       ]}
       emptyText="Chưa có khách nào nhận hoặc dùng voucher này."
     >
-      {rows.map((row) => (
+      {issues.map((row) => (
         <tr key={row.id} className="border-t border-neutral-100">
           <td className="px-3 py-3 font-semibold text-neutral-950">
             {row.customerId ? `KH ${row.customerId.slice(0, 6)}` : "-"}
           </td>
           <td className="px-3 py-3">{row.phone || "-"}</td>
-          <td className="px-3 py-3">{formatDateTime(row.createdAt)}</td>
+          <td className="px-3 py-3">{formatDateTime(row.issuedAt)}</td>
           <td className="px-3 py-3">
-            <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">
-              Đã dùng
+            <span className={`rounded-full px-2 py-1 text-xs font-bold ${row.status === "redeemed" ? "bg-emerald-50 text-emerald-700" : row.status === "available" ? "bg-blue-50 text-blue-700" : "bg-neutral-100 text-neutral-600"}`}>
+              {row.status === "redeemed" ? "Đã dùng" : row.status === "available" ? "Chưa dùng" : row.status}
             </span>
           </td>
-          <td className="px-3 py-3">{formatChannel(row.channel)}</td>
+          <td className="px-3 py-3">{formatIssueMethod(row.issueMethod)}</td>
         </tr>
       ))}
     </DataTable>
   );
+}
+
+function VersionsTab({ versions, activeVersionId }: { versions: VoucherVersionRow[]; activeVersionId?: string }) {
+  return <DataTable title="Lịch sử phiên bản" columns={["Phiên bản", "Trạng thái", "Người tạo", "Thời gian", "Lý do"]} emptyText="Campaign cũ chưa có phiên bản. Phiên bản đầu tiên sẽ được tạo ở lần cập nhật tiếp theo.">{versions.map((row) => <tr key={row.id} className="border-t border-neutral-100"><td className="px-3 py-3 font-black text-neutral-950">v{row.version}</td><td className="px-3 py-3">{row.id === activeVersionId ? <span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700">Đang áp dụng</span> : "Lịch sử"}</td><td className="px-3 py-3">{row.actor}</td><td className="px-3 py-3">{formatDateTime(row.createdAt)}</td><td className="px-3 py-3">{row.reason || "-"}</td></tr>)}</DataTable>;
+}
+
+function AuditTab({ entries }: { entries: VoucherAuditRow[] }) {
+  return <DataTable title="Nhật ký vòng đời" columns={["Thời gian", "Người thực hiện", "Hành động", "Trường thay đổi", "Lý do"]} emptyText="Campaign cũ chưa có audit log. Các thay đổi tiếp theo sẽ được ghi tự động.">{entries.map((row) => <tr key={row.id} className="border-t border-neutral-100"><td className="px-3 py-3">{formatDateTime(row.createdAt)}</td><td className="px-3 py-3 font-semibold text-neutral-950">{row.actor}</td><td className="px-3 py-3"><span className="rounded bg-neutral-100 px-2 py-1 text-xs font-bold text-neutral-700">{auditActionLabel(row.action)}</span></td><td className="max-w-xs px-3 py-3 text-neutral-600">{row.changedFields.join(", ") || "-"}</td><td className="px-3 py-3">{row.reason || "-"}</td></tr>)}</DataTable>;
 }
 
 function RedemptionsTab({
@@ -438,22 +456,6 @@ function DataTable({
   );
 }
 
-function PlaceholderTable({
-  title,
-  columns,
-  note,
-}: {
-  title: string;
-  columns: string[];
-  note: string;
-}) {
-  return (
-    <DataTable title={title} columns={columns} emptyText={note}>
-      {[]}
-    </DataTable>
-  );
-}
-
 function formatDateTime(value?: string) {
   if (!value) return "-";
   const date = new Date(value);
@@ -463,6 +465,26 @@ function formatDateTime(value?: string) {
     dateStyle: "short",
     timeStyle: "short",
   }).format(date);
+}
+
+function formatIssueMethod(value: string) {
+  if (value === "manual_phone") return "CRM / thủ công";
+  if (value === "public") return "Công khai";
+  if (value === "auto_after_order") return "Tự động sau đơn";
+  if (value === "segment") return "Phân khúc";
+  if (value === "print") return "In hóa đơn";
+  if (value === "legacy_redemption") return "Suy ra từ lượt dùng cũ";
+  return value;
+}
+
+function auditActionLabel(value: string) {
+  const labels: Record<string, string> = {
+    campaign_created: "Tạo campaign", campaign_updated: "Cập nhật",
+    campaign_paused: "Tạm dừng", campaign_resumed: "Tiếp tục",
+    campaign_completed: "Kết thúc", campaign_archived: "Lưu trữ",
+    voucher_issued: "Phát voucher", voucher_redeemed: "Sử dụng voucher",
+  };
+  return labels[value] || value;
 }
 
 function formatChannel(channel?: string) {

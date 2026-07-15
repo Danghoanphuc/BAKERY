@@ -149,6 +149,7 @@ export function BakeryHome({
     products: visibleFavoriteProducts,
     favoriteIds,
     isAuthenticated: profileSummary.isAuthenticated,
+    deliveryMode: config.deliveryMode,
   });
 
   useEffect(() => {
@@ -299,15 +300,6 @@ export function BakeryHome({
             categories={categories}
           />
         </div>
-        <MemberCard
-          isAuthenticated={profileSummary.isAuthenticated}
-          memberCode={profileSummary.memberCode}
-          name={profileSummary.name}
-          points={profileSummary.points}
-          guestVouchers={guestVouchers}
-          areVouchersLoading={areVouchersLoading}
-          isProfileLoading={isProfileLoading}
-        />
         {profileSummary.isAuthenticated &&
         profileSummary.hasPassword === false ? (
           <div className="mt-3">
@@ -330,7 +322,6 @@ export function BakeryHome({
           onProductClick={setSelectedProduct}
           onQuickAdd={handleQuickAdd}
         />
-        <FeaturedPromo />
       </div>
 
       {selectedProduct && (
@@ -1044,7 +1035,7 @@ function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
   );
 }
 
-function FeaturedPromo() {
+export function FeaturedPromo() {
   return (
     <section className="relative mt-6 overflow-hidden rounded-[22px] bg-[#ffe2df] p-6 shadow-[0_8px_22px_rgba(209,89,92,0.1)] max-sm:mt-5 max-sm:p-5">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,#fff8f0_0_18%,transparent_19%),linear-gradient(135deg,#ffe9e5,#ffd2d3)]" />
@@ -1107,15 +1098,47 @@ function RecommendationSections({
   onProductClick: (product: Product) => void;
   onQuickAdd: (product: Product) => void;
 }) {
+  const [visibleGroupCount, setVisibleGroupCount] = useState(2);
+  const loadMoreRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setVisibleGroupCount(Math.min(2, groups.length));
+  }, [groups]);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    if (!target || visibleGroupCount >= groups.length || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisibleGroupCount((count) => Math.min(count + 1, groups.length));
+        }
+      },
+      { rootMargin: "320px 0px" },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [groups.length, visibleGroupCount]);
+
+  if (!groups.length) {
+    return (
+      <section className="mt-6 rounded-[18px] border border-[#efdfcf] bg-white p-5 text-center">
+        <h2 className="text-sm font-black">Chưa có món phù hợp</h2>
+        <p className="mt-1 text-xs text-[#8a6250]">Hãy đổi hình thức nhận hàng hoặc quay lại sau nhé.</p>
+        <Link href="/search" className="mt-3 inline-flex rounded-full bg-[#c35847] px-4 py-2 text-xs font-black text-white">Khám phá tất cả món</Link>
+      </section>
+    );
+  }
+
   return (
     <div className="space-y-7 pt-6">
-      {groups.map((group) => (
+      {groups.slice(0, visibleGroupCount).map((group) => (
         <section key={group.key}>
           <SectionHeader
             title={
               <span className="flex items-center gap-1.5">
                 {group.title}
-                {group.key === "timely" && (
+                {group.key === "available-now" && (
                   <Sparkles className="h-4 w-4 text-[#d9a263]" />
                 )}
               </span>
@@ -1139,6 +1162,11 @@ function RecommendationSections({
           </div>
         </section>
       ))}
+      {visibleGroupCount < groups.length && (
+        <div ref={loadMoreRef} className="flex h-20 items-center justify-center" aria-label="Đang tải thêm gợi ý">
+          <span className="h-7 w-7 animate-spin rounded-full border-2 border-[#ead7c8] border-t-[#c35847]" />
+        </div>
+      )}
     </div>
   );
 }

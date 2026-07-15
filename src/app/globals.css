@@ -219,3 +219,33 @@
 .admin-ui-frame :where(table) {
   color: #3d2417;
 }
+
+.admin-ui-frame .btn-primary,
+.admin-ui-frame .btn-secondary {
+  display: inline-flex;
+  height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  padding: 0 0.875rem;
+  font-size: 0.875rem;
+  font-weight: 800;
+  transition: 160ms ease;
+}
+
+.admin-ui-frame .btn-primary {
+  background: #b84a39;
+  color: white;
+}
+
+.admin-ui-frame .btn-secondary {
+  border: 1px solid #eadbcc;
+  background: white;
+  color: #65483a;
+}
+
+.admin-ui-frame :where(.btn-primary, .btn-secondary):disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}

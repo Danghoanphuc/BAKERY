@@ -42,6 +42,16 @@ export interface BranchStock {
   stock: number;
 }
 
+export interface ProductFeedMetrics {
+  sales7d?: number;
+  sales30d?: number;
+  views30d?: number;
+  addToCartRate?: number;
+  conversionRate?: number;
+  popularityScore?: number;
+  updatedAt?: string;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -81,6 +91,14 @@ export interface Product {
   pickupBranchIds?: string[];
   branchStock?: BranchStock[];
   preparationTimeMinutes?: number;
+  availableStoreIds?: string[];
+  dailyStock?: number;
+  availableFrom?: string;
+  availableUntil?: string;
+  sweetnessLevel?: "low" | "medium" | "high";
+  servingSize?: string;
+  rankingBoost?: number;
+  feedMetrics?: ProductFeedMetrics;
   requiresPreorder?: boolean;
   preorderMinHours?: number;
   availableToday?: boolean;

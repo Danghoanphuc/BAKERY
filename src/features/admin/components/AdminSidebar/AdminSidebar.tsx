@@ -11,11 +11,9 @@ import {
   Layers,
   Megaphone,
   Package,
-  ScanLine,
   ShieldCheck,
   ShoppingBag,
   ShoppingCart,
-  TicketPercent,
   Users,
 } from "lucide-react";
 import { clsx } from "clsx";
@@ -46,16 +44,10 @@ const menuItems = [
     href: "/admin/customers",
   },
   {
-    id: "vouchers",
-    label: "Voucher",
-    icon: TicketPercent,
-    href: "/admin/vouchers",
-  },
-  {
-    id: "voucher-scan",
-    label: "Quét tại quầy",
-    icon: ScanLine,
-    href: "/admin/vouchers/scan",
+    id: "marketing",
+    label: "Marketing & ưu đãi",
+    icon: Megaphone,
+    href: "/admin/marketing",
   },
   {
     id: "finance",
@@ -74,12 +66,6 @@ const menuItems = [
     label: "Kho/Sản phẩm",
     icon: Package,
     href: "/admin/inventory",
-  },
-  {
-    id: "marketing",
-    label: "Marketing",
-    icon: Megaphone,
-    href: "/admin/marketing",
   },
   {
     id: "security",

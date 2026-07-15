@@ -148,6 +148,13 @@ function normalizePersonalization(
       personalization?.specialOccasions,
     ),
     notes: normalizeOptionalString(personalization?.notes),
+    sweetnessLevel: personalization?.sweetnessLevel,
+    favoriteCategories: personalization?.favoriteCategories ?? [],
+    typicalPartySize: normalizeOptionalNumber(personalization?.typicalPartySize),
+    preferredBudget: personalization?.preferredBudget,
+    orderNotifications: personalization?.orderNotifications ?? true,
+    marketingConsent: personalization?.marketingConsent ?? false,
+    consentUpdatedAt: normalizeOptionalString(personalization?.consentUpdatedAt),
   };
 }
 

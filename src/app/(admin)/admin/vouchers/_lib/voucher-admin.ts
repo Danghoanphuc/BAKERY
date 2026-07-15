@@ -323,8 +323,9 @@ export function buildVoucherCampaignPayload(
 export function getVoucherMetrics(campaign: MarketingCampaign) {
   const issuedLimit =
     campaign.voucherBudget?.issuedLimit ?? campaign.usageLimit ?? 0;
-  const issuedCount = campaign.metrics?.issuedCount ?? campaign.usedCount ?? 0;
   const redeemedCount = campaign.metrics?.redeemedCount ?? campaign.usedCount;
+  // Legacy campaigns recorded redemptions before issue tracking existed.
+  const issuedCount = Math.max(campaign.metrics?.issuedCount ?? 0, redeemedCount ?? 0);
   const discountSpent = campaign.metrics?.discountSpent ?? 0;
   const revenueGenerated = campaign.metrics?.revenueGenerated ?? 0;
   const usageRate =

@@ -8,6 +8,7 @@ export type MyRewardsData = {
     email?: string;
     tier: string;
     tierIcon: string;
+    tierImageUrl?: string;
   };
   points: {
     current: number;
@@ -23,6 +24,7 @@ export type MyRewardsData = {
       name: string;
       threshold: number;
       icon: string;
+      imageUrl?: string;
       benefit: string;
       unlocked: boolean;
     }>;
@@ -51,5 +53,27 @@ export type MyRewardsData = {
     description: string;
     icon: string;
     unlocked: boolean;
+  }>;
+  rewardCatalog: Array<{
+    id: string;
+    name: string;
+    description?: string;
+    type: "points" | "multiplier" | "voucher" | "gift" | "free_shipping";
+    pointsCost: number;
+    value?: number;
+    imageUrl?: string;
+    validityDays: number;
+    stock?: number;
+    enabled: boolean;
+  }>;
+  pointHistory: Array<{
+    id: string;
+    type: "earn_order" | "bonus_campaign" | "manual_adjustment" | "redeem_reward" | "expire_points" | "refund_order";
+    points: number;
+    balanceAfter?: number;
+    referenceId?: string;
+    description: string;
+    expiresAt?: string;
+    createdAt: string;
   }>;
 };

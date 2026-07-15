@@ -454,7 +454,22 @@ function normalizeCustomerPersonalization(
     specialOccasions:
       typeof data.specialOccasions === "string"
         ? data.specialOccasions
+      : undefined,
+    sweetnessLevel:
+      data.sweetnessLevel === "low" || data.sweetnessLevel === "medium" || data.sweetnessLevel === "high"
+        ? data.sweetnessLevel
         : undefined,
+    favoriteCategories: normalizeStringArray(data.favoriteCategories),
+    typicalPartySize:
+      typeof data.typicalPartySize === "number" ? data.typicalPartySize : undefined,
+    preferredBudget:
+      data.preferredBudget === "under_100k" || data.preferredBudget === "100k_300k" || data.preferredBudget === "over_300k"
+        ? data.preferredBudget
+        : undefined,
+    orderNotifications: data.orderNotifications !== false,
+    marketingConsent: data.marketingConsent === true,
+    consentUpdatedAt:
+      typeof data.consentUpdatedAt === "string" ? data.consentUpdatedAt : undefined,
     notes: typeof data.notes === "string" ? data.notes : undefined,
   };
 }

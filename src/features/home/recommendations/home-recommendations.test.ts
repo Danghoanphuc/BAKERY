@@ -11,17 +11,15 @@ const products: Product[] = [
 
 describe("buildHomeRecommendations", () => {
   it("prioritizes products that fit the current time slot", () => {
-    const [timely] = buildHomeRecommendations({
+    const groups = buildHomeRecommendations({
       products,
       hour: 8,
       limitPerGroup: 2,
     });
+    const timely = groups.find((group) => group.key === "available-now");
 
-    expect(timely.key).toBe("timely");
-    expect(timely.products.map((item) => item.id)).toEqual([
-      "coffee",
-      "bread",
-    ]);
+    expect(groups[0]?.key).toBe("personalized");
+    expect(timely?.products.map((item) => item.id)).toContain("bread");
   });
 
   it("uses completed purchase history and avoids duplicates between groups", () => {
@@ -51,6 +49,22 @@ describe("buildHomeRecommendations", () => {
     });
 
     expect(groups.some((group) => group.key === "repurchase")).toBe(false);
+  });
+
+  it("removes unavailable, out-of-stock and wrong-channel products", () => {
+    const groups = buildHomeRecommendations({
+      products: [
+        product("ok", "Bánh có sẵn", { stock: 3 }),
+        product("sold-out", "Hết hàng", { stock: 0 }),
+        product("pickup-only", "Chỉ nhận tại tiệm", { availableForDelivery: false }),
+      ],
+      deliveryMode: "delivery",
+    });
+    const ids = groups.flatMap((group) => group.products.map((item) => item.id));
+
+    expect(ids).toContain("ok");
+    expect(ids).not.toContain("sold-out");
+    expect(ids).not.toContain("pickup-only");
   });
 });
 

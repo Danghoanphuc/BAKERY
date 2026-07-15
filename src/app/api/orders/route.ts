@@ -19,6 +19,7 @@ import {
   getCustomerByPhone,
   getMarketingCampaigns,
   getMarketingSettings,
+  issueVoucherToCustomer,
   recordVoucherRedemption,
   updateCustomer,
 } from "@/lib/firebase";
@@ -46,6 +47,7 @@ import {
   createPayOSOrderCode,
   isPayOSEnabled,
 } from "@/lib/payos";
+import { appendPointLedgerEntry } from "@/lib/firebase/loyalty";
 import { buildRiskContext } from "@/lib/security/risk-context";
 import {
   consumeSecurityAction,
@@ -402,6 +404,16 @@ export async function POST(request: Request) {
       voucherId: requestedVoucher?.id,
     });
     const order = await createOrder(orderPayload);
+    const loyaltyCustomerId = customer?.id ?? data.customerId;
+    if (loyaltyPointsEarned > 0 && loyaltyCustomerId) {
+      await appendPointLedgerEntry({
+        customerId: loyaltyCustomerId,
+        type: "earn_order",
+        points: loyaltyPointsEarned,
+        referenceId: order.id,
+        description: `Tích điểm đơn ${order.orderNumber}`,
+      });
+    }
     let payosPayment:
       | {
           checkoutUrl: string;
@@ -464,6 +476,22 @@ export async function POST(request: Request) {
           source: "checkout",
         }),
       );
+    }
+
+    for (const campaign of campaigns.filter((item) =>
+      item.type === "voucher" && item.status === "active" && item.publishing?.autoIssueAfterOrder)) {
+      postOrderTasks.push(issueVoucherToCustomer({
+        issueId: `${campaign.id}_${order.id}`,
+        campaignId: campaign.id,
+        customerId: customer?.id,
+        phone: customer?.phone ?? data.customerPhone,
+        issueMethod: "auto_after_order",
+        actor: "system:order",
+        note: `Tự động phát sau đơn ${order.orderNumber}`,
+        expiresAt: campaign.rules?.validDaysAfterIssue
+          ? new Date(Date.now() + campaign.rules.validDaysAfterIssue * 86_400_000)
+          : undefined,
+      }));
     }
 
     if (postOrderTasks.length > 0) {

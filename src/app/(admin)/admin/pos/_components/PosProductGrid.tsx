@@ -1,4 +1,5 @@
-import { LayoutGrid, Monitor, Search, X } from "lucide-react";
+import Link from "next/link";
+import { LayoutGrid, Monitor, ScanLine, Search, X } from "lucide-react";
 import { clsx } from "clsx";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import type { Category, Product } from "@/types";
@@ -41,6 +42,7 @@ export function PosProductGrid({
           </div>
           <div className="flex min-w-0 items-center gap-2">
             <SearchBox value={searchTerm} onChange={onSearchChange} />
+            <Link href="/admin/pos/vouchers/scan" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#eadbcc] bg-[#fffaf6] text-[#7b6254] transition hover:border-[#b84a39]/50 hover:bg-white hover:text-[#b84a39]" aria-label="Quét voucher" title="Quét voucher"><ScanLine className="h-5 w-5" /></Link>
             <button
               type="button"
               onClick={onOpenCustomerDisplay}

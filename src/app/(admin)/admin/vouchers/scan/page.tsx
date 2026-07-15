@@ -1,7 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useState } from "react";
-import { ScanLine, TicketPercent } from "lucide-react";
+import { ArrowLeft, ScanLine, TicketPercent } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 
 type RedeemResult = {
@@ -59,6 +60,7 @@ export default function AdminVoucherScanPage() {
   return (
     <div className="space-y-5">
       <div>
+        <Link href="/admin/pos" className="mb-3 inline-flex items-center gap-2 text-sm font-bold text-neutral-500 hover:text-neutral-950"><ArrowLeft className="h-4 w-4" /> Quay lại POS</Link>
         <h1 className="text-2xl font-bold text-neutral-950">
           Quét voucher tại quầy
         </h1>

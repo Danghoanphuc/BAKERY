@@ -71,6 +71,13 @@ export interface CustomerPersonalization {
   addressBook?: CustomerAddressBookEntry[];
   specialOccasions?: string;
   notes?: string;
+  sweetnessLevel?: "low" | "medium" | "high";
+  favoriteCategories?: string[];
+  typicalPartySize?: number;
+  preferredBudget?: "under_100k" | "100k_300k" | "over_300k";
+  orderNotifications?: boolean;
+  marketingConsent?: boolean;
+  consentUpdatedAt?: string;
 }
 
 export interface Customer {

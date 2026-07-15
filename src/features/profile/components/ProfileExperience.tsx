@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import {
   Bell,
-  Camera,
   ChevronRight,
   Crown,
   Home,
@@ -33,6 +33,7 @@ type ProfileExperienceData = {
         threshold: number;
         icon: string;
         benefit: string;
+        imageUrl?: string;
       };
       nextTier: {
         id: string;
@@ -100,13 +101,13 @@ function ProfileHero({
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,#ffd9a8_0%,#fff4e7_36%,#fff8ef_76%)]" />
       <div className="absolute -right-10 top-8 h-36 w-36 rounded-full bg-[#f5b7aa]/40 blur-2xl" />
       <div className="relative z-10">
-        <button
-          type="button"
+        <Link
+          href="/account/preferences"
           aria-label="Thông báo"
           className="absolute right-0 top-12 grid h-9 w-9 place-items-center rounded-full text-[#713719] transition active:scale-95"
         >
           <Bell className="h-6 w-6" />
-        </button>
+        </Link>
 
         <div className="flex items-center gap-3">
           <div className="relative shrink-0">
@@ -118,7 +119,7 @@ function ProfileHero({
               aria-label="Cập nhật ảnh đại diện"
               className="absolute -bottom-0.5 -right-0.5 grid h-8 w-8 place-items-center rounded-full border-3 border-white bg-[#df6d7a] text-white shadow-md"
             >
-              <Camera className="h-4 w-4" />
+              <Settings className="h-4 w-4" />
             </Link>
           </div>
 
@@ -170,7 +171,7 @@ function MemberCard({
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
             <div className="grid h-[64px] w-[64px] shrink-0 place-items-center rounded-full bg-[#ffdca8] text-[28px] shadow-inner">
-              {currentTier.icon}
+              {currentTier.imageUrl ? <Image src={currentTier.imageUrl} alt={currentTier.name} width={64} height={64} className="h-full w-full rounded-full object-cover" /> : currentTier.name.slice(0, 1)}
             </div>
             <div className="min-w-0">
               <p className="text-[12px] font-medium text-[#7b4b34]">

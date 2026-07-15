@@ -8,20 +8,12 @@ import {
   Plus,
   ReceiptText,
   Save,
-  Search,
   SlidersHorizontal,
   TicketPercent,
   X,
 } from "lucide-react";
 import type { MarketingCampaign, MarketingSettings } from "@/types";
-import {
-  audienceLabels,
-  channelLabels,
-  discountTypeLabels,
-  formatCurrency,
-  formatNumber,
-  getVoucherMetrics,
-} from "../vouchers/_lib/voucher-admin";
+import { audienceLabels, channelLabels, discountTypeLabels, formatCurrency, formatNumber, getVoucherMetrics } from "../vouchers/_lib/voucher-admin";
 
 type MarketingPayload = {
   campaigns: MarketingCampaign[];
@@ -29,17 +21,14 @@ type MarketingPayload = {
 };
 
 const statusLabels: Record<MarketingCampaign["status"], string> = {
-  draft: "Nháp",
-  active: "Đang chạy",
-  paused: "Tạm dừng",
-  expired: "Kết thúc",
+  draft: "Nháp", scheduled: "Đã lên lịch", active: "Đang chạy", paused: "Tạm dừng",
+  expired: "Kết thúc", completed: "Hoàn tất", archived: "Lưu trữ",
 };
-
 const statusClassNames: Record<MarketingCampaign["status"], string> = {
-  draft: "bg-blue-50 text-blue-700",
-  active: "bg-emerald-50 text-emerald-700",
-  paused: "bg-amber-50 text-amber-700",
-  expired: "bg-neutral-100 text-neutral-600",
+  draft: "bg-blue-50 text-blue-700", scheduled: "bg-violet-50 text-violet-700",
+  active: "bg-emerald-50 text-emerald-700", paused: "bg-amber-50 text-amber-700",
+  expired: "bg-neutral-100 text-neutral-600", completed: "bg-neutral-100 text-neutral-700",
+  archived: "bg-neutral-100 text-neutral-500",
 };
 
 function toNumber(value: string) {
@@ -51,7 +40,6 @@ export default function MarketingPage() {
   const [campaigns, setCampaigns] = useState<MarketingCampaign[]>([]);
   const [settings, setSettings] = useState<MarketingSettings | null>(null);
   const [settingsDraft, setSettingsDraft] = useState<MarketingSettings | null>(null);
-  const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -79,17 +67,6 @@ export default function MarketingPage() {
   useEffect(() => {
     loadMarketing();
   }, []);
-
-  const filteredCampaigns = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    if (!normalizedQuery) return campaigns;
-
-    return campaigns.filter((campaign) =>
-      [campaign.name, campaign.code, campaign.customerDescription]
-        .filter(Boolean)
-        .some((value) => value?.toLowerCase().includes(normalizedQuery)),
-    );
-  }, [campaigns, query]);
 
   const totals = useMemo(() => {
     return campaigns.reduce(
@@ -175,7 +152,7 @@ export default function MarketingPage() {
             Cấu hình điểm
           </button>
           <Link
-            href="/admin/vouchers/new"
+            href="/admin/marketing/vouchers/new"
             className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-500 px-4 text-sm font-semibold text-white hover:bg-brand-600"
           >
             <Plus className="h-4 w-4" />
@@ -203,22 +180,10 @@ export default function MarketingPage() {
         <SummaryCard icon={<BarChart3 className="h-5 w-5" />} label="Doanh thu tạo ra" value={formatCurrency(totals.revenueGenerated)} />
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-200 bg-white p-3">
-        <div className="relative min-w-[260px] flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Tìm theo tên chương trình hoặc mã voucher"
-            className="h-10 w-full rounded-lg border border-neutral-200 pl-9 pr-3 text-sm outline-none focus:border-brand-500"
-          />
-        </div>
-        <div className="text-sm font-semibold text-neutral-500">
-          {formatNumber(filteredCampaigns.length)} chương trình
-        </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Link href="/admin/marketing/vouchers" className="group rounded-2xl border border-[#f0d8b8] bg-[#fffaf0] p-6 transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-lg"><div className="flex items-start justify-between gap-4"><span className="grid h-12 w-12 place-items-center rounded-xl bg-[#ffc845] text-[#74351f]"><TicketPercent className="h-6 w-6" /></span><span className="text-sm font-black text-brand-600">Mở workspace →</span></div><h2 className="mt-5 text-xl font-black text-[#3d2417]">Voucher</h2><p className="mt-2 text-sm leading-6 text-[#7b6254]">Tạo bằng AI, quản lý phát hành, lượt dùng, ngân sách, phiên bản và audit tại một nơi duy nhất.</p><div className="mt-5 flex gap-5 text-sm"><span><b className="block text-lg text-[#3d2417]">{formatNumber(campaigns.length)}</b> chương trình</span><span><b className="block text-lg text-emerald-700">{formatNumber(totals.active)}</b> đang chạy</span></div></Link>
+        <Link href="/admin/marketing/loyalty" className="group rounded-2xl border border-neutral-200 bg-white p-6 text-left transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-lg"><div className="flex items-start justify-between gap-4"><span className="grid h-12 w-12 place-items-center rounded-xl bg-brand-50 text-brand-600"><SlidersHorizontal className="h-6 w-6" /></span><span className="text-sm font-black text-brand-600">Mở workspace →</span></div><h2 className="mt-5 text-xl font-black text-neutral-950">Loyalty Operating System</h2><p className="mt-2 text-sm leading-6 text-neutral-600">Vận hành điểm, hạng thành viên, luật thưởng, kho phần thưởng, phân khúc và mô phỏng.</p><p className="mt-5 text-sm font-bold text-neutral-700">{settings?.pointsPerAmount ? `${formatCurrency(settings.pointsPerAmount)} = 1 điểm` : "Chưa cấu hình"}</p></Link>
       </div>
-
-      <VoucherCampaignTable campaigns={filteredCampaigns} />
 
       {isSettingsOpen && settingsDraft && (
         <SettingsModal
@@ -243,14 +208,14 @@ function SummaryCard({ icon, label, value }: { icon: React.ReactNode; label: str
   );
 }
 
-function VoucherCampaignTable({ campaigns }: { campaigns: MarketingCampaign[] }) {
+export function VoucherCampaignTable({ campaigns }: { campaigns: MarketingCampaign[] }) {
   if (!campaigns.length) {
     return (
       <div className="rounded-lg border border-neutral-200 bg-white p-10 text-center">
         <TicketPercent className="mx-auto h-10 w-10 text-neutral-400" />
         <h2 className="mt-3 text-lg font-bold text-neutral-950">Chưa có chương trình voucher</h2>
         <p className="mt-1 text-sm text-neutral-600">Hãy tạo chương trình đầu tiên bằng wizard từng bước.</p>
-        <Link href="/admin/vouchers/new" className="mt-5 inline-flex h-10 items-center rounded-lg bg-brand-500 px-4 text-sm font-semibold text-white">
+        <Link href="/admin/marketing/vouchers/new" className="mt-5 inline-flex h-10 items-center rounded-lg bg-brand-500 px-4 text-sm font-semibold text-white">
           Tạo chương trình
         </Link>
       </div>
@@ -281,7 +246,7 @@ function VoucherCampaignTable({ campaigns }: { campaigns: MarketingCampaign[] })
               return (
                 <tr key={campaign.id} className="hover:bg-neutral-50">
                   <td className="px-4 py-4">
-                    <Link href={`/admin/vouchers/${campaign.id}`} className="font-bold text-neutral-950 hover:text-brand-600">
+                    <Link href={`/admin/marketing/vouchers/${campaign.id}`} className="font-bold text-neutral-950 hover:text-brand-600">
                       {campaign.name}
                     </Link>
                     <p className="mt-1 max-w-[280px] truncate text-neutral-500">

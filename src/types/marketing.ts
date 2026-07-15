@@ -2,9 +2,12 @@ export type MarketingCampaignType = "campaign" | "voucher" | "loyalty";
 
 export type MarketingCampaignStatus =
   | "draft"
+  | "scheduled"
   | "active"
   | "paused"
-  | "expired";
+  | "expired"
+  | "completed"
+  | "archived";
 
 export type MarketingDiscountType =
   | "percent"
@@ -55,7 +58,12 @@ export interface TierSetting {
   name: string;
   threshold: number;
   icon: string;
+  imageUrl?: string;
   benefit: string;
+  benefits?: import("./loyalty").LoyaltyTierBenefit[];
+  maintenanceThreshold?: number;
+  evaluationPeriodMonths?: number;
+  gracePeriodDays?: number;
 }
 
 export interface MarketingSettings {
@@ -93,7 +101,9 @@ export interface VoucherBudget {
 
 export interface VoucherMetrics {
   issuedCount: number;
+  availableCount?: number;
   redeemedCount: number;
+  expiredCount?: number;
   discountSpent: number;
   revenueGenerated: number;
 }
@@ -103,6 +113,17 @@ export interface VoucherPublishing {
   isPublic: boolean;
   autoIssueAfterOrder: boolean;
   printOnBill: boolean;
+}
+
+export interface VoucherAiStrategy {
+  objective?: string;
+  selectedApproach?: string | null;
+  assumptions?: string[];
+  warnings?: string[];
+  lastSummary?: string;
+  lastModelTier?: "luna" | "terra" | "sol" | null;
+  dataSnapshot?: Record<string, unknown>;
+  scenarios?: Array<Record<string, unknown>>;
 }
 
 export interface MarketingCampaign {
@@ -139,6 +160,9 @@ export interface MarketingCampaign {
   voucherBudget?: VoucherBudget;
   metrics?: VoucherMetrics;
   publishing?: VoucherPublishing;
+  aiStrategy?: VoucherAiStrategy;
+  activeVersionId?: string;
+  version?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }

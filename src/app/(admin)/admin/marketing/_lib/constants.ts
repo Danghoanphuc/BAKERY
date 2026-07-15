@@ -6,9 +6,12 @@ import type {
 
 export const statusLabels: Record<MarketingCampaignStatus, string> = {
   draft: "Nháp",
+  scheduled: "Đã lên lịch",
   active: "Đang chạy",
   paused: "Tạm dừng",
   expired: "Kết thúc",
+  completed: "Hoàn tất",
+  archived: "Lưu trữ",
 };
 
 export const typeLabels: Record<MarketingCampaignType, string> = {

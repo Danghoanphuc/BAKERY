@@ -45,7 +45,12 @@ export {
   getMarketingSettings,
   getVoucherRedemptionUsage,
   getVoucherRedemptions,
+  getVoucherIssues,
+  getVoucherAuditLog,
+  getVoucherCampaignVersions,
+  issueVoucherToCustomer,
   recordVoucherRedemption,
+  updateVoucherCampaignLifecycle,
   updateMarketingCampaign,
   updateMarketingSettings,
 } from "./marketing";
@@ -54,3 +59,5 @@ export {
   createFinanceExpense,
   getFinanceExpenses,
 } from "./finance";
+
+export { getLoyaltyWorkspaceData } from "./loyalty";

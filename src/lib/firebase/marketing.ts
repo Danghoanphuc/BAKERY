@@ -8,6 +8,7 @@ import {
   increment,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -31,6 +32,9 @@ const CAMPAIGNS_COLLECTION = "marketing_campaigns";
 const SETTINGS_COLLECTION = "marketing_settings";
 const SETTINGS_DOC_ID = "loyalty";
 const VOUCHER_REDEMPTIONS_COLLECTION = "voucher_redemptions";
+const VOUCHER_ISSUES_COLLECTION = "voucher_issues";
+const VOUCHER_AUDIT_COLLECTION = "voucher_audit_logs";
+const VOUCHER_VERSIONS_COLLECTION = "voucher_campaign_versions";
 
 export interface VoucherRedemptionInput {
   voucherId?: string;
@@ -59,6 +63,42 @@ export interface VoucherRedemption {
   discountAmount: number;
   totalAfterDiscount: number;
   source?: "checkout" | "pos";
+  createdAt?: Date;
+}
+
+export interface VoucherIssue {
+  id: string;
+  campaignId: string;
+  campaignVersionId?: string;
+  customerId?: string;
+  phone?: string;
+  issueMethod: string;
+  status: "available" | "redeemed" | "expired" | "revoked";
+  note?: string;
+  actor?: string;
+  issuedAt?: Date;
+  expiresAt?: Date;
+}
+
+export interface VoucherAuditEntry {
+  id: string;
+  campaignId: string;
+  action: string;
+  actor: string;
+  reason?: string;
+  changedFields: string[];
+  before?: Record<string, unknown>;
+  after?: Record<string, unknown>;
+  createdAt?: Date;
+}
+
+export interface VoucherCampaignVersion {
+  id: string;
+  campaignId: string;
+  version: number;
+  configuration: Record<string, unknown>;
+  actor: string;
+  reason?: string;
   createdAt?: Date;
 }
 
@@ -180,8 +220,11 @@ function normalizeCampaign(
         : "campaign",
     status:
       data.status === "active" ||
+      data.status === "scheduled" ||
       data.status === "paused" ||
-      data.status === "expired"
+      data.status === "expired" ||
+      data.status === "completed" ||
+      data.status === "archived"
         ? data.status
         : "draft",
     code: typeof data.code === "string" ? data.code : undefined,
@@ -285,6 +328,12 @@ function normalizeCampaign(
             autoIssueAfterOrder: Boolean(data.autoIssueAfterOrder),
             printOnBill: Boolean(data.printOnBill),
           },
+    aiStrategy:
+      data.aiStrategy && typeof data.aiStrategy === "object"
+        ? (data.aiStrategy as MarketingCampaign["aiStrategy"])
+        : undefined,
+    activeVersionId: typeof data.activeVersionId === "string" ? data.activeVersionId : undefined,
+    version: typeof data.version === "number" ? data.version : undefined,
     createdAt: toDate(data.createdAt as FirestoreDateValue),
     updatedAt: toDate(data.updatedAt as FirestoreDateValue),
   };
@@ -353,6 +402,7 @@ function buildCampaignPayload(data: Partial<MarketingCampaignInput>) {
     voucherBudget: data.voucherBudget,
     metrics: data.metrics,
     publishing: data.publishing,
+    aiStrategy: data.aiStrategy,
   });
 }
 
@@ -385,6 +435,16 @@ export async function createMarketingCampaign(
     payload,
   );
 
+  if (data.type === "voucher") {
+    await updateVoucherCampaignLifecycle({
+      campaignId: campaignRef.id,
+      patch: data,
+      actor: "admin",
+      action: "campaign_created",
+      reason: "Tạo campaign voucher",
+    });
+  }
+
   return normalizeCampaign(campaignRef.id, {
     ...payload,
     createdAt: new Date(),
@@ -405,15 +465,174 @@ export async function updateMarketingCampaign(
   );
 }
 
+const protectedCampaignFields = new Set([
+  "metrics", "issuedCount", "redeemedCount", "discountSpent",
+  "revenueGenerated", "usedCount", "createdAt", "activeVersionId", "version",
+]);
+
+function withoutProtectedCampaignFields(value: Record<string, unknown>) {
+  return Object.fromEntries(Object.entries(value).filter(([key]) => !protectedCampaignFields.has(key)));
+}
+
+function comparableCampaign(value: Record<string, unknown>) {
+  return withoutProtectedCampaignFields(value);
+}
+
+export async function updateVoucherCampaignLifecycle(input: {
+  campaignId: string;
+  patch: Partial<MarketingCampaignInput>;
+  actor?: string;
+  reason?: string;
+  action?: string;
+}) {
+  const campaignRef = doc(db, CAMPAIGNS_COLLECTION, input.campaignId);
+  const versionRef = doc(collection(db, VOUCHER_VERSIONS_COLLECTION));
+  const auditRef = doc(collection(db, VOUCHER_AUDIT_COLLECTION));
+
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(campaignRef);
+    if (!snapshot.exists()) throw new Error("VOUCHER_CAMPAIGN_NOT_FOUND");
+    const before = snapshot.data() as Record<string, unknown>;
+    const patch = withoutProtectedCampaignFields(
+      stripUndefined(buildCampaignPayload(input.patch) as Record<string, unknown>),
+    );
+    const nextVersion = (typeof before.version === "number" ? before.version : 0) + 1;
+    const after = { ...before, ...patch, version: nextVersion, activeVersionId: versionRef.id };
+    const changedFields = Object.keys(patch).filter((key) =>
+      JSON.stringify(before[key]) !== JSON.stringify(patch[key]));
+
+    transaction.set(versionRef, {
+      campaignId: input.campaignId,
+      version: nextVersion,
+      configuration: comparableCampaign(after),
+      actor: input.actor || "admin",
+      reason: input.reason || null,
+      createdAt: serverTimestamp(),
+    });
+    transaction.set(auditRef, {
+      campaignId: input.campaignId,
+      action: input.action || "campaign_updated",
+      actor: input.actor || "admin",
+      reason: input.reason || null,
+      changedFields,
+      before: comparableCampaign(before),
+      after: comparableCampaign(after),
+      createdAt: serverTimestamp(),
+    });
+    transaction.update(campaignRef, {
+      ...patch,
+      version: nextVersion,
+      activeVersionId: versionRef.id,
+      updatedAt: serverTimestamp(),
+    });
+  });
+}
+
+export async function issueVoucherToCustomer(input: {
+  issueId: string;
+  campaignId: string;
+  customerId?: string;
+  phone?: string;
+  issueMethod: string;
+  note?: string;
+  actor?: string;
+  expiresAt?: Date;
+}) {
+  const issueRef = doc(db, VOUCHER_ISSUES_COLLECTION, input.issueId);
+  const campaignRef = doc(db, CAMPAIGNS_COLLECTION, input.campaignId);
+  const auditRef = doc(collection(db, VOUCHER_AUDIT_COLLECTION));
+
+  await runTransaction(db, async (transaction) => {
+    const [issueSnapshot, campaignSnapshot] = await Promise.all([
+      transaction.get(issueRef), transaction.get(campaignRef),
+    ]);
+    if (issueSnapshot.exists()) return;
+    if (!campaignSnapshot.exists()) throw new Error("VOUCHER_CAMPAIGN_NOT_FOUND");
+    const campaign = campaignSnapshot.data();
+    transaction.set(issueRef, stripUndefined({
+      campaignId: input.campaignId,
+      campaignVersionId: typeof campaign.activeVersionId === "string" ? campaign.activeVersionId : undefined,
+      customerId: input.customerId,
+      phone: input.phone?.replace(/\s+/g, "").trim(),
+      issueMethod: input.issueMethod,
+      status: "available",
+      note: input.note,
+      actor: input.actor || "admin",
+      issuedAt: serverTimestamp(),
+      expiresAt: input.expiresAt,
+    }));
+    transaction.update(campaignRef, {
+      "metrics.issuedCount": increment(1),
+      "metrics.availableCount": increment(1),
+      issuedCount: increment(1),
+      updatedAt: serverTimestamp(),
+    });
+    transaction.set(auditRef, {
+      campaignId: input.campaignId,
+      action: "voucher_issued",
+      actor: input.actor || "admin",
+      reason: input.note || null,
+      changedFields: ["metrics.issuedCount"],
+      after: { issueId: input.issueId, customerId: input.customerId || null, issueMethod: input.issueMethod },
+      createdAt: serverTimestamp(),
+    });
+  });
+}
+
+export async function getVoucherIssues(campaignId: string): Promise<VoucherIssue[]> {
+  const snapshot = await getDocs(query(collection(db, VOUCHER_ISSUES_COLLECTION), where("campaignId", "==", campaignId)));
+  return snapshot.docs.map((item) => {
+    const data = item.data();
+    return {
+      id: item.id, campaignId,
+      campaignVersionId: typeof data.campaignVersionId === "string" ? data.campaignVersionId : undefined,
+      customerId: typeof data.customerId === "string" ? data.customerId : undefined,
+      phone: typeof data.phone === "string" ? data.phone : undefined,
+      issueMethod: String(data.issueMethod || "unknown"),
+      status: ["redeemed", "expired", "revoked"].includes(data.status) ? data.status : "available",
+      note: typeof data.note === "string" ? data.note : undefined,
+      actor: typeof data.actor === "string" ? data.actor : undefined,
+      issuedAt: toDate(data.issuedAt as FirestoreDateValue),
+      expiresAt: toDate(data.expiresAt as FirestoreDateValue),
+    } as VoucherIssue;
+  }).sort((a, b) => (b.issuedAt?.getTime() ?? 0) - (a.issuedAt?.getTime() ?? 0));
+}
+
+export async function getVoucherAuditLog(campaignId: string): Promise<VoucherAuditEntry[]> {
+  const snapshot = await getDocs(query(collection(db, VOUCHER_AUDIT_COLLECTION), where("campaignId", "==", campaignId)));
+  return snapshot.docs.map((item) => {
+    const data = item.data();
+    return {
+      id: item.id, campaignId, action: String(data.action || "unknown"), actor: String(data.actor || "system"),
+      reason: typeof data.reason === "string" ? data.reason : undefined,
+      changedFields: asStringArray(data.changedFields) ?? [],
+      before: data.before && typeof data.before === "object" ? data.before as Record<string, unknown> : undefined,
+      after: data.after && typeof data.after === "object" ? data.after as Record<string, unknown> : undefined,
+      createdAt: toDate(data.createdAt as FirestoreDateValue),
+    };
+  }).sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+}
+
+export async function getVoucherCampaignVersions(campaignId: string): Promise<VoucherCampaignVersion[]> {
+  const snapshot = await getDocs(query(collection(db, VOUCHER_VERSIONS_COLLECTION), where("campaignId", "==", campaignId)));
+  return snapshot.docs.map((item) => {
+    const data = item.data();
+    return {
+      id: item.id, campaignId, version: typeof data.version === "number" ? data.version : 1,
+      configuration: data.configuration && typeof data.configuration === "object" ? data.configuration as Record<string, unknown> : {},
+      actor: String(data.actor || "system"), reason: typeof data.reason === "string" ? data.reason : undefined,
+      createdAt: toDate(data.createdAt as FirestoreDateValue),
+    };
+  }).sort((a, b) => b.version - a.version);
+}
+
 export async function recordVoucherRedemption(
   data: VoucherRedemptionInput,
 ): Promise<void> {
   if (!data.voucherId && !data.voucherCode) return;
   if (!Number.isFinite(data.discountAmount) || data.discountAmount <= 0) return;
 
-  await addDoc(
-    collection(db, VOUCHER_REDEMPTIONS_COLLECTION),
-    stripUndefined({
+  const redemptionPayload = stripUndefined({
       voucherId: data.voucherId,
       voucherCode: data.voucherCode,
       orderId: data.orderId,
@@ -426,25 +645,57 @@ export async function recordVoucherRedemption(
       totalAfterDiscount: data.totalAfterDiscount,
       source: data.source,
       createdAt: serverTimestamp(),
-    }),
-  );
+  });
 
-  if (!data.voucherId) return;
+  if (!data.voucherId) {
+    await addDoc(collection(db, VOUCHER_REDEMPTIONS_COLLECTION), redemptionPayload);
+    return;
+  }
 
+  const safeOrderKey = (data.orderId || data.orderNumber || `${Date.now()}`)
+    .replace(/[^a-zA-Z0-9_-]/g, "_");
+  const redemptionRef = doc(db, VOUCHER_REDEMPTIONS_COLLECTION, `${data.voucherId}_${safeOrderKey}`);
   const campaignRef = doc(db, CAMPAIGNS_COLLECTION, data.voucherId);
-  const campaignSnapshot = await getDoc(campaignRef);
+  const auditRef = doc(collection(db, VOUCHER_AUDIT_COLLECTION));
 
-  if (!campaignSnapshot.exists()) return;
+  await runTransaction(db, async (transaction) => {
+    const [existing, campaignSnapshot] = await Promise.all([
+      transaction.get(redemptionRef), transaction.get(campaignRef),
+    ]);
+    if (existing.exists() || !campaignSnapshot.exists()) return;
+    const campaign = campaignSnapshot.data();
+    const metrics = campaign.metrics && typeof campaign.metrics === "object"
+      ? campaign.metrics as Record<string, unknown> : {};
+    const issued = typeof metrics.issuedCount === "number" ? metrics.issuedCount : 0;
+    const redeemed = typeof metrics.redeemedCount === "number" ? metrics.redeemedCount : 0;
+    const available = typeof metrics.availableCount === "number" ? metrics.availableCount : 0;
+    const implicitIssue = issued <= redeemed ? 1 : 0;
 
-  await updateDoc(campaignRef, {
-    usedCount: increment(1),
-    redeemedCount: increment(1),
-    discountSpent: increment(data.discountAmount),
-    revenueGenerated: increment(data.totalAfterDiscount),
-    "metrics.redeemedCount": increment(1),
-    "metrics.discountSpent": increment(data.discountAmount),
-    "metrics.revenueGenerated": increment(data.totalAfterDiscount),
-    updatedAt: serverTimestamp(),
+    transaction.set(redemptionRef, {
+      ...redemptionPayload,
+      campaignVersionId: typeof campaign.activeVersionId === "string" ? campaign.activeVersionId : null,
+    });
+    transaction.update(campaignRef, {
+      usedCount: increment(1),
+      redeemedCount: increment(1),
+      discountSpent: increment(data.discountAmount),
+      revenueGenerated: increment(data.totalAfterDiscount),
+      "metrics.issuedCount": increment(implicitIssue),
+      "metrics.availableCount": increment(available > 0 ? -1 : 0),
+      "metrics.redeemedCount": increment(1),
+      "metrics.discountSpent": increment(data.discountAmount),
+      "metrics.revenueGenerated": increment(data.totalAfterDiscount),
+      issuedCount: increment(implicitIssue),
+      updatedAt: serverTimestamp(),
+    });
+    transaction.set(auditRef, {
+      campaignId: data.voucherId,
+      action: "voucher_redeemed",
+      actor: data.customerId ? `customer:${data.customerId}` : data.source,
+      changedFields: ["metrics.redeemedCount", "metrics.discountSpent", "metrics.revenueGenerated"],
+      after: { orderId: data.orderId || null, discountAmount: data.discountAmount, totalAfterDiscount: data.totalAfterDiscount },
+      createdAt: serverTimestamp(),
+    });
   });
 }
 

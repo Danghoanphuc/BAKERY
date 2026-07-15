@@ -5,15 +5,19 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   CheckCircle2,
+  ChevronRight,
   Fingerprint,
   KeyRound,
   Loader2,
   LocateFixed,
   MapPin,
+  PackageCheck,
   Plus,
   Save,
   ShieldCheck,
   Smartphone,
+  Star,
+  TicketPercent,
   Trash2,
 } from "lucide-react";
 
@@ -37,6 +41,29 @@ type AccountForm = {
   dietaryNotes: string;
   specialOccasions: string;
   notes: string;
+  sweetnessLevel: "low" | "medium" | "high";
+  favoriteCategories: string[];
+  typicalPartySize: number;
+  preferredBudget: "under_100k" | "100k_300k" | "over_300k";
+};
+
+const CATEGORY_PREFERENCES = ["Bánh kem", "Bánh ngọt", "Bánh mì", "Trà", "Cà phê", "Combo"];
+
+type AccountDashboard = {
+  rewards: {
+    points: { current: number; neededForNextTier: number; progressPercent: number };
+    journey: { currentTier: { name: string; benefit: string }; nextTier: { name: string } | null };
+  };
+  profile: { unlockedVoucherCount: number };
+};
+
+type RecentOrder = {
+  id: string;
+  orderNumber: string;
+  status: string;
+  totalAmount: number;
+  createdAt: string;
+  items?: Array<{ productName: string; quantity: number }>;
 };
 
 function createId() {
@@ -105,6 +132,10 @@ function toForm(customer: Customer): AccountForm {
     dietaryNotes: customer.personalization.dietaryNotes ?? "",
     specialOccasions: customer.personalization.specialOccasions ?? "",
     notes: customer.personalization.notes ?? "",
+    sweetnessLevel: customer.personalization.sweetnessLevel ?? "medium",
+    favoriteCategories: customer.personalization.favoriteCategories ?? [],
+    typicalPartySize: customer.personalization.typicalPartySize ?? 2,
+    preferredBudget: customer.personalization.preferredBudget ?? "100k_300k",
   };
 }
 
@@ -164,16 +195,40 @@ export default function AccountPage() {
   const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dashboard, setDashboard] = useState<AccountDashboard | null>(null);
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
 
   const defaultAddressText = useMemo(
     () => getAddressText(getDefaultAddress(form?.addressBook ?? [])),
     [form?.addressBook],
   );
+  const isDirty = useMemo(
+    () => Boolean(customer && form && JSON.stringify(form) !== JSON.stringify(toForm(customer))),
+    [customer, form],
+  );
+  const profileCompletion = useMemo(() => {
+    if (!form) return 0;
+    const completed = [form.name, form.email, form.birthday, form.addressBook.length > 0, form.favoriteCategories.length > 0, form.dietaryNotes].filter(Boolean).length;
+    return Math.round((completed / 6) * 100);
+  }, [form]);
+
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (!isDirty) return;
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [isDirty]);
 
   useEffect(() => {
     async function loadAccount() {
       try {
-        const response = await fetch("/api/auth/me");
+        const [response, profileResponse, ordersResponse] = await Promise.all([
+          fetch("/api/auth/me", { cache: "no-store" }),
+          fetch("/api/profile", { cache: "no-store" }),
+          fetch("/api/orders", { cache: "no-store" }),
+        ]);
 
         if (!response.ok) {
           window.location.href = "/account/login?next=/account";
@@ -187,6 +242,11 @@ export default function AccountPage() {
 
         setCustomer(nextCustomer);
         setForm(nextForm);
+        if (profileResponse.ok) setDashboard(await profileResponse.json());
+        if (ordersResponse.ok) {
+          const orders = await ordersResponse.json();
+          setRecentOrders(Array.isArray(orders) ? orders.slice(0, 3) : []);
+        }
 
         if (defaultAddress) {
           setDeliveryAddress(toStoreAddress(defaultAddress));
@@ -283,6 +343,13 @@ export default function AccountPage() {
         dietaryNotes: form.dietaryNotes || undefined,
         specialOccasions: form.specialOccasions || undefined,
         notes: form.notes || undefined,
+        sweetnessLevel: form.sweetnessLevel,
+        favoriteCategories: form.favoriteCategories,
+        typicalPartySize: form.typicalPartySize,
+        preferredBudget: form.preferredBudget,
+        orderNotifications: customer.personalization.orderNotifications ?? true,
+        marketingConsent: customer.personalization.marketingConsent ?? false,
+        consentUpdatedAt: customer.personalization.consentUpdatedAt,
       };
 
       const response = await fetch(`/api/customers/${customer.id}`, {
@@ -388,6 +455,62 @@ export default function AccountPage() {
           </div>
         </section>
 
+        <section className="mt-4 rounded-[16px] border border-[#f0ddce] bg-white p-3 shadow-sm">
+          <div className="flex items-center justify-between text-[12px] font-black"><span>Hồ sơ hoàn thiện</span><span className="text-[#b84a39]">{profileCompletion}%</span></div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#f4e6dc]"><div className="h-full rounded-full bg-[#b84a39]" style={{ width: `${profileCompletion}%` }} /></div>
+          {profileCompletion < 100 && <p className="mt-2 text-[11px] font-semibold text-[#8b6a58]">Bổ sung email, ngày sinh, địa chỉ và sở thích để nhận gợi ý chính xác hơn.</p>}
+        </section>
+
+        {dashboard && (
+          <section className="mt-4 rounded-[18px] bg-[linear-gradient(135deg,#fff0d8,#ffe1dc)] p-4 shadow-[0_10px_24px_rgba(83,38,12,0.08)]">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[12px] font-bold text-[#8b6a58]">Hạng thành viên</p>
+                <h2 className="text-[20px] font-black text-[#8a4a28]">{dashboard.rewards.journey.currentTier.name}</h2>
+              </div>
+              <div className="text-right">
+                <p className="text-[24px] font-black text-[#b84a39]">{dashboard.rewards.points.current.toLocaleString("vi-VN")}</p>
+                <p className="text-[11px] font-bold text-[#8b6a58]">điểm hiện có</p>
+              </div>
+            </div>
+            <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/70">
+              <div className="h-full rounded-full bg-[#b84a39]" style={{ width: `${dashboard.rewards.points.progressPercent}%` }} />
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Link href="/rewards" className="flex h-11 items-center justify-center gap-2 rounded-[12px] bg-white text-[12px] font-black text-[#7a4b31]">
+                <Star className="h-4 w-4" /> Xem quyền lợi
+              </Link>
+              <Link href="/account/rewards" className="flex h-11 items-center justify-center gap-2 rounded-[12px] bg-[#b84a39] text-[12px] font-black text-white">
+                <TicketPercent className="h-4 w-4" /> {dashboard.profile.unlockedVoucherCount} voucher
+              </Link>
+            </div>
+          </section>
+        )}
+
+        <section className="mt-4 rounded-[18px] bg-white/82 p-4 shadow-[0_10px_24px_rgba(83,38,12,0.08)]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-[16px] font-black">Đơn hàng gần đây</h2>
+              <p className="text-[12px] font-semibold text-[#8b6a58]">Theo dõi trạng thái hoặc mua lại món quen.</p>
+            </div>
+            <Link href="/order" className="inline-flex items-center text-[12px] font-black text-[#b84a39]">Xem tất cả <ChevronRight className="h-4 w-4" /></Link>
+          </div>
+          <div className="mt-3 space-y-2">
+            {recentOrders.length ? recentOrders.map((order) => (
+              <Link key={order.id} href="/order" className="flex items-center gap-3 rounded-[13px] border border-[#f0e1d2] bg-[#fffaf6] p-3">
+                <span className="grid h-10 w-10 place-items-center rounded-[11px] bg-white text-[#a44c36]"><PackageCheck className="h-5 w-5" /></span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[13px] font-black">#{order.orderNumber}</span>
+                  <span className="block truncate text-[11px] font-semibold text-[#8b6a58]">{order.items?.map((item) => item.productName).join(", ") || "Đơn bánh"}</span>
+                </span>
+                <span className="text-right text-[12px] font-black text-[#7a4b31]">{order.totalAmount.toLocaleString("vi-VN")}₫</span>
+              </Link>
+            )) : (
+              <div className="rounded-[13px] border border-dashed border-[#e4cdbc] p-4 text-center text-[12px] font-semibold text-[#8b6a58]">Bạn chưa có đơn hàng nào.</div>
+            )}
+          </div>
+        </section>
+
         <Link
           href="/account/password"
           className="mt-4 flex h-12 items-center justify-center gap-2 rounded-[14px] border border-[#edd8ca] bg-white text-[14px] font-black text-[#7a4b31] shadow-sm"
@@ -412,10 +535,53 @@ export default function AccountPage() {
           Passkey và sinh trắc học
         </Link>
 
+        <Link
+          href="/account/preferences"
+          className="mt-2 flex h-12 items-center justify-center gap-2 rounded-[14px] border border-[#edd8ca] bg-white text-[14px] font-black text-[#7a4b31] shadow-sm"
+        >
+          <ShieldCheck className="h-4 w-4" />
+          Thông báo & quyền riêng tư
+        </Link>
+
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <section className="rounded-[18px] bg-white/82 p-4 shadow-[0_10px_24px_rgba(83,38,12,0.08)]">
             <h2 className="text-[16px] font-black">Thông tin cơ bản</h2>
             <div className="mt-3 space-y-3">
+              <label className="block">
+                <span className="text-[12px] font-black text-[#7b4b34]">Độ ngọt yêu thích</span>
+                <select value={form.sweetnessLevel} onChange={(event) => setForm({ ...form, sweetnessLevel: event.target.value as AccountForm["sweetnessLevel"] })} className="mt-1 h-11 w-full rounded-[12px] border border-[#edd8ca] bg-[#fffaf6] px-3 text-[14px] font-semibold">
+                  <option value="low">Ít ngọt</option>
+                  <option value="medium">Vừa ngọt</option>
+                  <option value="high">Ngọt đậm</option>
+                </select>
+              </label>
+              <div>
+                <span className="text-[12px] font-black text-[#7b4b34]">Danh mục yêu thích</span>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {CATEGORY_PREFERENCES.map((category) => {
+                    const selected = form.favoriteCategories.includes(category);
+                    return (
+                      <button key={category} type="button" onClick={() => setForm({ ...form, favoriteCategories: selected ? form.favoriteCategories.filter((item) => item !== category) : [...form.favoriteCategories, category] })} className={`rounded-full px-3 py-2 text-[12px] font-black ${selected ? "bg-[#b84a39] text-white" : "bg-[#fffaf6] text-[#7a4b31] ring-1 ring-[#edd8ca]"}`}>
+                        {category}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block">
+                  <span className="text-[12px] font-black text-[#7b4b34]">Số người thường dùng</span>
+                  <input type="number" min={1} max={100} value={form.typicalPartySize} onChange={(event) => setForm({ ...form, typicalPartySize: Number(event.target.value) || 1 })} className="mt-1 h-11 w-full rounded-[12px] border border-[#edd8ca] bg-[#fffaf6] px-3 text-[14px] font-semibold" />
+                </label>
+                <label className="block">
+                  <span className="text-[12px] font-black text-[#7b4b34]">Khoảng giá</span>
+                  <select value={form.preferredBudget} onChange={(event) => setForm({ ...form, preferredBudget: event.target.value as AccountForm["preferredBudget"] })} className="mt-1 h-11 w-full rounded-[12px] border border-[#edd8ca] bg-[#fffaf6] px-2 text-[13px] font-semibold">
+                    <option value="under_100k">Dưới 100k</option>
+                    <option value="100k_300k">100k–300k</option>
+                    <option value="over_300k">Trên 300k</option>
+                  </select>
+                </label>
+              </div>
               <Field
                 label="Tên khách hàng"
                 value={form.name}
@@ -480,6 +646,10 @@ export default function AccountPage() {
                     onEdit={() => openAddressModal(address)}
                     onDefault={() => setDefaultAddress(address.id)}
                     onRemove={() => removeAddress(address.id)}
+                    onMetadata={(patch) => setForm({
+                      ...form,
+                      addressBook: form.addressBook.map((item) => item.id === address.id ? { ...item, ...patch, updatedAt: new Date().toISOString() } : item),
+                    })}
                   />
                 ))
               )}
@@ -532,7 +702,7 @@ export default function AccountPage() {
 
           <button
             type="submit"
-            disabled={isSaving}
+            disabled={isSaving || !isDirty}
             className="flex h-12 w-full items-center justify-center gap-2 rounded-[14px] bg-[#b84a39] text-[15px] font-black text-white shadow-[0_8px_16px_rgba(184,74,57,0.22)] disabled:opacity-70"
           >
             {isSaving ? (
@@ -559,11 +729,13 @@ function AddressCard({
   onEdit,
   onDefault,
   onRemove,
+  onMetadata,
 }: {
   address: CustomerAddressBookEntry;
   onEdit: () => void;
   onDefault: () => void;
   onRemove: () => void;
+  onMetadata: (patch: Partial<CustomerAddressBookEntry>) => void;
 }) {
   return (
     <div className="rounded-[14px] border border-[#edd8ca] bg-[#fffaf6] p-3">
@@ -586,6 +758,12 @@ function AddressCard({
             {getAddressText(address)}
           </p>
         </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <input value={address.recipientName ?? ""} onChange={(event) => onMetadata({ recipientName: event.target.value })} placeholder="Tên người nhận" className="h-9 rounded-[10px] border border-[#edd8ca] bg-white px-2 text-[12px] font-semibold" />
+        <input value={address.recipientPhone ?? ""} onChange={(event) => onMetadata({ recipientPhone: event.target.value })} placeholder="SĐT người nhận" className="h-9 rounded-[10px] border border-[#edd8ca] bg-white px-2 text-[12px] font-semibold" />
+        <input value={address.note ?? ""} onChange={(event) => onMetadata({ note: event.target.value })} placeholder="Ghi chú giao hàng" className="col-span-2 h-9 rounded-[10px] border border-[#edd8ca] bg-white px-2 text-[12px] font-semibold" />
       </div>
 
       <div className="mt-3 grid grid-cols-[1fr_auto_auto] gap-2">

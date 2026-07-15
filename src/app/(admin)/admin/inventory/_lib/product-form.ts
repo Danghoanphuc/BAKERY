@@ -42,6 +42,12 @@ export type ProductFormData = {
   galleryImages: string;
   pickupBranchIds: string;
   preparationTimeMinutes: number;
+  dailyStock: number;
+  availableFrom: string;
+  availableUntil: string;
+  sweetnessLevel: "low" | "medium" | "high";
+  servingSize: string;
+  rankingBoost: number;
   requiresPreorder: boolean;
   preorderMinHours: number;
   availableToday: boolean;
@@ -89,6 +95,12 @@ export function createEmptyProductForm(categoryId = ""): ProductFormData {
     galleryImages: "",
     pickupBranchIds: "",
     preparationTimeMinutes: 30,
+    dailyStock: 0,
+    availableFrom: "",
+    availableUntil: "",
+    sweetnessLevel: "medium",
+    servingSize: "",
+    rankingBoost: 0,
     requiresPreorder: false,
     preorderMinHours: 0,
     availableToday: true,
@@ -137,6 +149,12 @@ export function productToForm(product: Product, fallbackCategoryId = ""): Produc
     galleryImages: joinTags(product.galleryImages),
     pickupBranchIds: joinTags(product.pickupBranchIds),
     preparationTimeMinutes: product.preparationTimeMinutes ?? 30,
+    dailyStock: product.dailyStock ?? product.stock ?? 0,
+    availableFrom: product.availableFrom ?? "",
+    availableUntil: product.availableUntil ?? "",
+    sweetnessLevel: product.sweetnessLevel ?? "medium",
+    servingSize: product.servingSize ?? "",
+    rankingBoost: product.rankingBoost ?? 0,
     requiresPreorder: product.requiresPreorder ?? false,
     preorderMinHours: product.preorderMinHours ?? 0,
     availableToday: product.availableToday ?? true,
@@ -156,6 +174,11 @@ export function productFormToPayload(formData: ProductFormData) {
     wastePercent: Number(formData.wastePercent) || 0,
     targetGrossMarginPercent: Number(formData.targetGrossMarginPercent) || 0,
     preparationTimeMinutes: Number(formData.preparationTimeMinutes) || 0,
+    dailyStock: Number(formData.dailyStock) || 0,
+    rankingBoost: Number(formData.rankingBoost) || 0,
+    availableFrom: formData.availableFrom.trim(),
+    availableUntil: formData.availableUntil.trim(),
+    servingSize: formData.servingSize.trim(),
     preorderMinHours: Number(formData.preorderMinHours) || 0,
     sortPriority: Number(formData.sortPriority) || 0,
     tags: splitTags(formData.tags),

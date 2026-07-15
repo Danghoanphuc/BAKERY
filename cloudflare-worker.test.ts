@@ -106,7 +106,7 @@ describe("bakery edge router", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
-  it("falls back to the direct origin after repeated Facebook failures", async () => {
+  it("retries on the public hostname after repeated Facebook failures", async () => {
     vi.useFakeTimers();
     const fetchMock = vi.fn(async () => new Response("down", { status: 503 }));
     vi.stubGlobal("fetch", fetchMock);
@@ -125,11 +125,34 @@ describe("bakery edge router", () => {
     const location = new URL(response.headers.get("Location") || "");
 
     expect(response.status).toBe(307);
-    expect(location.origin).toBe("https://origin.example");
+    expect(location.origin).toBe("https://bakery.example");
     expect(location.pathname).toBe("/san-pham/cake");
     expect(location.searchParams.get("__fb_iab")).toBe("1");
+    expect(location.searchParams.get("__edge_retry")).toBe("1");
     expect(location.searchParams.get("campaign")).toBe("summer");
     expect(location.searchParams.has("fbclid")).toBe(false);
     expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("stops public reloads without exposing the origin hostname", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(async () => new Response("down", { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const responsePromise = worker.fetch(
+      new Request(
+        "https://bakery.example/san-pham/cake?__edge_retry=2",
+        {
+          headers: { "User-Agent": "Mozilla/5.0 [FBAN/FB4A;FBAV/1.0]" },
+        },
+      ),
+      env,
+    );
+    await vi.runAllTimersAsync();
+    const response = await responsePromise;
+
+    expect(response.status).toBe(503);
+    expect(response.headers.has("Location")).toBe(false);
+    expect(await response.text()).not.toContain("origin.example");
   });
 });

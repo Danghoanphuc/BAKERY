@@ -43,22 +43,22 @@ export default function MyRewardsPage() {
 
   if (isLoading) {
     return (
-      <main className="grid min-h-screen place-items-center bg-[#fff7ea] px-4 text-[#7a351f]">
+      <div className="grid min-h-[60vh] place-items-center bg-[#fff7ea] px-4 text-[#7a351f]">
         <div className="flex items-center gap-2 text-sm font-black">
           <Loader2 className="h-5 w-5 animate-spin" />
           Đang mở hành trình hảo ngọt...
         </div>
-      </main>
+      </div>
     );
   }
 
   if (error || !data) {
     return (
-      <main className="grid min-h-screen place-items-center bg-[#fff7ea] px-4">
+      <div className="grid min-h-[60vh] place-items-center bg-[#fff7ea] px-4">
         <div className="rounded-lg border border-red-200 bg-white p-6 text-center text-red-700 shadow-sm">
           {error || "Không tìm thấy dữ liệu tích điểm."}
         </div>
-      </main>
+      </div>
     );
   }
 

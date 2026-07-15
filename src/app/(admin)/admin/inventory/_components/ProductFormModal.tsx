@@ -596,7 +596,55 @@ function OperationsSection({
             setFormData((prev) => ({ ...prev, sortPriority }))
           }
         />
+        <NumberField
+          label="Tồn bán trong ngày"
+          min={0}
+          value={formData.dailyStock}
+          onChange={(dailyStock) =>
+            setFormData((prev) => ({ ...prev, dailyStock }))
+          }
+        />
+        <TextField
+          label="Bán từ (HH:mm)"
+          value={formData.availableFrom}
+          onChange={(availableFrom) =>
+            setFormData((prev) => ({ ...prev, availableFrom }))
+          }
+        />
+        <TextField
+          label="Bán đến (HH:mm)"
+          value={formData.availableUntil}
+          onChange={(availableUntil) =>
+            setFormData((prev) => ({ ...prev, availableUntil }))
+          }
+        />
+        <TextField
+          label="Khẩu phần"
+          value={formData.servingSize}
+          onChange={(servingSize) =>
+            setFormData((prev) => ({ ...prev, servingSize }))
+          }
+        />
+        <NumberField
+          label="Ranking boost"
+          value={formData.rankingBoost}
+          onChange={(rankingBoost) =>
+            setFormData((prev) => ({ ...prev, rankingBoost }))
+          }
+        />
       </div>
+      <label className="mt-3 block text-sm font-semibold text-neutral-700">
+        Độ ngọt
+        <select
+          value={formData.sweetnessLevel}
+          onChange={(event) => setFormData((prev) => ({ ...prev, sweetnessLevel: event.target.value as ProductFormData["sweetnessLevel"] }))}
+          className="mt-1 w-full rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm"
+        >
+          <option value="low">Ít ngọt</option>
+          <option value="medium">Vừa</option>
+          <option value="high">Ngọt</option>
+        </select>
+      </label>
     </FormSection>
   );
 }

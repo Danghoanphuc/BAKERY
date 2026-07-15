@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getCustomerById, getMarketingCampaigns, updateCustomer } from "@/lib/firebase";
+import { getCustomerById, getMarketingCampaigns, issueVoucherToCustomer, updateCustomer } from "@/lib/firebase";
 import type {
   CustomerCareLog,
   CustomerCareLogOutcome,
@@ -116,7 +116,6 @@ export async function POST(
           }),
         ),
       });
-
       return NextResponse.json({ ok: true });
     }
 
@@ -142,7 +141,6 @@ export async function POST(
           }),
         ),
       });
-
       return NextResponse.json({ ok: true });
     }
 
@@ -278,6 +276,19 @@ export async function POST(
             actor,
           }),
         ),
+      });
+
+      await issueVoucherToCustomer({
+        issueId: issue.id,
+        campaignId: campaign.id,
+        customerId: customer.id,
+        phone: customer.phone,
+        issueMethod: "manual_phone",
+        note: issue.note,
+        actor,
+        expiresAt: campaign.rules?.validDaysAfterIssue
+          ? new Date(Date.now() + campaign.rules.validDaysAfterIssue * 86_400_000)
+          : undefined,
       });
 
       return NextResponse.json({ ok: true });

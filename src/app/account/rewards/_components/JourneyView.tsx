@@ -1,200 +1,53 @@
-import type { ReactNode } from "react";
-import { Award, Lock, Star, Trophy } from "lucide-react";
+import Image from "next/image";
+import { Check, ChevronRight, Heart, ShoppingBag, Sparkles, Trophy } from "lucide-react";
 
-import { currentYear, formatCurrency, formatNumber } from "./rewards-format";
+import { formatCurrency, formatNumber } from "./rewards-format";
 import type { MyRewardsData } from "./types";
 
-export function JourneyView({
-  data,
-  unlockedVoucherCount,
-}: {
-  data: MyRewardsData;
-  unlockedVoucherCount: number;
-}) {
-  return (
-    <>
-      <section className="mt-4 rounded-lg border border-[#e7ba74] bg-[#fffaf0] p-4 shadow-[0_8px_18px_rgba(122,53,31,0.10)]">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h2 className="text-xl font-black uppercase tracking-wide text-[#74351f]">
-              Thành tích {currentYear}
-            </h2>
-            <p className="mt-2 text-xs font-semibold leading-5 text-[#7a4b31]">
-              {data.points.neededForNextTier > 0 ? (
-                <>
-                  Cần thêm{" "}
-                  <span className="font-black text-[#df4d67]">
-                    {formatNumber(data.points.neededForNextTier)} điểm
-                  </span>{" "}
-                  để lên hạng và nhận thêm voucher.
-                </>
-              ) : (
-                "Bạn đang ở hạng cao nhất của hành trình hiện tại."
-              )}
-            </p>
-          </div>
-          <div className="shrink-0 text-right">
-            <div className="text-4xl font-black leading-none text-[#df4d67]">
-              {formatNumber(data.points.current)}
-            </div>
-            <div className="mt-1 text-sm font-black leading-4 text-[#74351f]">
-              Điểm
-              <br />
-              Ngọt Ngào
-            </div>
-          </div>
-        </div>
+export function JourneyView({ data }: { data: MyRewardsData }) {
+  return <div className="space-y-7">
+    <section>
+      <SectionHeading label="Hành trình thứ hạng" detail={data.points.neededForNextTier > 0 ? `Còn ${formatNumber(data.points.neededForNextTier)} điểm để lên hạng` : "Bạn đang ở hạng cao nhất"} />
+      <div className="mt-3 flex max-w-full gap-2 overflow-x-auto pb-1">{data.journey.tiers.map((tier) => <TierItem key={tier.id} tier={tier} current={tier.id === data.journey.currentTierId} />)}</div>
+    </section>
 
-        <div className="relative mt-6">
-          <div className="absolute left-8 right-8 top-7 h-0.5 rounded-full bg-[#d6a36a]" />
-          <div
-            className="absolute left-8 top-7 h-0.5 rounded-full bg-[#7a351f]"
-            style={{
-              width: `calc((100% - 64px) * ${
-                data.points.progressPercent / 100
-              })`,
-            }}
-          />
-          <div className="relative grid grid-cols-4 gap-1">
-            {data.journey.tiers.map((tier) => (
-              <TierStep key={tier.id} tier={tier} />
-            ))}
-          </div>
-        </div>
-      </section>
+    <section>
+      <SectionHeading label="Dấu ấn của bạn" />
+      <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-xl bg-white sm:grid-cols-4">
+        <Metric icon={<Trophy />} label="Đơn hoàn tất" value={formatNumber(data.totals.orderCount)} />
+        <Metric icon={<Sparkles />} label="Điểm đã tích" value={formatNumber(data.points.totalEarned)} />
+        <Metric icon={<Heart />} label="Lần chọn món ruột" value={formatNumber(data.totals.favoriteQuantity)} />
+        <Metric icon={<ShoppingBag />} label="Đã chi tiêu" value={formatCurrency(data.totals.lifetimeValue)} />
+      </div>
+      <p className="mt-2 text-xs text-[#7b6254]">Món được yêu thích nhất: <strong className="text-[#542413]">{data.totals.favoriteProduct}</strong></p>
+    </section>
 
-      <SectionTitle tone="gold">Tổng giá trị tích lũy</SectionTitle>
-      <section className="rounded-lg border border-[#e7ba74] bg-[#fffaf0] p-3 shadow-[0_8px_18px_rgba(122,53,31,0.09)]">
-        <div className="grid grid-cols-3 gap-2">
-          <MetricCard
-            icon={<Trophy className="h-7 w-7" />}
-            label="Tổng điểm"
-            value={formatNumber(data.points.totalEarned)}
-            detail="Điểm ngọt"
-          />
-          <MetricCard
-            icon={<Award className="h-7 w-7" />}
-            label="Lần ghé tiệm"
-            value={formatNumber(unlockedVoucherCount)}
-            detail="Lần mua"
-          />
-          <MetricCard
-            icon={<Star className="h-7 w-7" />}
-            label="Món ruột"
-            value={formatNumber(data.totals.favoriteQuantity)}
-            detail={data.totals.favoriteProduct}
-          />
-        </div>
-        <div className="mt-3 rounded-md border border-[#f0d3a8] bg-white/70 px-3 py-2 text-center text-[11px] font-bold text-[#7a4b31]">
-          Tổng chi tiêu đã ghi nhận: {formatCurrency(data.totals.lifetimeValue)}
-        </div>
-      </section>
-
-      <SectionTitle tone="pink">Bộ sưu tập danh hiệu</SectionTitle>
-      <section className="rounded-lg border border-[#e7ba74] bg-[#fffaf0] p-3 shadow-[0_8px_18px_rgba(122,53,31,0.09)]">
-        <div className="grid grid-cols-3 gap-2">
-          {data.badges.map((badge) => (
-            <BadgeCard key={badge.id} badge={badge} />
-          ))}
-        </div>
-      </section>
-    </>
-  );
+    <section>
+      <SectionHeading label="Kiếm thêm điểm" detail="Những cách đơn giản để nhận thêm quyền lợi" />
+      <div className="mt-2 divide-y divide-[#efdfcf]">
+        <EarnRow number="01" title="Mua món yêu thích" description="Nhận điểm sau mỗi đơn hoàn tất" />
+        <EarnRow number="02" title="Hoàn thiện hồ sơ" description="Thêm sinh nhật để mở ưu đãi riêng" />
+        <EarnRow number="03" title="Quay lại thường xuyên" description="Đón các chiến dịch nhân điểm" />
+      </div>
+    </section>
+  </div>;
 }
 
-function TierStep({
-  tier,
-}: {
-  tier: MyRewardsData["journey"]["tiers"][number];
-}) {
-  return (
-    <div className="text-center">
-      <div
-        className={`mx-auto grid h-14 w-14 place-items-center rounded-full border bg-white text-2xl shadow-sm ${
-          tier.unlocked ? "border-[#f0b64d]" : "border-[#e5c39a] grayscale"
-        }`}
-      >
-        {tier.icon || <Star className="h-5 w-5" />}
-      </div>
-      <div className="mt-2 min-h-9 text-[11px] font-bold leading-4 text-[#74351f]">
-        {tier.name}
-      </div>
-    </div>
-  );
+function SectionHeading({ label, detail }: { label: string; detail?: string }) {
+  return <div className="flex items-end justify-between gap-4"><h2 className="text-[15px] font-black text-[#542413]">{label}</h2>{detail && <p className="text-right text-[11px] font-medium text-[#7b6254]">{detail}</p>}</div>;
 }
 
-function SectionTitle({
-  children,
-  tone,
-}: {
-  children: ReactNode;
-  tone: "gold" | "pink";
-}) {
-  return (
-    <div
-      className={`mx-auto mt-5 flex h-10 w-[82%] items-center justify-center rounded-md border text-base font-black uppercase shadow-sm ${
-        tone === "gold"
-          ? "border-[#d5953e] bg-[#ffc36f] text-[#74351f]"
-          : "border-[#d77580] bg-[#ed7f8d] text-white"
-      }`}
-    >
-      {children}
-    </div>
-  );
+function TierItem({ tier, current }: { tier: MyRewardsData["journey"]["tiers"][number]; current: boolean }) {
+  return <article className={`relative min-w-[132px] rounded-xl px-3 py-3 ${current ? "bg-[#c35847] text-white" : "bg-[#fff3df] text-[#542413]"}`}>
+    <div className="flex items-center justify-between"><div className={`grid h-8 w-8 place-items-center overflow-hidden rounded-lg text-xs font-black ${current ? "bg-white/15" : "bg-[#fffaf6]"}`}>{tier.imageUrl ? <Image src={tier.imageUrl} alt={tier.name} width={32} height={32} className="h-full w-full object-cover" /> : tier.name.slice(0, 1)}</div>{tier.unlocked && <Check className={`h-3.5 w-3.5 ${current ? "text-[#f2b333]" : "text-emerald-600"}`} />}</div>
+    <h3 className="mt-2.5 text-xs font-black">{tier.name}</h3><p className={`mt-0.5 text-[9px] font-semibold ${current ? "text-white/70" : "text-[#7b6254]"}`}>{formatNumber(tier.threshold)} điểm</p>
+  </article>;
 }
 
-function MetricCard({
-  icon,
-  label,
-  value,
-  detail,
-}: {
-  icon: ReactNode;
-  label: string;
-  value: string;
-  detail: string;
-}) {
-  return (
-    <div className="rounded-md border border-[#f0c47e] bg-white p-2 text-center">
-      <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#fff1d3] text-[#df4d67]">
-        {icon}
-      </div>
-      <p className="mt-2 min-h-8 text-[11px] font-bold leading-4 text-[#7a4b31]">
-        {label}
-      </p>
-      <p className="mt-1 text-2xl font-black text-[#df4d67]">{value}</p>
-      <p className="mt-1 truncate text-[11px] font-bold text-[#74351f]">
-        {detail}
-      </p>
-    </div>
-  );
+function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return <div className="border-b border-r border-[#efdfcf] p-3 last:border-r-0 sm:border-b-0"><div className="h-3.5 w-3.5 text-[#c35847]">{icon}</div><p className="mt-2 truncate text-sm font-black text-[#542413]">{value}</p><p className="mt-0.5 text-[9px] font-semibold uppercase tracking-wide text-[#7b6254]">{label}</p></div>;
 }
 
-function BadgeCard({ badge }: { badge: MyRewardsData["badges"][number] }) {
-  return (
-    <div
-      className={`rounded-md border bg-white p-2 text-center ${
-        badge.unlocked
-          ? "border-[#f0c47e]"
-          : "border-neutral-300 text-neutral-500 grayscale"
-      }`}
-    >
-      <div className="mx-auto grid h-14 w-14 place-items-center rounded-full border-2 border-[#f4c66f] bg-[#fff1d8] text-2xl">
-        {badge.unlocked ? badge.icon : <Lock className="h-6 w-6" />}
-      </div>
-      <div
-        className={`mx-auto -mt-1.5 w-fit rounded-full px-2 py-0.5 text-[9px] font-black text-white ${
-          badge.unlocked ? "bg-[#df6b7a]" : "bg-neutral-400"
-        }`}
-      >
-        {badge.unlocked ? "Đã mở" : "Khóa"}
-      </div>
-      <h3 className="mt-2 text-xs font-black leading-4 text-[#74351f]">
-        {badge.title}
-      </h3>
-      <p className="mt-1 text-[11px] font-semibold leading-4 text-[#7a4b31]">
-        {badge.description}
-      </p>
-    </div>
-  );
+function EarnRow({ number, title, description }: { number: string; title: string; description: string }) {
+  return <div className="flex items-center gap-3 py-3"><span className="text-[10px] font-black text-[#c35847]">{number}</span><div className="min-w-0 flex-1"><h3 className="text-xs font-black text-[#542413]">{title}</h3><p className="mt-0.5 text-[10px] text-[#7b6254]">{description}</p></div><ChevronRight className="h-3.5 w-3.5 text-[#efc79e]" /></div>;
 }

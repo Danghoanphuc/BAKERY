@@ -6,10 +6,12 @@ import {
   BarChart3,
   Loader2,
   Plus,
+  PencilLine,
   QrCode,
   ReceiptText,
   Search,
   TicketPercent,
+  Trash2,
 } from "lucide-react";
 import type { MarketingCampaign } from "@/types";
 import {
@@ -27,16 +29,22 @@ type MarketingPayload = {
 
 const statusLabels: Record<MarketingCampaign["status"], string> = {
   draft: "Nháp",
+  scheduled: "Đã lên lịch",
   active: "Đang chạy",
   paused: "Tạm dừng",
   expired: "Kết thúc",
+  completed: "Hoàn tất",
+  archived: "Lưu trữ",
 };
 
 const statusClassNames: Record<MarketingCampaign["status"], string> = {
   draft: "bg-blue-50 text-blue-700",
+  scheduled: "bg-violet-50 text-violet-700",
   active: "bg-emerald-50 text-emerald-700",
   paused: "bg-amber-50 text-amber-700",
   expired: "bg-neutral-100 text-neutral-600",
+  completed: "bg-neutral-100 text-neutral-700",
+  archived: "bg-neutral-100 text-neutral-500",
 };
 
 export default function AdminVoucherCampaignsPage() {
@@ -44,6 +52,20 @@ export default function AdminVoucherCampaignsPage() {
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function deleteDraft(campaign: MarketingCampaign) {
+    if (!window.confirm(`Xóa bản nháp “${campaign.name}”? Thao tác này không thể hoàn tác.`)) return;
+    setDeletingId(campaign.id); setError(null);
+    try {
+      const response = await fetch(`/api/marketing/${campaign.id}`, { method: "DELETE" });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "Không thể xóa campaign.");
+      setCampaigns((current) => current.filter((item) => item.id !== campaign.id));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Không thể xóa campaign.");
+    } finally { setDeletingId(null); }
+  }
 
   useEffect(() => {
     async function loadCampaigns() {
@@ -120,14 +142,14 @@ export default function AdminVoucherCampaignsPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
-            href="/admin/vouchers/scan"
+            href="/admin/pos/vouchers/scan"
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
           >
             <QrCode className="h-4 w-4" />
             Quét tại quầy
           </Link>
           <Link
-            href="/admin/vouchers/new"
+            href="/admin/marketing/vouchers/new"
             className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-500 px-4 text-sm font-semibold text-white hover:bg-brand-600"
           >
             <Plus className="h-4 w-4" />
@@ -180,7 +202,7 @@ export default function AdminVoucherCampaignsPage() {
         </div>
       </div>
 
-      <VoucherCampaignTable campaigns={filteredCampaigns} />
+      <VoucherCampaignTable campaigns={filteredCampaigns} deletingId={deletingId} onDelete={deleteDraft} />
     </div>
   );
 }
@@ -207,8 +229,12 @@ function SummaryCard({
 
 function VoucherCampaignTable({
   campaigns,
+  deletingId,
+  onDelete,
 }: {
   campaigns: MarketingCampaign[];
+  deletingId: string | null;
+  onDelete: (campaign: MarketingCampaign) => void;
 }) {
   if (!campaigns.length) {
     return (
@@ -221,7 +247,7 @@ function VoucherCampaignTable({
           Hãy tạo chương trình đầu tiên bằng wizard từng bước.
         </p>
         <Link
-          href="/admin/vouchers/new"
+          href="/admin/marketing/vouchers/new"
           className="mt-5 inline-flex h-10 items-center rounded-lg bg-brand-500 px-4 text-sm font-semibold text-white"
         >
           Tạo chương trình
@@ -244,6 +270,7 @@ function VoucherCampaignTable({
               <th className="px-4 py-3">Doanh thu tạo ra</th>
               <th className="px-4 py-3">Đối tượng</th>
               <th className="px-4 py-3">Kênh dùng</th>
+              <th className="px-4 py-3 text-right">Thao tác</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-neutral-100">
@@ -255,7 +282,7 @@ function VoucherCampaignTable({
                 <tr key={campaign.id} className="hover:bg-neutral-50">
                   <td className="px-4 py-4">
                     <Link
-                      href={`/admin/vouchers/${campaign.id}`}
+                      href={`/admin/marketing/vouchers/${campaign.id}`}
                       className="font-bold text-neutral-950 hover:text-brand-600"
                     >
                       {campaign.name}
@@ -324,6 +351,7 @@ function VoucherCampaignTable({
                       )}
                     </div>
                   </td>
+                  <td className="px-4 py-4"><div className="flex justify-end gap-2"><Link href={`/admin/marketing/vouchers/new?campaign=${campaign.id}`} className="grid h-9 w-9 place-items-center rounded-lg border border-neutral-200 text-neutral-600 hover:border-brand-300 hover:text-brand-600" aria-label={`Sửa ${campaign.name}`}><PencilLine className="h-4 w-4" /></Link>{campaign.status === "draft" && metrics.issuedCount === 0 && metrics.discountSpent === 0 && <button disabled={deletingId === campaign.id} onClick={() => onDelete(campaign)} className="grid h-9 w-9 place-items-center rounded-lg border border-neutral-200 text-neutral-500 hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-40" aria-label={`Xóa ${campaign.name}`}>{deletingId === campaign.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}</button>}</div></td>
                 </tr>
               );
             })}

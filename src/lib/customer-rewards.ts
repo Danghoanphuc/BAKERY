@@ -171,6 +171,7 @@ export function buildCustomerRewards(
       email: customer.email,
       tier: currentTier.name,
       tierIcon: currentTier.icon,
+      tierImageUrl: currentTier.imageUrl,
     },
     points: {
       current: currentPoints,

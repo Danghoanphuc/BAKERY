@@ -1,6 +1,7 @@
-import { CheckCircle2, Fingerprint, Loader2, LockKeyhole } from "lucide-react";
+import { CheckCircle2, Loader2, LockKeyhole } from "lucide-react";
 
 import { BottomSheet } from "@/components/common";
+import { BiometricSignInButton } from "@/components/security/BiometricSignInButton";
 import type { CheckoutIdentityStatus } from "@/features/checkout/useCheckoutIdentity";
 
 export type CheckoutContactForm = {
@@ -128,31 +129,29 @@ export function CheckoutContactSheet({
                 </p>
               </div>
             </div>
-            <input
-              type="password"
-              inputMode="numeric"
-              autoComplete="current-password"
-              maxLength={4}
-              value={pin}
-              onChange={(event) => onPinChange?.(event.target.value)}
-              placeholder="••••"
-              aria-label="Mã PIN 4 số"
-              className="mt-3 h-11 w-full rounded-[12px] border border-[#e5cbbb] bg-white px-3 text-center text-lg font-black tracking-[0.45em] outline-none focus:border-[#b84a39] focus:ring-2 focus:ring-[#b84a39]/15"
-            />
-            {passkeyAvailable && onPasskeySignIn ? (
-              <button
-                type="button"
-                disabled={identityStatus === "signing_in"}
-                onClick={async () => {
-                  const signedIn = await onPasskeySignIn();
-                  if (signedIn) onClose();
-                }}
-                className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-[12px] border border-[#dfc8b9] bg-white text-sm font-black text-[#7a4b31] disabled:opacity-60"
-              >
-                <Fingerprint className="h-4 w-4" />
-                Dùng Face ID / vân tay
-              </button>
-            ) : null}
+            <div className="mt-3 flex gap-2">
+              <input
+                type="password"
+                inputMode="numeric"
+                autoComplete="current-password"
+                maxLength={4}
+                value={pin}
+                onChange={(event) => onPinChange?.(event.target.value)}
+                placeholder="••••"
+                aria-label="Mã PIN 4 số"
+                className="h-11 min-w-0 flex-1 rounded-[12px] border border-[#e5cbbb] bg-white px-3 text-center text-lg font-black tracking-[0.45em] outline-none focus:border-[#b84a39] focus:ring-2 focus:ring-[#b84a39]/15"
+              />
+              {passkeyAvailable && onPasskeySignIn ? (
+                <BiometricSignInButton
+                  isLoading={identityStatus === "signing_in"}
+                  className="h-11 w-11"
+                  onClick={async () => {
+                    const signedIn = await onPasskeySignIn();
+                    if (signedIn) onClose();
+                  }}
+                />
+              ) : null}
+            </div>
           </div>
         ) : identityStatus === "authenticated" ? (
           <p className="flex items-center gap-2 text-xs font-bold text-emerald-700">

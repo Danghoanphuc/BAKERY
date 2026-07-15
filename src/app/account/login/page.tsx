@@ -12,6 +12,7 @@ import {
 } from "@/features/auth/pin-ui";
 import { TurnstileChallenge } from "@/components/security/TurnstileChallenge";
 import { PasskeyEnrollmentPrompt } from "@/components/security/PasskeyEnrollmentPrompt";
+import { BiometricSignInButton } from "@/components/security/BiometricSignInButton";
 
 type LoginStep = "pin" | "link";
 
@@ -255,28 +256,27 @@ function AccountLoginContent() {
                 disabled={isSubmitting}
               />
 
-              <button
-                type="submit"
-                className="mt-2 flex h-14 w-full items-center justify-center gap-2 rounded-xl bg-[#b84a39] text-[15px] font-black text-white shadow-[0_8px_16px_rgba(184,74,57,0.2)] disabled:opacity-70 transition-all active:scale-[0.98]"
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <KeyRound className="h-5 w-5" />
-                )}
-                Đăng nhập
-              </button>
-              {passkeyAvailable ? (
+              <div className="mt-2 flex gap-2.5">
                 <button
-                  type="button"
-                  onClick={loginWithPasskey}
+                  type="submit"
+                  className="flex h-14 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-[#b84a39] text-[15px] font-black text-white shadow-[0_8px_16px_rgba(184,74,57,0.2)] transition-all active:scale-[0.98] disabled:opacity-70"
                   disabled={isSubmitting}
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#d9c4b5] bg-white text-[14px] font-black text-[#7a4b31] disabled:opacity-60"
                 >
-                  Đăng nhập bằng Face ID / vân tay
+                  {isSubmitting ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <KeyRound className="h-5 w-5" />
+                  )}
+                  Đăng nhập
                 </button>
-              ) : null}
+                {passkeyAvailable ? (
+                  <BiometricSignInButton
+                    onClick={loginWithPasskey}
+                    isLoading={isSubmitting}
+                    className="h-14 w-14"
+                  />
+                ) : null}
+              </div>
             </form>
           ) : (
             <form onSubmit={requestMagicLink} className="space-y-5">

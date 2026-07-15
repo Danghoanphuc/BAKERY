@@ -1,7 +1,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CheckoutNoteField } from "./CheckoutNoteField";
 import { CheckoutOrderSummary } from "./CheckoutOrderSummary";
@@ -122,6 +122,37 @@ describe("compact checkout components", () => {
     expect(
       document.querySelector('input[name="tel"]')?.getAttribute("autocomplete"),
     ).toBe("tel");
+
+    await act(async () => root.unmount());
+  });
+
+  it("starts biometric verification directly from the compact icon", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const onPasskeySignIn = vi.fn(async () => false);
+
+    await act(async () => {
+      root.render(
+        <CheckoutContactSheet
+          isOpen
+          value={{ name: "Khách hàng", phone: "0901234567" }}
+          onChange={() => undefined}
+          onClose={() => undefined}
+          identityStatus="pin_required"
+          passkeyAvailable
+          onPasskeySignIn={onPasskeySignIn}
+        />,
+      );
+    });
+
+    const biometricButton = document.querySelector<HTMLButtonElement>(
+      'button[aria-label="Quét Face ID hoặc vân tay"]',
+    );
+    expect(biometricButton).not.toBeNull();
+
+    await act(async () => biometricButton?.click());
+    expect(onPasskeySignIn).toHaveBeenCalledOnce();
 
     await act(async () => root.unmount());
   });

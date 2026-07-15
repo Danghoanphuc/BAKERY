@@ -15,7 +15,6 @@ import {
   CheckoutPaymentSelector,
   CheckoutStickyBar,
   CheckoutVoucherRow,
-  PostOrderPinSetup,
   type CheckoutPaymentMethod,
 } from "@/features/checkout/components";
 import {
@@ -26,6 +25,7 @@ import {
   getTimingLabel,
   toDeliveryAddress,
 } from "@/features/checkout/checkout-utils";
+import { useCheckoutIdentity } from "@/features/checkout/useCheckoutIdentity";
 import { CustomerVoucherPicker } from "@/features/vouchers";
 import { getShippingBenefit } from "@/lib/order-pricing";
 import { calculateVoucherPricing } from "@/lib/vouchers";
@@ -52,11 +52,6 @@ export default function CheckoutPage() {
   const [hasSubmittedOrder, setHasSubmittedOrder] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [pendingOrder, setPendingOrder] = useState<{
-    id: string;
-    orderNumber: string;
-  } | null>(null);
-  const [isSavingPin, setIsSavingPin] = useState(false);
 
   const isPickup = config.deliveryMode === "pickup";
   const voucherPricing = calculateVoucherPricing(totalPrice, selectedVoucher);
@@ -71,6 +66,44 @@ export default function CheckoutPage() {
     [config, isPickup],
   );
 
+  const applyAuthenticatedCustomer = useCallback(
+    (nextCustomer: Customer, preserveEnteredContact = false) => {
+      setCustomer(nextCustomer);
+      setContact((current) =>
+        preserveEnteredContact
+          ? {
+              name: current.name || nextCustomer.name,
+              phone: current.phone || nextCustomer.phone,
+            }
+          : { name: nextCustomer.name, phone: nextCustomer.phone },
+      );
+
+      if (useOrderConfigStore.getState().config.deliveryAddress) return;
+
+      const savedAddress = getDefaultAddress(
+        nextCustomer.personalization.addressBook,
+      );
+      if (savedAddress) {
+        setDeliveryAddress(toDeliveryAddress(savedAddress));
+      } else if (nextCustomer.personalization.defaultDeliveryAddress) {
+        setDeliveryAddress({
+          street: nextCustomer.personalization.defaultDeliveryAddress,
+          district: "",
+          city: "",
+          formattedAddress:
+            nextCustomer.personalization.defaultDeliveryAddress,
+        });
+      }
+    },
+    [setDeliveryAddress],
+  );
+
+  const checkoutIdentity = useCheckoutIdentity({
+    phone: contact.phone,
+    isAuthenticated: Boolean(customer),
+    onAuthenticated: applyAuthenticatedCustomer,
+  });
+
   useEffect(() => setIsClient(true), []);
 
   useEffect(() => {
@@ -81,35 +114,14 @@ export default function CheckoutPage() {
 
         const payload = await response.json();
         const nextCustomer = payload.customer as Customer;
-        setCustomer(nextCustomer);
-        setContact((current) => ({
-          name: current.name || nextCustomer.name,
-          phone: current.phone || nextCustomer.phone,
-        }));
-
-        if (!useOrderConfigStore.getState().config.deliveryAddress) {
-          const savedAddress = getDefaultAddress(
-            nextCustomer.personalization.addressBook,
-          );
-          if (savedAddress) {
-            setDeliveryAddress(toDeliveryAddress(savedAddress));
-          } else if (nextCustomer.personalization.defaultDeliveryAddress) {
-            setDeliveryAddress({
-              street: nextCustomer.personalization.defaultDeliveryAddress,
-              district: "",
-              city: "",
-              formattedAddress:
-                nextCustomer.personalization.defaultDeliveryAddress,
-            });
-          }
-        }
+        applyAuthenticatedCustomer(nextCustomer, true);
       } catch (loadError) {
         console.error("Failed to load checkout customer:", loadError);
       }
     }
 
     void loadCustomer();
-  }, [setDeliveryAddress]);
+  }, [applyAuthenticatedCustomer]);
 
   useEffect(() => {
     if (isClient && items.length === 0 && !hasSubmittedOrder) {
@@ -117,51 +129,7 @@ export default function CheckoutPage() {
     }
   }, [hasSubmittedOrder, isClient, items.length, router]);
 
-  const handlePinComplete = useCallback(
-    async (pin: string) => {
-      if (!pendingOrder || isSavingPin) return;
-      setIsSavingPin(true);
-      setError(null);
-
-      try {
-        const response = await fetch("/api/auth/password", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ newPin: pin }),
-        });
-        const payload = await response.json().catch(() => null);
-        if (!response.ok) {
-          throw new Error(payload?.error || "Không thể lưu mã PIN.");
-        }
-        const completedOrderId = pendingOrder.id;
-        setPendingOrder(null);
-        router.replace(
-          `/order?orderId=${encodeURIComponent(completedOrderId)}`,
-        );
-      } catch (saveError) {
-        setError(
-          saveError instanceof Error
-            ? saveError.message
-            : "Không thể lưu mã PIN.",
-        );
-      } finally {
-        setIsSavingPin(false);
-      }
-    },
-    [isSavingPin, pendingOrder, router],
-  );
-
   if (!isClient) return <CheckoutLoading />;
-  if (pendingOrder) {
-    return (
-      <PostOrderPinSetup
-        orderNumber={pendingOrder.orderNumber}
-        error={error}
-        isSaving={isSavingPin}
-        onComplete={handlePinComplete}
-      />
-    );
-  }
   if (items.length === 0) return null;
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -228,6 +196,10 @@ export default function CheckoutPage() {
 
       if (!response.ok) {
         const payload = await response.json().catch(() => null);
+        if (payload?.code === "account_exists") {
+          checkoutIdentity.retryRecognition();
+          setIsContactOpen(true);
+        }
         throw new Error(payload?.error || "Không thể tạo đơn hàng.");
       }
 
@@ -235,11 +207,7 @@ export default function CheckoutPage() {
       setHasSubmittedOrder(true);
       clearCart();
       clearSelectedVoucher();
-      if (customer) {
-        router.push(`/order?orderId=${encodeURIComponent(order.id)}`);
-        return;
-      }
-      setPendingOrder({ id: order.id, orderNumber: order.orderNumber });
+      router.push(`/order?orderId=${encodeURIComponent(order.id)}`);
     } catch (submitError) {
       console.error(submitError);
       setError(
@@ -329,6 +297,11 @@ export default function CheckoutPage() {
           setContact({ ...next, phone: sanitizePhone(next.phone) })
         }
         onClose={() => setIsContactOpen(false)}
+        identityStatus={checkoutIdentity.status}
+        pin={checkoutIdentity.pin}
+        identityError={checkoutIdentity.error}
+        onPinChange={checkoutIdentity.setPin}
+        onSignIn={checkoutIdentity.signIn}
       />
       <CustomerVoucherPicker
         isOpen={isVoucherOpen}

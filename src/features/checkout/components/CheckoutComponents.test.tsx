@@ -8,6 +8,7 @@ import { CheckoutOrderSummary } from "./CheckoutOrderSummary";
 import { CheckoutPaymentSelector } from "./CheckoutPaymentSelector";
 import { CheckoutStickyBar } from "./CheckoutStickyBar";
 import { CheckoutVoucherRow } from "./CheckoutVoucherRow";
+import { CheckoutContactSheet } from "./CheckoutContactSheet";
 
 afterEach(() => {
   document.body.innerHTML = "";
@@ -79,6 +80,48 @@ describe("compact checkout components", () => {
     const toggle = container.querySelector("button");
     await act(async () => toggle?.click());
     expect(container.querySelector("textarea")).not.toBeNull();
+
+    await act(async () => root.unmount());
+  });
+
+  it("keeps contact input focused when its controlled value changes", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    const onChange = () => undefined;
+
+    await act(async () => {
+      root.render(
+        <CheckoutContactSheet
+          isOpen
+          value={{ name: "", phone: "" }}
+          onChange={onChange}
+          onClose={() => undefined}
+        />,
+      );
+    });
+
+    const nameInput = document.querySelector<HTMLInputElement>(
+      'input[name="name"]',
+    );
+    expect(nameInput?.getAttribute("autocomplete")).toBe("name");
+    nameInput?.focus();
+
+    await act(async () => {
+      root.render(
+        <CheckoutContactSheet
+          isOpen
+          value={{ name: "A", phone: "" }}
+          onChange={onChange}
+          onClose={() => undefined}
+        />,
+      );
+    });
+
+    expect(document.activeElement).toBe(nameInput);
+    expect(
+      document.querySelector('input[name="tel"]')?.getAttribute("autocomplete"),
+    ).toBe("tel");
 
     await act(async () => root.unmount());
   });

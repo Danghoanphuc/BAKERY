@@ -13,4 +13,3 @@ export {
 } from "./CheckoutPaymentSelector";
 export { CheckoutStickyBar } from "./CheckoutStickyBar";
 export { CheckoutVoucherRow } from "./CheckoutVoucherRow";
-export { PostOrderPinSetup } from "./PostOrderPinSetup";

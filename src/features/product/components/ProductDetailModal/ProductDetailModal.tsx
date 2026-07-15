@@ -12,6 +12,7 @@ import {
   CakeSlice,
   ChevronDown,
   Clock3,
+  CreditCard,
   MapPin,
   Minus,
   Plus,
@@ -48,6 +49,7 @@ interface ProductDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddToCart: (customization: ProductCustomization) => void;
+  onBuyNow?: (customization: ProductCustomization) => void;
 }
 
 export function ProductDetailModal({
@@ -55,6 +57,7 @@ export function ProductDetailModal({
   isOpen,
   onClose,
   onAddToCart,
+  onBuyNow,
 }: ProductDetailModalProps) {
   const { config } = useOrderConfigStore();
   const [quantity, setQuantity] = useState(1);
@@ -100,7 +103,9 @@ export function ProductDetailModal({
   const maxQuantity = getMaxQuantity(product);
   const expanded = hasProductOptions(product) || galleryImages.length > 1;
 
-  const handleAddToCart = () => {
+  const runValidatedAction = (
+    action: (nextCustomization: ProductCustomization) => void,
+  ) => {
     if (!availability.canOrder) return;
     const nextErrors = validateProductCustomization(product, customization);
     setErrors(nextErrors);
@@ -112,7 +117,7 @@ export function ProductDetailModal({
       flavorSectionRef.current?.scrollIntoView({ block: "center" });
       return;
     }
-    onAddToCart(customization);
+    action(customization);
   };
 
   return (
@@ -131,22 +136,44 @@ export function ProductDetailModal({
           />
           <button
             type="button"
-            onClick={handleAddToCart}
+            onClick={() => runValidatedAction(onAddToCart)}
             disabled={!availability.canOrder}
             className={clsx(
-              "flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-[14px] px-3 text-sm font-black text-white transition active:scale-[0.98]",
-              availability.canOrder
-                ? "bg-[#b84a39] shadow-[0_8px_18px_rgba(184,74,57,0.24)] hover:bg-[#9e3e2f]"
-                : "cursor-not-allowed bg-[#cdbeb5]",
+              "flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-[14px] px-3 text-sm font-black transition active:scale-[0.98]",
+              onBuyNow
+                ? availability.canOrder
+                  ? "border border-[#b84a39] bg-white text-[#b84a39]"
+                  : "cursor-not-allowed border border-[#d7cbc4] bg-[#f5f0ed] text-[#aa9a91]"
+                : availability.canOrder
+                  ? "bg-[#b84a39] text-white shadow-[0_8px_18px_rgba(184,74,57,0.24)] hover:bg-[#9e3e2f]"
+                  : "cursor-not-allowed bg-[#cdbeb5] text-white",
             )}
           >
             <ShoppingCart className="h-4 w-4 shrink-0" />
             <span className="truncate">
               {availability.canOrder
-                ? `Thêm · ${formatPrice(totalPrice)}`
+                ? onBuyNow
+                  ? "Thêm vào giỏ"
+                  : `Thêm · ${formatPrice(totalPrice)}`
                 : availability.shortLabel}
             </span>
           </button>
+          {onBuyNow ? (
+            <button
+              type="button"
+              onClick={() => runValidatedAction(onBuyNow)}
+              disabled={!availability.canOrder}
+              className={clsx(
+                "flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-[14px] px-3 text-sm font-black text-white transition active:scale-[0.98]",
+                availability.canOrder
+                  ? "bg-[#b84a39] shadow-[0_8px_18px_rgba(184,74,57,0.24)] hover:bg-[#9e3e2f]"
+                  : "cursor-not-allowed bg-[#cdbeb5]",
+              )}
+            >
+              <CreditCard className="h-4 w-4 shrink-0" />
+              <span className="truncate">Mua ngay</span>
+            </button>
+          ) : null}
         </div>
       }
     >

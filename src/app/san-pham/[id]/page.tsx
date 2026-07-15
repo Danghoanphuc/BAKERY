@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
+import { cache } from "react";
 
 import { BakeryHome } from "@/features/home/components";
 import { loadHomeData } from "@/features/home/server/load-home-data";
+import { FacebookProductExperience } from "@/features/product/components/FacebookProductExperience";
 import { getProductById } from "@/lib/db";
 import { serializeForClient } from "@/lib/firebase/utils";
 import {
@@ -18,6 +21,8 @@ import {
 type ProductShareEntryProps = {
   params: Promise<{ id: string }>;
 };
+
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,
@@ -54,6 +59,25 @@ export default async function ProductShareEntry({ params }: ProductShareEntryPro
   const product = await getProductFromParams(params);
   if (!product || product.isAvailable === false) notFound();
 
+  const isFacebookInApp =
+    (await headers()).get("x-facebook-in-app") === "1";
+
+  if (isFacebookInApp) {
+    const jsonLd = buildProductJsonLd(
+      buildProductFeedItem(product, "Sản phẩm"),
+    );
+
+    return (
+      <>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+        <FacebookProductExperience product={serializeForClient(product)} />
+      </>
+    );
+  }
+
   const data = await loadHomeData(product);
   const categoryName = getCategoryName(product, data.categories);
   const jsonLd = buildProductJsonLd(buildProductFeedItem(product, categoryName));
@@ -76,5 +100,7 @@ export default async function ProductShareEntry({ params }: ProductShareEntryPro
 
 async function getProductFromParams(params: Promise<{ id: string }>) {
   const { id } = await params;
-  return getProductById(decodeURIComponent(id));
+  return getCachedProductById(decodeURIComponent(id));
 }
+
+const getCachedProductById = cache(getProductById);

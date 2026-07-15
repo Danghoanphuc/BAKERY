@@ -42,7 +42,12 @@ export function BottomSheet({
   const dragStartRef = useRef<number | null>(null);
   const dragOffsetRef = useRef(0);
   const [dragOffset, setDragOffset] = useState(0);
+  const [isMounted, setIsMounted] = useState(false);
   const titleId = useId();
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -95,7 +100,7 @@ export function BottomSheet({
     if (!isOpen) setDragOffset(0);
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !isMounted) return null;
 
   const startDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
     dragStartRef.current = event.clientY;

@@ -20,6 +20,7 @@ import {
 
 type ProductShareEntryProps = {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ __fb_iab?: string }>;
 };
 
 export const dynamic = "force-dynamic";
@@ -55,12 +56,16 @@ export async function generateMetadata({
   };
 }
 
-export default async function ProductShareEntry({ params }: ProductShareEntryProps) {
+export default async function ProductShareEntry({
+  params,
+  searchParams,
+}: ProductShareEntryProps) {
   const product = await getProductFromParams(params);
   if (!product || product.isAvailable === false) notFound();
 
   const isFacebookInApp =
-    (await headers()).get("x-facebook-in-app") === "1";
+    (await headers()).get("x-facebook-in-app") === "1" ||
+    (await searchParams)?.__fb_iab === "1";
 
   if (isFacebookInApp) {
     const jsonLd = buildProductJsonLd(
@@ -103,4 +108,19 @@ async function getProductFromParams(params: Promise<{ id: string }>) {
   return getCachedProductById(decodeURIComponent(id));
 }
 
-const getCachedProductById = cache(getProductById);
+const getCachedProductById = cache(async (id: string) => {
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      return await getProductById(id);
+    } catch (error) {
+      lastError = error;
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 120 * (attempt + 1)));
+      }
+    }
+  }
+
+  throw lastError;
+});

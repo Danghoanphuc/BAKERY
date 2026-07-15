@@ -8,6 +8,7 @@ const env = {
 };
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 
@@ -60,5 +61,55 @@ describe("bakery edge router", () => {
       "https://origin.example/api/bot-meta/san-pham/cake",
     );
     expect(originRequest.headers.has("X-Facebook-In-App")).toBe(false);
+  });
+
+  it("retries transient origin failures before returning the Facebook page", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("cold", { status: 503 }))
+      .mockResolvedValueOnce(new Response("warming", { status: 502 }))
+      .mockResolvedValueOnce(new Response("ready", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const responsePromise = worker.fetch(
+      new Request("https://bakery.example/san-pham/cake", {
+        headers: { "User-Agent": "Mozilla/5.0 [FBAN/FB4A;FBAV/1.0]" },
+      }),
+      env,
+    );
+    await vi.runAllTimersAsync();
+    const response = await responsePromise;
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe("ready");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("falls back to the direct origin after repeated Facebook failures", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn(async () => new Response("down", { status: 503 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const responsePromise = worker.fetch(
+      new Request(
+        "https://bakery.example/san-pham/cake?fbclid=tracking&campaign=summer",
+        {
+          headers: { "User-Agent": "Mozilla/5.0 [FBAN/FB4A;FBAV/1.0]" },
+        },
+      ),
+      env,
+    );
+    await vi.runAllTimersAsync();
+    const response = await responsePromise;
+    const location = new URL(response.headers.get("Location") || "");
+
+    expect(response.status).toBe(307);
+    expect(location.origin).toBe("https://origin.example");
+    expect(location.pathname).toBe("/san-pham/cake");
+    expect(location.searchParams.get("__fb_iab")).toBe("1");
+    expect(location.searchParams.get("campaign")).toBe("summer");
+    expect(location.searchParams.has("fbclid")).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });

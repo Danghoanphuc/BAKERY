@@ -21,6 +21,18 @@ export default function PinSetupFlow({
   const [isFocused, setIsFocused] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const keepPinVisible = () => {
+    [80, 260].forEach((delay) => {
+      window.setTimeout(() => {
+        inputRef.current?.scrollIntoView({
+          block: "center",
+          inline: "nearest",
+          behavior: "smooth",
+        });
+      }, delay);
+    });
+  };
+
   useEffect(() => {
     if (currentValue.length === 4) {
       if (step === "create") {
@@ -105,7 +117,10 @@ export default function PinSetupFlow({
           disabled={isLoading}
           autoFocus
           onChange={(event) => setCurrentValue(sanitizePin(event.target.value))}
-          onFocus={() => setIsFocused(true)}
+          onFocus={() => {
+            setIsFocused(true);
+            keepPinVisible();
+          }}
           onBlur={() => setIsFocused(false)}
           className="absolute inset-0 h-full w-full cursor-text opacity-0 outline-none"
         />

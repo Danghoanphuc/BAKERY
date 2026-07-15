@@ -27,6 +27,12 @@ const FOCUSABLE_SELECTOR =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const CLOSE_DRAG_THRESHOLD = 88;
 
+type VisibleViewport = {
+  height: number;
+  offsetTop: number;
+  isKeyboardOpen: boolean;
+};
+
 export function BottomSheet({
   isOpen,
   onClose,
@@ -45,6 +51,9 @@ export function BottomSheet({
   const dragOffsetRef = useRef(0);
   const [dragOffset, setDragOffset] = useState(0);
   const [isMounted, setIsMounted] = useState(false);
+  const [visibleViewport, setVisibleViewport] = useState<VisibleViewport | null>(
+    null,
+  );
   const titleId = useId();
 
   useEffect(() => {
@@ -122,6 +131,33 @@ export function BottomSheet({
     if (!isOpen) setDragOffset(0);
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const viewport = window.visualViewport;
+    const updateVisibleViewport = () => {
+      setVisibleViewport({
+        height: Math.round(viewport?.height ?? window.innerHeight),
+        offsetTop: Math.round(viewport?.offsetTop ?? 0),
+        isKeyboardOpen: Boolean(
+          viewport && viewport.height < window.innerHeight - 80,
+        ),
+      });
+    };
+
+    updateVisibleViewport();
+    viewport?.addEventListener("resize", updateVisibleViewport);
+    viewport?.addEventListener("scroll", updateVisibleViewport);
+    window.addEventListener("resize", updateVisibleViewport);
+
+    return () => {
+      viewport?.removeEventListener("resize", updateVisibleViewport);
+      viewport?.removeEventListener("scroll", updateVisibleViewport);
+      window.removeEventListener("resize", updateVisibleViewport);
+      setVisibleViewport(null);
+    };
+  }, [isOpen]);
+
   if (!isOpen || !isMounted) return null;
 
   const startDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -149,7 +185,11 @@ export function BottomSheet({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[130] flex items-end justify-center lg:items-center lg:p-4"
+      className="fixed inset-x-0 top-0 z-[130] flex items-end justify-center lg:items-center lg:p-4"
+      style={{
+        height: visibleViewport?.height ?? "100dvh",
+        top: visibleViewport?.offsetTop ?? 0,
+      }}
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
@@ -172,6 +212,9 @@ export function BottomSheet({
         )}
         style={{
           transform: `translateY(${dragOffset}px)`,
+          maxHeight: visibleViewport?.isKeyboardOpen
+            ? `${Math.max(240, visibleViewport.height - 12)}px`
+            : undefined,
           transition:
             dragStartRef.current === null ? "transform 180ms ease-out" : "none",
         }}

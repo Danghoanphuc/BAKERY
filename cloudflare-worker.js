@@ -1,6 +1,7 @@
 const DEFAULT_ORIGIN = "https://bakery-production-9c75.up.railway.app";
 const DEFAULT_CUSTOMER_APP_URL = "https://bakery.printz.vn";
 const TRACKING_PARAMS = new Set(["fbclid", "zarsrc", "gclid"]);
+const RETRY_DELAYS_MS = [120, 360];
 
 function removeTrackingParams(url) {
   const cleanedUrl = new URL(url);
@@ -48,14 +49,76 @@ function createOriginRequest(request, origin, pathname, headers) {
 async function fetchFacebookCrawlerPage(request, config, productId) {
   const headers = new Headers(request.headers);
   headers.set("X-Customer-App-Url", config.customerAppUrl);
-  return fetch(createOriginRequest(request, config.origin, `/api/bot-meta/san-pham/${encodeURIComponent(productId)}`, headers));
+  return fetchOriginWithRetry(() =>
+    createOriginRequest(
+      request,
+      config.origin,
+      `/api/bot-meta/san-pham/${encodeURIComponent(productId)}`,
+      headers,
+    ),
+  );
 }
 
 async function fetchApplication(request, config, pathname, isFacebookInApp) {
   const headers = new Headers(request.headers);
   headers.set("X-Customer-App-Url", config.customerAppUrl);
   if (isFacebookInApp) headers.set("X-Facebook-In-App", "1");
-  return fetch(createOriginRequest(request, config.origin, pathname, headers));
+  return fetchOriginWithRetry(
+    () => createOriginRequest(request, config.origin, pathname, headers),
+    request.method,
+  );
+}
+
+function isRetryableResponse(response) {
+  return response.status === 429 || response.status >= 500;
+}
+
+function wait(delayMs) {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
+}
+
+async function fetchOriginWithRetry(createRequest, method = "GET") {
+  const canRetry = method === "GET" || method === "HEAD";
+  let lastResponse;
+  let lastError;
+  const attempts = canRetry ? RETRY_DELAYS_MS.length + 1 : 1;
+
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const response = await fetch(createRequest());
+      if (!isRetryableResponse(response) || attempt === attempts - 1) {
+        return response;
+      }
+      lastResponse = response;
+      await response.body?.cancel();
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts - 1) throw error;
+    }
+
+    await wait(RETRY_DELAYS_MS[attempt]);
+  }
+
+  if (lastResponse) return lastResponse;
+  throw lastError || new Error("Origin request failed");
+}
+
+function createFacebookOriginFallback(request, config, pathname) {
+  const incomingUrl = new URL(request.url);
+  const fallbackUrl = new URL(config.origin);
+  fallbackUrl.pathname = pathname;
+  fallbackUrl.search = incomingUrl.search;
+  for (const param of TRACKING_PARAMS) fallbackUrl.searchParams.delete(param);
+  fallbackUrl.searchParams.set("__fb_iab", "1");
+
+  if (fallbackUrl.host === incomingUrl.host) {
+    return new Response("Tạm thời không thể tải trang. Vui lòng thử lại.", {
+      status: 503,
+      headers: { "Content-Type": "text/plain; charset=utf-8" },
+    });
+  }
+
+  return Response.redirect(fallbackUrl.toString(), 307);
 }
 
 export default {
@@ -65,15 +128,41 @@ export default {
     const userAgent = request.headers.get("User-Agent") || "";
     const productId = getProductId(cleanedUrl.pathname);
 
-    if (productId && isFacebookCrawler(userAgent)) {
-      return fetchFacebookCrawlerPage(request, config, productId);
-    }
-
-    return fetchApplication(
-      request,
-      config,
-      cleanedUrl.pathname,
-      Boolean(productId && isFacebookInAppBrowser(userAgent)),
+    const isFacebookInApp = Boolean(
+      productId && isFacebookInAppBrowser(userAgent),
     );
+
+    try {
+      if (productId && isFacebookCrawler(userAgent)) {
+        return await fetchFacebookCrawlerPage(request, config, productId);
+      }
+
+      const response = await fetchApplication(
+        request,
+        config,
+        cleanedUrl.pathname,
+        isFacebookInApp,
+      );
+
+      if (isFacebookInApp && isRetryableResponse(response)) {
+        await response.body?.cancel();
+        return createFacebookOriginFallback(
+          request,
+          config,
+          cleanedUrl.pathname,
+        );
+      }
+
+      return response;
+    } catch (error) {
+      if (isFacebookInApp) {
+        return createFacebookOriginFallback(
+          request,
+          config,
+          cleanedUrl.pathname,
+        );
+      }
+      throw error;
+    }
   },
 };

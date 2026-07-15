@@ -123,10 +123,13 @@ export async function POST(request: Request) {
       ok: true,
       customer: { ...customer, hasPassword: true, passwordSetAt: new Date() },
       message: "Đã tạo hồ sơ thành viên.",
+      passkey: { shouldOfferEnrollment: true },
     });
     response.headers.append(
       "Set-Cookie",
-      await createCustomerSessionCookie(customer.id, request),
+      await createCustomerSessionCookie(customer.id, request, {
+        authLevel: "pin",
+      }),
     );
     return response;
   } catch (error) {

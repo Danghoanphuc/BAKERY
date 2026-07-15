@@ -5,6 +5,7 @@ import {
   getStoredCustomerSession,
   revokeStoredCustomerSession,
   touchStoredCustomerSession,
+  type CustomerSessionAuthLevel,
 } from "@/lib/firebase/customer-sessions";
 import { getSessionDevice } from "./session-device";
 
@@ -17,7 +18,11 @@ export type CustomerSession = {
   customerId: string;
   sessionId: string;
   expiresAt: Date;
+  authLevel: CustomerSessionAuthLevel;
+  strongAuthenticatedAt?: Date;
 };
+
+const RECENT_STRONG_AUTH_MS = 5 * 60 * 1000;
 
 export function hashCustomerSessionToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
@@ -26,12 +31,17 @@ export function hashCustomerSessionToken(token: string) {
 export async function createCustomerSessionCookie(
   customerId: string,
   request?: Request,
+  options: { authLevel?: CustomerSessionAuthLevel } = {},
 ) {
   const token = randomBytes(32).toString("base64url");
   const sessionId = hashCustomerSessionToken(token);
   const now = new Date();
   const expiresAt = new Date(now.getTime() + SESSION_TTL_SECONDS * 1000);
   const device = getSessionDevice(request);
+  const authLevel = options.authLevel ?? "guest";
+  const strongAuthenticatedAt = ["pin", "passkey"].includes(authLevel)
+    ? now
+    : undefined;
 
   await createStoredCustomerSession(sessionId, {
     customerId,
@@ -39,6 +49,8 @@ export async function createCustomerSessionCookie(
     createdAt: now,
     lastSeenAt: now,
     expiresAt,
+    authLevel,
+    strongAuthenticatedAt,
   });
 
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
@@ -66,7 +78,18 @@ export async function parseCustomerSessionValue(
     customerId: stored.customerId,
     sessionId,
     expiresAt: stored.expiresAt,
+    authLevel: stored.authLevel,
+    strongAuthenticatedAt: stored.strongAuthenticatedAt,
   };
+}
+
+export function hasRecentStrongAuthentication(session: CustomerSession) {
+  return (
+    (session.authLevel === "pin" || session.authLevel === "passkey") &&
+    Boolean(session.strongAuthenticatedAt) &&
+    Date.now() - session.strongAuthenticatedAt!.getTime() <=
+      RECENT_STRONG_AUTH_MS
+  );
 }
 
 export async function revokeCustomerSessionValue(value?: string | null) {

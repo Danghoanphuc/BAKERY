@@ -14,7 +14,16 @@ export type StoredCustomerSession = {
   lastSeenAt: Date;
   expiresAt: Date;
   revokedAt?: Date;
+  authLevel: CustomerSessionAuthLevel;
+  strongAuthenticatedAt?: Date;
 };
+
+export type CustomerSessionAuthLevel =
+  | "guest"
+  | "pin"
+  | "passkey"
+  | "magic"
+  | "zalo";
 
 type CreateCustomerSessionInput = Omit<StoredCustomerSession, "id">;
 
@@ -46,6 +55,12 @@ function normalizeSession(
     lastSeenAt: toDate(data.lastSeenAt),
     expiresAt: toDate(data.expiresAt),
     revokedAt: data.revokedAt ? toDate(data.revokedAt) : undefined,
+    authLevel: isCustomerSessionAuthLevel(data.authLevel)
+      ? data.authLevel
+      : "guest",
+    strongAuthenticatedAt: data.strongAuthenticatedAt
+      ? toDate(data.strongAuthenticatedAt)
+      : undefined,
   };
 }
 
@@ -65,8 +80,24 @@ export async function createStoredCustomerSession(
     createdAt: Timestamp.fromDate(input.createdAt),
     lastSeenAt: Timestamp.fromDate(input.lastSeenAt),
     expiresAt: Timestamp.fromDate(input.expiresAt),
+    authLevel: input.authLevel,
+    ...(input.strongAuthenticatedAt
+      ? {
+          strongAuthenticatedAt: Timestamp.fromDate(
+            input.strongAuthenticatedAt,
+          ),
+        }
+      : {}),
   });
   await enforceStoredCustomerSessionLimit(input.customerId, id);
+}
+
+function isCustomerSessionAuthLevel(
+  value: unknown,
+): value is CustomerSessionAuthLevel {
+  return ["guest", "pin", "passkey", "magic", "zalo"].includes(
+    String(value),
+  );
 }
 
 async function enforceStoredCustomerSessionLimit(

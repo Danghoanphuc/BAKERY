@@ -14,6 +14,7 @@ import {
 } from "@/lib/firebase/customer-passkeys";
 import { buildRiskContext } from "@/lib/security/risk-context";
 import { recordSecurityEvent } from "@/lib/security/security-events";
+import { getCustomerById } from "@/lib/firebase/customers";
 
 export async function POST(request: Request) {
   const rawChallengeId = readPasskeyChallenge(request);
@@ -54,10 +55,13 @@ export async function POST(request: Request) {
     buildRiskContext(request, { customerId: passkey.customerId }),
   ).catch(() => undefined);
 
-  const response = NextResponse.json({ ok: true });
+  const customer = await getCustomerById(passkey.customerId);
+  const response = NextResponse.json({ ok: true, customer });
   response.headers.append(
     "Set-Cookie",
-    await createCustomerSessionCookie(passkey.customerId, request),
+    await createCustomerSessionCookie(passkey.customerId, request, {
+      authLevel: "passkey",
+    }),
   );
   response.headers.append("Set-Cookie", clearPasskeyChallengeCookie());
   return response;

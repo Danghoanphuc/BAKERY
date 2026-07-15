@@ -4,10 +4,22 @@ import { POST } from "./route";
 
 const mocks = vi.hoisted(() => ({
   getCustomerByPhone: vi.fn(),
+  listCustomerPasskeys: vi.fn(),
+  consumeSecurityAction: vi.fn(),
 }));
 
 vi.mock("@/lib/firebase", () => ({
   getCustomerByPhone: mocks.getCustomerByPhone,
+}));
+vi.mock("@/lib/firebase/customer-passkeys", () => ({
+  listCustomerPasskeys: mocks.listCustomerPasskeys,
+}));
+vi.mock("@/lib/security/risk-context", () => ({
+  buildRiskContext: () => ({ network: "network", channel: "Browser" }),
+}));
+vi.mock("@/lib/security/security-events", () => ({
+  consumeSecurityAction: mocks.consumeSecurityAction,
+  createSecurityLimitResponse: () => new Response("limited", { status: 429 }),
 }));
 
 function createRequest(phone: string) {
@@ -19,7 +31,14 @@ function createRequest(phone: string) {
 }
 
 describe("checkout phone recognition", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.listCustomerPasskeys.mockResolvedValue([]);
+    mocks.consumeSecurityAction.mockResolvedValue({
+      allowed: true,
+      retryAfterSeconds: 0,
+    });
+  });
 
   it("asks for verification without exposing customer data", async () => {
     mocks.getCustomerByPhone.mockResolvedValue({
@@ -32,7 +51,11 @@ describe("checkout phone recognition", () => {
     const payload = await response.json();
 
     expect(response.status).toBe(200);
-    expect(payload).toEqual({ ok: true, verificationRequired: true });
+    expect(payload).toEqual({
+      ok: true,
+      verificationRequired: true,
+      passkeyAvailable: false,
+    });
     expect(payload).not.toHaveProperty("customer");
     expect(mocks.getCustomerByPhone).toHaveBeenCalledWith("0901234567");
   });
@@ -45,6 +68,7 @@ describe("checkout phone recognition", () => {
     expect(await response.json()).toEqual({
       ok: true,
       verificationRequired: false,
+      passkeyAvailable: false,
     });
   });
 

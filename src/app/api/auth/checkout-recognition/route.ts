@@ -5,6 +5,7 @@ import {
   normalizePhoneInput,
 } from "@/lib/auth/phone";
 import { getCustomerByPhone } from "@/lib/firebase";
+import { listCustomerPasskeys } from "@/lib/firebase/customer-passkeys";
 import { buildRiskContext } from "@/lib/security/risk-context";
 import {
   consumeSecurityAction,
@@ -33,10 +34,12 @@ export async function POST(request: Request) {
     if (!limit.allowed) return createSecurityLimitResponse(limit);
 
     const customer = await getCustomerByPhone(phone);
+    const passkeys = customer ? await listCustomerPasskeys(customer.id) : [];
 
     return NextResponse.json({
       ok: true,
       verificationRequired: Boolean(customer?.hasPassword),
+      passkeyAvailable: passkeys.length > 0,
     });
   } catch (error) {
     console.error("Checkout phone recognition failed:", error);

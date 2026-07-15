@@ -39,7 +39,9 @@ export async function GET(request: Request) {
   const response = NextResponse.redirect(new URL(safeNext, url.origin));
   response.headers.append(
     "Set-Cookie",
-    await createCustomerSessionCookie(result.customer.id, request),
+    await createCustomerSessionCookie(result.customer.id, request, {
+      authLevel: "magic",
+    }),
   );
   return response;
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { FormEvent, Suspense, useState, useRef } from "react";
+import { FormEvent, Suspense, useEffect, useState, useRef } from "react";
 import { ArrowRight, KeyRound, Loader2, Phone } from "lucide-react";
 import { startAuthentication } from "@simplewebauthn/browser";
 import {
@@ -11,6 +11,7 @@ import {
   sanitizePin,
 } from "@/features/auth/pin-ui";
 import { TurnstileChallenge } from "@/components/security/TurnstileChallenge";
+import { PasskeyEnrollmentPrompt } from "@/components/security/PasskeyEnrollmentPrompt";
 
 type LoginStep = "pin" | "link";
 
@@ -36,6 +37,34 @@ function AccountLoginContent() {
     siteKey: string;
     action: string;
   } | null>(null);
+  const [passkeyAvailable, setPasskeyAvailable] = useState(false);
+  const [offerPasskeyEnrollment, setOfferPasskeyEnrollment] = useState(false);
+
+  useEffect(() => {
+    setPasskeyAvailable(false);
+    if (phone.length !== 10 || getPhoneError(phone)) return;
+
+    const controller = new AbortController();
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch("/api/auth/passkeys/status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone }),
+          signal: controller.signal,
+        });
+        const payload = await response.json().catch(() => null);
+        if (response.ok) setPasskeyAvailable(payload?.available === true);
+      } catch {
+        // PIN login remains available when capability discovery fails.
+      }
+    }, 450);
+
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [phone]);
 
   async function loginWithPin(
     event?: FormEvent<HTMLFormElement>,
@@ -76,6 +105,10 @@ function AccountLoginContent() {
           return;
         }
         setError(data.error || "Mã PIN hoặc số điện thoại không chính xác.");
+        return;
+      }
+      if (data?.passkey?.shouldOfferEnrollment) {
+        setOfferPasskeyEnrollment(true);
         return;
       }
       window.location.href = nextPath;
@@ -234,14 +267,16 @@ function AccountLoginContent() {
                 )}
                 Đăng nhập
               </button>
-              <button
-                type="button"
-                onClick={loginWithPasskey}
-                disabled={isSubmitting}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#d9c4b5] bg-white text-[14px] font-black text-[#7a4b31] disabled:opacity-60"
-              >
-                Đăng nhập bằng passkey
-              </button>
+              {passkeyAvailable ? (
+                <button
+                  type="button"
+                  onClick={loginWithPasskey}
+                  disabled={isSubmitting}
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-xl border border-[#d9c4b5] bg-white text-[14px] font-black text-[#7a4b31] disabled:opacity-60"
+                >
+                  Đăng nhập bằng Face ID / vân tay
+                </button>
+              ) : null}
             </form>
           ) : (
             <form onSubmit={requestMagicLink} className="space-y-5">
@@ -305,6 +340,17 @@ function AccountLoginContent() {
           }}
         />
       ) : null}
+      <PasskeyEnrollmentPrompt
+        isOpen={offerPasskeyEnrollment}
+        onComplete={() => {
+          setOfferPasskeyEnrollment(false);
+          window.location.href = nextPath;
+        }}
+        onSkip={() => {
+          setOfferPasskeyEnrollment(false);
+          window.location.href = nextPath;
+        }}
+      />
     </main>
   );
 }

@@ -6,6 +6,7 @@ import { Gift, ArrowRight, ArrowLeft } from "lucide-react";
 import { getPhoneError, sanitizePhone } from "@/features/auth/pin-ui";
 import PinSetupFlow from "@/features/auth/PinSetupFlow";
 import { TurnstileChallenge } from "@/components/security/TurnstileChallenge";
+import { PasskeyEnrollmentPrompt } from "@/components/security/PasskeyEnrollmentPrompt";
 
 export default function RegisterPage() {
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -18,6 +19,7 @@ export default function RegisterPage() {
     siteKey: string;
     action: string;
   } | null>(null);
+  const [offerPasskeyEnrollment, setOfferPasskeyEnrollment] = useState(false);
 
   // Xử lý chuyển bước 1 -> 2
   function handleNameSubmit(event: FormEvent<HTMLFormElement>) {
@@ -76,6 +78,10 @@ export default function RegisterPage() {
             "Không thể đăng ký. Số điện thoại này có thể đã tồn tại.",
         );
         setStep(2); // Đẩy về lại bước nhập số điện thoại nếu lỗi
+        return;
+      }
+      if (data?.passkey?.shouldOfferEnrollment) {
+        setOfferPasskeyEnrollment(true);
         return;
       }
       window.location.href = "/account/rewards";
@@ -238,6 +244,17 @@ export default function RegisterPage() {
           }}
         />
       ) : null}
+      <PasskeyEnrollmentPrompt
+        isOpen={offerPasskeyEnrollment}
+        onComplete={() => {
+          setOfferPasskeyEnrollment(false);
+          window.location.href = "/account/rewards";
+        }}
+        onSkip={() => {
+          setOfferPasskeyEnrollment(false);
+          window.location.href = "/account/rewards";
+        }}
+      />
     </main>
   );
 }

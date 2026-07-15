@@ -82,7 +82,9 @@ export async function GET(request: Request) {
     const response = NextResponse.redirect(new URL("/profile", url.origin));
     response.headers.append(
       "Set-Cookie",
-      await createCustomerSessionCookie(customer.id, request),
+      await createCustomerSessionCookie(customer.id, request, {
+        authLevel: "zalo",
+      }),
     );
     return response;
   } catch (error) {

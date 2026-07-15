@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { AddressModal } from "@/components/layout/Header/AddressModal";
 import { TurnstileChallenge } from "@/components/security/TurnstileChallenge";
+import { PasskeyEnrollmentPrompt } from "@/components/security/PasskeyEnrollmentPrompt";
 import { getPhoneError, sanitizePhone } from "@/features/auth/pin-ui";
 import {
   CheckoutContactSheet,
@@ -323,6 +324,8 @@ export default function CheckoutPage() {
         identityError={checkoutIdentity.error}
         onPinChange={checkoutIdentity.setPin}
         onSignIn={checkoutIdentity.signIn}
+        passkeyAvailable={checkoutIdentity.passkeyAvailable}
+        onPasskeySignIn={checkoutIdentity.signInWithPasskey}
       />
       <CustomerVoucherPicker
         isOpen={isVoucherOpen}
@@ -362,6 +365,11 @@ export default function CheckoutPage() {
           }}
         />
       ) : null}
+      <PasskeyEnrollmentPrompt
+        isOpen={checkoutIdentity.offerPasskeyEnrollment}
+        onComplete={checkoutIdentity.dismissPasskeyEnrollment}
+        onSkip={checkoutIdentity.dismissPasskeyEnrollment}
+      />
     </main>
   );
 }

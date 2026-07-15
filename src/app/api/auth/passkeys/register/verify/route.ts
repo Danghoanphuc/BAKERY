@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import {
   CUSTOMER_SESSION_COOKIE,
+  hasRecentStrongAuthentication,
   parseCustomerSessionValue,
   readCookie,
 } from "@/lib/auth/customer-session";
@@ -24,6 +25,15 @@ export async function POST(request: Request) {
     readCookie(request.headers.get("cookie"), CUSTOMER_SESSION_COOKIE),
   );
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!hasRecentStrongAuthentication(session)) {
+    return NextResponse.json(
+      {
+        error: "Phiên xác thực đã hết hạn. Vui lòng đăng nhập lại bằng PIN.",
+        code: "recent_auth_required",
+      },
+      { status: 403 },
+    );
+  }
 
   const rawChallengeId = readPasskeyChallenge(request);
   const challenge = rawChallengeId

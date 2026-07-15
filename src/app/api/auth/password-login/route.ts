@@ -13,6 +13,7 @@ import {
   recordPinFailure,
 } from "@/lib/auth/pin-rate-limit";
 import { verifyCustomerPin } from "@/lib/firebase/customer-auth";
+import { listCustomerPasskeys } from "@/lib/firebase/customer-passkeys";
 import { buildRiskContext } from "@/lib/security/risk-context";
 import {
   consumeSecurityAction,
@@ -104,10 +105,20 @@ export async function POST(request: Request) {
       (error) => console.error("Failed to clear PIN login failures:", error),
     );
 
-    const response = NextResponse.json({ ok: true, customer });
+    const passkeys = await listCustomerPasskeys(customer.id);
+    const response = NextResponse.json({
+      ok: true,
+      customer,
+      passkey: {
+        linked: passkeys.length > 0,
+        shouldOfferEnrollment: passkeys.length === 0,
+      },
+    });
     response.headers.append(
       "Set-Cookie",
-      await createCustomerSessionCookie(customer.id, request),
+      await createCustomerSessionCookie(customer.id, request, {
+        authLevel: "pin",
+      }),
     );
     return response;
   } catch (error) {

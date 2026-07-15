@@ -345,7 +345,9 @@ export async function POST(request: Request) {
         : null;
     const guestSessionCookie =
       customer && !session
-        ? await createCustomerSessionCookie(customer.id, request)
+        ? await createCustomerSessionCookie(customer.id, request, {
+            authLevel: "guest",
+          })
         : null;
     const selectedAddress = data.deliveryAddressDetails;
     if (

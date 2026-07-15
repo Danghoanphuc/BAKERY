@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { startAuthentication } from "@simplewebauthn/browser";
 
 import { isValidVietnamPhone, sanitizePin } from "@/features/auth/pin-ui";
 import type { Customer } from "@/types";
@@ -32,6 +33,8 @@ export function useCheckoutIdentity({
     siteKey: string;
     action: string;
   } | null>(null);
+  const [offerPasskeyEnrollment, setOfferPasskeyEnrollment] = useState(false);
+  const [passkeyAvailable, setPasskeyAvailable] = useState(false);
   const checkedPhoneRef = useRef("");
 
   useEffect(() => {
@@ -43,6 +46,7 @@ export function useCheckoutIdentity({
 
     setPin("");
     setError(null);
+    setPasskeyAvailable(false);
 
     if (!isValidVietnamPhone(phone)) {
       checkedPhoneRef.current = "";
@@ -68,6 +72,7 @@ export function useCheckoutIdentity({
         }
 
         checkedPhoneRef.current = phone;
+        setPasskeyAvailable(payload.passkeyAvailable === true);
         setStatus(payload.verificationRequired ? "pin_required" : "guest");
       } catch (recognitionError) {
         if (controller.signal.aborted) return;
@@ -113,6 +118,9 @@ export function useCheckoutIdentity({
       }
 
       onAuthenticated(payload.customer as Customer);
+      setOfferPasskeyEnrollment(
+        payload?.passkey?.shouldOfferEnrollment === true,
+      );
       setStatus("authenticated");
       setPin("");
       return true;
@@ -127,18 +135,70 @@ export function useCheckoutIdentity({
     }
   }
 
+  async function signInWithPasskey() {
+    if (status !== "pin_required" || !passkeyAvailable) return false;
+
+    setStatus("signing_in");
+    setError(null);
+    try {
+      const optionsResponse = await fetch(
+        "/api/auth/passkeys/authenticate/options",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ phone }),
+        },
+      );
+      const options = await optionsResponse.json();
+      if (!optionsResponse.ok) {
+        throw new Error(options.error || "Không thể dùng passkey.");
+      }
+      const authenticationResponse = await startAuthentication({
+        optionsJSON: options,
+      });
+      const verifyResponse = await fetch(
+        "/api/auth/passkeys/authenticate/verify",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ response: authenticationResponse }),
+        },
+      );
+      const payload = await verifyResponse.json();
+      if (!verifyResponse.ok || !payload.customer) {
+        throw new Error(payload.error || "Passkey không hợp lệ.");
+      }
+      onAuthenticated(payload.customer as Customer);
+      setStatus("authenticated");
+      setPin("");
+      return true;
+    } catch (passkeyError) {
+      setStatus("pin_required");
+      setError(
+        passkeyError instanceof Error && passkeyError.name !== "NotAllowedError"
+          ? passkeyError.message
+          : "Bạn đã hủy hoặc trình duyệt chưa hỗ trợ sinh trắc học.",
+      );
+      return false;
+    }
+  }
+
   return {
     status,
     pin,
     error,
     setPin: (value: string) => setPin(sanitizePin(value)),
     signIn,
+    signInWithPasskey,
+    passkeyAvailable,
     securityChallenge,
     cancelSecurityChallenge: () => setSecurityChallenge(null),
     completeSecurityChallenge: async (token: string) => {
       setSecurityChallenge(null);
       return signIn(token);
     },
+    offerPasskeyEnrollment,
+    dismissPasskeyEnrollment: () => setOfferPasskeyEnrollment(false),
     retryRecognition: () => {
       checkedPhoneRef.current = "";
       setRecognitionAttempt((attempt) => attempt + 1);

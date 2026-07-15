@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   createCustomerSessionCookie: vi.fn(),
   consumeSecurityAction: vi.fn(),
   recordSecurityEvent: vi.fn(),
+  listCustomerPasskeys: vi.fn(),
 }));
 
 vi.mock("@/lib/auth/pin-rate-limit", () => ({
@@ -22,6 +23,9 @@ vi.mock("@/lib/auth/pin-rate-limit", () => ({
 }));
 vi.mock("@/lib/firebase/customer-auth", () => ({
   verifyCustomerPin: mocks.verifyCustomerPin,
+}));
+vi.mock("@/lib/firebase/customer-passkeys", () => ({
+  listCustomerPasskeys: mocks.listCustomerPasskeys,
 }));
 vi.mock("@/lib/auth/customer-session", () => ({
   createCustomerSessionCookie: mocks.createCustomerSessionCookie,
@@ -71,6 +75,7 @@ describe("PIN login rate limiting", () => {
       retryAfterSeconds: 0,
     });
     mocks.recordSecurityEvent.mockResolvedValue(undefined);
+    mocks.listCustomerPasskeys.mockResolvedValue([]);
   });
 
   it("blocks verification while the bucket is locked", async () => {
@@ -115,6 +120,7 @@ describe("PIN login rate limiting", () => {
     expect(mocks.createCustomerSessionCookie).toHaveBeenCalledWith(
       "customer-1",
       expect.any(Request),
+      { authLevel: "pin" },
     );
   });
 });

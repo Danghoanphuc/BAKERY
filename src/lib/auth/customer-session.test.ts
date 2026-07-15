@@ -19,6 +19,7 @@ vi.mock("./session-device", () => ({
 import {
   createCustomerSessionCookie,
   hashCustomerSessionToken,
+  hasRecentStrongAuthentication,
   parseCustomerSessionValue,
   revokeCustomerSessionValue,
 } from "./customer-session";
@@ -39,6 +40,7 @@ describe("opaque customer sessions", () => {
       customerId: "customer-1",
       deviceLabel: "Messenger · Android",
       ipHash: "private-ip-hash",
+      authLevel: "guest",
     });
     expect(cookie).toContain("HttpOnly");
     expect(cookie).toContain("SameSite=Lax");
@@ -53,12 +55,26 @@ describe("opaque customer sessions", () => {
       createdAt: new Date(),
       lastSeenAt: new Date(),
       expiresAt: new Date(Date.now() + 60_000),
+      authLevel: "pin",
+      strongAuthenticatedAt: new Date(),
     });
 
     const session = await parseCustomerSessionValue("a".repeat(43));
 
     expect(session?.customerId).toBe("customer-1");
     expect(session?.sessionId).toHaveLength(64);
+    expect(session && hasRecentStrongAuthentication(session)).toBe(true);
+  });
+
+  it("does not treat guest sessions as recent strong authentication", () => {
+    expect(
+      hasRecentStrongAuthentication({
+        customerId: "customer-1",
+        sessionId: "hash",
+        expiresAt: new Date(Date.now() + 60_000),
+        authLevel: "guest",
+      }),
+    ).toBe(false);
   });
 
   it("rejects revoked sessions and revokes logout tokens by hash", async () => {

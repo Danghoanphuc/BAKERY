@@ -8,14 +8,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
-  Gift,
   Heart,
   LayoutGrid,
   MapPin,
   Plus,
   Search,
   ShoppingCart,
-  Star,
   Sparkles,
   X,
 } from "lucide-react";
@@ -35,8 +33,6 @@ import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import { useToast } from "@/hooks/useToast";
 import { useCartStore } from "@/store/cartStore";
 import { useOrderConfigStore } from "@/store/orderConfigStore";
-import { useAvailableVouchers } from "@/features/vouchers/useAvailableVouchers";
-import type { SelectableCustomerVoucher } from "@/features/vouchers/customer-vouchers";
 import { formatPrice } from "@/lib/utils";
 import type { Product } from "@/types/product";
 import type { Category } from "@/types/category";
@@ -119,8 +115,6 @@ export function BakeryHome({
     isAuthenticated: false,
     points: 0,
   });
-  const { vouchers: guestVouchers, isLoading: areVouchersLoading } =
-    useAvailableVouchers();
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
 
   const categoryVisuals = useMemo(
@@ -423,6 +417,7 @@ function HomeHeader({
   );
 }
 
+/* Legacy member-card implementation removed from the active Home experience.
 function MemberCard({
   isAuthenticated,
   memberCode,
@@ -686,6 +681,7 @@ function MemberStat({
   );
 }
 
+*/
 function SearchPill({
   products,
   categories,

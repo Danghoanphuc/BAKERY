@@ -36,6 +36,14 @@ export async function listActiveAllocationPolicies(): Promise<AllocationPolicyVe
   });
 }
 
+export async function listAllAllocationPolicies(): Promise<AllocationPolicyVersion[]> {
+  const snapshot = await getDocs(collection(db, POLICIES));
+  return snapshot.docs.map((item) => {
+    const data = item.data();
+    return { id: item.id, ...data, effectiveFrom: date(data.effectiveFrom) } as AllocationPolicyVersion;
+  }).sort((left, right) => right.version - left.version);
+}
+
 export async function persistAllocationPolicy(
   input: Omit<AllocationPolicyVersion, "id" | "version" | "status" | "createdAt" | "updatedAt">,
 ) {
@@ -67,6 +75,12 @@ export async function getApprovedBudget(period: string): Promise<MonthlyBudget |
   const approved = snapshot.docs.filter((item) => item.data().status === "approved")
     .sort((left, right) => Number(right.data().version ?? 0) - Number(left.data().version ?? 0))[0];
   return approved ? ({ id: approved.id, ...approved.data() } as MonthlyBudget) : null;
+}
+
+export async function listMonthlyBudgets(period: string): Promise<MonthlyBudget[]> {
+  const snapshot = await getDocs(query(collection(db, BUDGETS), where("period", "==", period)));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() } as MonthlyBudget))
+    .sort((left, right) => right.version - left.version);
 }
 
 export async function persistMonthlyBudget(

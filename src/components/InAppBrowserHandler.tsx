@@ -4,7 +4,8 @@ import { useEffect } from "react";
 
 export default function InAppBrowserHandler() {
   useEffect(() => {
-    // Detect in-app browser and redirect to default browser
+    // Client-side fallback for in-app browser detection
+    // This is backup for server-side detection in Cloudflare Worker
     const userAgent = navigator.userAgent.toLowerCase();
     const isFacebookApp = userAgent.includes("fban") || userAgent.includes("fbav");
     const isZaloApp = userAgent.includes("zaloapp");
@@ -12,36 +13,37 @@ export default function InAppBrowserHandler() {
     if (isFacebookApp || isZaloApp) {
       const currentUrl = window.location.href;
       
-      // For Facebook: use fb:// protocol to open in external browser
-      if (isFacebookApp) {
-        // Try to open in external browser using intent scheme
-        const intentUrl = `intent://${currentUrl.replace(/^https?:\/\//, "")}#Intent;scheme=https;package=com.android.chrome;end`;
-        
-        // Fallback to window.location if intent fails
-        try {
-          window.location.href = intentUrl;
-        } catch (e) {
-          // If intent fails, show a message to user
-          document.body.innerHTML = `
-            <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 20px; text-align: center; font-family: sans-serif;">
-              <h2 style="margin-bottom: 20px;">Mở link trong trình duyệt</h2>
-              <p style="margin-bottom: 20px;">Để trải nghiệm tốt nhất, vui lòng mở link này trong trình duyệt mặc định của bạn.</p>
-              <a href="${currentUrl}" style="padding: 12px 24px; background: #007bff; color: white; text-decoration: none; border-radius: 8px;">Mở trong trình duyệt</a>
+      // Only show message if we're on a product page and server-side detection failed
+      if (window.location.pathname.startsWith("/san-pham/")) {
+        // Minimal fallback UI
+        const existingFallback = document.getElementById("in-app-fallback");
+        if (!existingFallback) {
+          const fallbackDiv = document.createElement("div");
+          fallbackDiv.id = "in-app-fallback";
+          fallbackDiv.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            padding: 20px;
+          `;
+          
+          fallbackDiv.innerHTML = `
+            <div style="background: white; border-radius: 20px; padding: 32px; max-width: 400px; width: 100%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+              <h2 style="font-size: 24px; font-weight: 700; color: #1a1a1a; margin-bottom: 16px;">Mở trong trình duyệt</h2>
+              <p style="font-size: 14px; color: #666; line-height: 1.6; margin-bottom: 24px;">Để trải nghiệm tốt nhất, vui lòng mở link này trong trình duyệt mặc định của bạn.</p>
+              <a href="${currentUrl}" style="display: block; width: 100%; padding: 16px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; border-radius: 12px; font-weight: 600; font-size: 16px;">Mở trong trình duyệt</a>
             </div>
           `;
+          
+          document.body.appendChild(fallbackDiv);
         }
-      }
-      
-      // For Zalo: use zalo:// protocol to open in external browser
-      if (isZaloApp) {
-        // Show message to open in external browser
-        document.body.innerHTML = `
-          <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; padding: 20px; text-align: center; font-family: sans-serif;">
-            <h2 style="margin-bottom: 20px;">Mở link trong trình duyệt</h2>
-            <p style="margin-bottom: 20px;">Để trải nghiệm tốt nhất, vui lòng mở link này trong trình duyệt mặc định của bạn.</p>
-            <a href="${currentUrl}" style="padding: 12px 24px; background: #007bff; color: white; text-decoration: none; border-radius: 8px;">Mở trong trình duyệt</a>
-          </div>
-        `;
       }
     }
   }, []);

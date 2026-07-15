@@ -3,7 +3,8 @@ import type {
 } from "@/types";
 import { financeRepository } from "../infrastructure/firestore-finance-repository";
 import {
-  getInventoryBalances, persistCompletedProductionBatch, persistProductSale,
+  getInventoryBalances, getProductionBatches, getPurchaseReceipts, getWasteRecords,
+  persistCompletedProductionBatch, persistProductSale,
   persistPurchaseReceipt, persistWaste,
 } from "../infrastructure/firestore-operations-repository";
 import { getRecipeVersionById } from "../infrastructure/firestore-costing-repository";
@@ -99,7 +100,7 @@ export async function recordInventoryWaste(input: {
   return waste;
 }
 
-export { getInventoryBalances };
+export { getInventoryBalances, getProductionBatches, getPurchaseReceipts, getWasteRecords };
 
 export async function recordProductSaleInventory(input: {
   orderId: string; locationId?: string;

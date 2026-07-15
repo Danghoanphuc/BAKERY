@@ -2,8 +2,8 @@ import type { AllocationPolicyVersion, CostCenter, MonthlyBudget } from "@/types
 import { financeRepository } from "../infrastructure/firestore-finance-repository";
 import {
   activateAllocationPolicy, approveMonthlyBudget, getApprovedBudget,
-  listActiveAllocationPolicies, listCostCenters, persistAllocationPolicy,
-  persistCostCenter, persistMonthlyBudget,
+  listActiveAllocationPolicies, listAllAllocationPolicies, listCostCenters,
+  listMonthlyBudgets, persistAllocationPolicy, persistCostCenter, persistMonthlyBudget,
 } from "../infrastructure/firestore-management-repository";
 
 const periodPattern = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -64,3 +64,9 @@ export async function getManagementConfiguration(period: string) {
   return { costCenters, policies, budget };
 }
 
+export async function getManagementWorkspace(period: string) {
+  const [costCenters, policies, budgets] = await Promise.all([
+    listCostCenters(), listAllAllocationPolicies(), listMonthlyBudgets(period),
+  ]);
+  return { costCenters, policies, budgets };
+}

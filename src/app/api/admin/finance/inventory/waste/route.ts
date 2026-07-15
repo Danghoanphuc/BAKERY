@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
-import { recordInventoryWaste } from "@/features/finance";
+import { getWasteRecords, recordInventoryWaste } from "@/features/finance";
 import { requireAdmin } from "@/lib/auth/require-admin";
+
+export async function GET(request: Request) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
+  return NextResponse.json(await getWasteRecords());
+}
 
 export async function POST(request: Request) {
   const unauthorized = requireAdmin(request);
@@ -18,4 +24,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: insufficient ? message : invalid ? "Invalid waste record" : "Failed to record waste" }, { status: invalid ? 400 : insufficient ? 409 : 500 });
   }
 }
-

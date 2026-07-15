@@ -51,6 +51,12 @@ export async function getActiveRecipeVersions() {
   return snapshot.docs.map((item) => mapRecipe(item.id, item.data()));
 }
 
+export async function getAllRecipeVersions() {
+  const snapshot = await getDocs(collection(db, RECIPES_COLLECTION));
+  return snapshot.docs.map((item) => mapRecipe(item.id, item.data()))
+    .sort((left, right) => right.version - left.version);
+}
+
 export async function getRecipeVersionById(recipeId: string) {
   const snapshot = await getDocs(collection(db, RECIPES_COLLECTION));
   const recipe = snapshot.docs.find((item) => item.id === recipeId);

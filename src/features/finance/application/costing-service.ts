@@ -2,7 +2,7 @@ import type { FinanceIngredient, RecipeVersion } from "@/types";
 import {
   activateRecipeVersion as persistRecipeActivation,
   createFinanceIngredient, createRecipeVersion,
-  getActiveRecipeVersions, getFinanceIngredients, getRecipeVersionById,
+  getActiveRecipeVersions, getAllRecipeVersions, getFinanceIngredients, getRecipeVersionById,
   recordIngredientCost,
 } from "../infrastructure/firestore-costing-repository";
 import { financeRepository } from "../infrastructure/firestore-finance-repository";
@@ -13,6 +13,13 @@ const baseUnits = new Set(["gram", "millilitre", "each"]);
 export async function getStandardCostCatalog() {
   const [ingredients, recipes] = await Promise.all([
     getFinanceIngredients(), getActiveRecipeVersions(),
+  ]);
+  return { ingredients, recipes };
+}
+
+export async function getCostingWorkspace() {
+  const [ingredients, recipes] = await Promise.all([
+    getFinanceIngredients(), getAllRecipeVersions(),
   ]);
   return { ingredients, recipes };
 }

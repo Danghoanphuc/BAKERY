@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
-import { receiveIngredientPurchase } from "@/features/finance";
+import { getPurchaseReceipts, receiveIngredientPurchase } from "@/features/finance";
 import { requireAdmin } from "@/lib/auth/require-admin";
+
+export async function GET(request: Request) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
+  return NextResponse.json(await getPurchaseReceipts());
+}
 
 export async function POST(request: Request) {
   const unauthorized = requireAdmin(request);
@@ -16,4 +22,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: invalid ? "Invalid purchase receipt" : "Failed to receive purchase" }, { status: invalid ? 400 : 500 });
   }
 }
-

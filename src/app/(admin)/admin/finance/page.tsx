@@ -208,17 +208,12 @@ export default function FinancePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-3 rounded-2xl border border-neutral-200 bg-white px-4 py-3 shadow-sm sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-neutral-950">
-            Tài chính & kế toán quản trị
-          </h1>
-          <p className="mt-1 text-sm text-neutral-600">
-            Theo dõi doanh thu, giá vốn, chi phí và lãi gộp để biết món nào,
-            kênh nào thật sự có lời.
-          </p>
+          <h2 className="text-base font-black text-neutral-950">Bức tranh tài chính</h2>
+          <p className="text-xs text-neutral-500">Doanh thu, giá vốn, lãi góp và khả năng thu tiền theo kỳ.</p>
         </div>
-        <div className="inline-flex rounded-lg border border-neutral-200 bg-white p-1">
+        <div className="inline-flex self-start rounded-xl bg-neutral-100 p-1 sm:self-auto">
           {([
             ["today", "Hôm nay"],
             ["month", "Tháng này"],
@@ -228,9 +223,9 @@ export default function FinancePage() {
               key={value}
               type="button"
               onClick={() => setPeriod(value)}
-              className={`rounded-md px-3 py-2 text-sm font-semibold ${
+              className={`rounded-lg px-3 py-2 text-xs font-bold transition ${
                 period === value
-                  ? "bg-brand-500 text-white"
+                  ? "bg-white text-neutral-950 shadow-sm"
                   : "text-neutral-600 hover:bg-neutral-50"
               }`}
             >

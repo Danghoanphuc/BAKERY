@@ -3,6 +3,7 @@ import "./globals.css";
 
 import { Header } from "@/components/layout/Header/Header";
 import FloatingBottomNav from "@/components/layout/BottomNav/FloatingBottomNav";
+import InAppBrowserHandler from "@/components/InAppBrowserHandler";
 
 export const metadata: Metadata = {
   title: "App của bạn",
@@ -68,6 +69,7 @@ export default function RootLayout({
             `,
           }}
         />
+        <InAppBrowserHandler />
         <Header />
 
         <main className="flex-grow w-full">{children}</main>

@@ -104,6 +104,26 @@ function rewriteToBotMeta(request, productId) {
 }
 
 /**
+ * Rewrite request to in-app browser endpoint
+ */
+function rewriteToInAppBrowser(request, productId) {
+  const inAppUrl = `${ORIGIN}/api/in-app-browser/san-pham/${productId}`;
+  
+  const newHeaders = new Headers(request.headers);
+  newHeaders.set("X-Forwarded-Host", new URL(request.url).hostname);
+  newHeaders.set("X-Customer-App-Url", CUSTOMER_APP_URL);
+  
+  const newRequest = new Request(inAppUrl, {
+    method: request.method,
+    headers: newHeaders,
+    body: request.body,
+    redirect: "manual",
+  });
+
+  return fetch(newRequest);
+}
+
+/**
  * Fetch from origin server
  */
 function fetchOrigin(request, pathname) {
@@ -133,6 +153,7 @@ export default {
 
     // Step 2: Route based on User-Agent and URL path
     const isBotRequest = isBot(userAgent);
+    const isInApp = isInAppBrowser(userAgent);
     const isProductPath = pathname.startsWith("/san-pham/");
 
     if (isBotRequest && isProductPath) {
@@ -144,7 +165,16 @@ export default {
       }
     }
 
-    // Step 3: Regular user flow - fetch from origin (including in-app browsers)
+    if (isInApp && isProductPath) {
+      // In-app browser flow: rewrite to /api/in-app-browser/san-pham/:id
+      const productId = extractProductId(pathname);
+      
+      if (productId) {
+        return rewriteToInAppBrowser(request, productId);
+      }
+    }
+
+    // Step 3: Regular user flow - fetch from origin
     return fetchOrigin(request, pathname);
   },
 };

@@ -195,6 +195,21 @@ export async function getInventoryBalances() {
   return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
 }
 
+export async function getPurchaseReceipts() {
+  const snapshot = await getDocs(collection(db, PURCHASES));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+export async function getProductionBatches() {
+  const snapshot = await getDocs(collection(db, BATCHES));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+export async function getWasteRecords() {
+  const snapshot = await getDocs(collection(db, WASTE));
+  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
 export async function persistProductSale(input: {
   idempotencyKey: string;
   orderId: string;

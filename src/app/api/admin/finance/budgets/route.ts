@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
-import { createMonthlyBudget, getManagementConfiguration } from "@/features/finance";
+import { createMonthlyBudget, getManagementWorkspace } from "@/features/finance";
 import { requireAdmin } from "@/lib/auth/require-admin";
 
 export async function GET(request: Request) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
   const period = new URL(request.url).searchParams.get("period") ?? new Date().toISOString().slice(0, 7);
-  return NextResponse.json((await getManagementConfiguration(period)).budget);
+  return NextResponse.json((await getManagementWorkspace(period)).budgets);
 }
 
 export async function POST(request: Request) {
@@ -19,4 +19,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: invalid ? "Invalid monthly budget" : "Failed to create budget" }, { status: invalid ? 400 : 500 });
   }
 }
-

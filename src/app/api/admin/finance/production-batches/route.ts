@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
-import { completeProductionBatch } from "@/features/finance";
+import { completeProductionBatch, getProductionBatches } from "@/features/finance";
 import { requireAdmin } from "@/lib/auth/require-admin";
+
+export async function GET(request: Request) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
+  return NextResponse.json(await getProductionBatches());
+}
 
 export async function POST(request: Request) {
   const unauthorized = requireAdmin(request);
@@ -21,4 +27,3 @@ export async function POST(request: Request) {
     );
   }
 }
-

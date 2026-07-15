@@ -1,11 +1,20 @@
 import { NextResponse } from "next/server";
 import { getProductById } from "@/lib/db";
 
-const DEFAULT_META = {
+interface ProductMeta {
+  title: string;
+  description: string;
+  imageUrl: string;
+  url: string;
+  price: number;
+}
+
+const DEFAULT_META: ProductMeta = {
   title: "Tiệm Bánh Ngọt - Bánh tươi ngon mỗi ngày",
   description: "Chuyên cung cấp các loại bánh ngọt, bánh sinh nhật, bánh mì tươi ngon và chất lượng. Đặt bánh ngay hôm nay!",
   imageUrl: "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=1200&h=630&fit=crop",
   url: "http://localhost:3000",
+  price: 0,
 };
 
 export async function GET(
@@ -20,7 +29,7 @@ export async function GET(
     const customerAppUrl = request.headers.get("X-Customer-App-Url") || 
                            "http://localhost:3000";
 
-    const meta = product
+    const meta: ProductMeta = product
       ? {
           title: product.name,
           description:
@@ -134,7 +143,7 @@ export async function GET(
       <div class="price">${new Intl.NumberFormat("vi-VN", {
         style: "currency",
         currency: "VND",
-      }).format(meta.price || 0)}</div>
+      }).format(meta.price)}</div>
       <a href="${meta.url}" class="button">Mở trong trình duyệt</a>
       <p class="message">Để trải nghiệm tốt nhất, vui lòng mở trong trình duyệt mặc định</p>
     </div>

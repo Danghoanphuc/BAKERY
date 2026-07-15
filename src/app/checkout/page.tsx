@@ -229,7 +229,11 @@ export default function CheckoutPage() {
       setHasSubmittedOrder(true);
       clearCart();
       clearSelectedVoucher();
-      router.push(`/order?orderId=${encodeURIComponent(order.id)}`);
+      const nextPath =
+        paymentMethod === "bank_transfer"
+          ? `/checkout/payment?orderId=${encodeURIComponent(order.id)}`
+          : `/order?orderId=${encodeURIComponent(order.id)}`;
+      router.push(nextPath);
     } catch (submitError) {
       console.error(submitError);
       setError(

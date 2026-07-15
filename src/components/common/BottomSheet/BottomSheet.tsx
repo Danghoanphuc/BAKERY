@@ -39,6 +39,7 @@ export function BottomSheet({
 }: BottomSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const previousScrollRef = useRef({ x: 0, y: 0 });
   const onCloseRef = useRef(onClose);
   const dragStartRef = useRef<number | null>(null);
   const dragOffsetRef = useRef(0);
@@ -58,6 +59,7 @@ export function BottomSheet({
     if (!isOpen) return;
 
     previousFocusRef.current = document.activeElement as HTMLElement;
+    previousScrollRef.current = { x: window.scrollX, y: window.scrollY };
     const previousOverflow = document.body.style.overflow;
     const previousPaddingRight = document.body.style.paddingRight;
     document.body.style.overflow = "hidden";
@@ -95,9 +97,24 @@ export function BottomSheet({
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
       document.body.style.overflow = previousOverflow;
       document.body.style.paddingRight = previousPaddingRight;
-      previousFocusRef.current?.focus();
+      previousFocusRef.current?.focus({ preventScroll: true });
+
+      const restoreViewport = () => {
+        window.scrollTo({
+          left: previousScrollRef.current.x,
+          top: previousScrollRef.current.y,
+          behavior: "auto",
+        });
+      };
+
+      requestAnimationFrame(() => requestAnimationFrame(restoreViewport));
+      window.setTimeout(restoreViewport, 120);
+      window.setTimeout(restoreViewport, 320);
     };
   }, [isOpen]);
 

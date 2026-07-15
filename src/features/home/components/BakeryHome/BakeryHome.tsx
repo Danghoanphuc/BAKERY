@@ -22,6 +22,7 @@ import {
 import { clsx } from "clsx";
 
 import { ProductDetailModal } from "@/features/product/components/ProductDetailModal";
+import { CustomerPinSetupPrompt } from "@/features/auth/CustomerPinSetupPrompt";
 import { useProductBuyNow } from "@/features/product/use-product-buy-now";
 import {
   buildProductCartItem,
@@ -92,6 +93,7 @@ interface BakeryHomeProps {
 
 interface HomeProfileSummary {
   isAuthenticated: boolean;
+  hasPassword?: boolean;
   memberCode?: string;
   name?: string;
   points: number;
@@ -200,6 +202,7 @@ export function BakeryHome({
 
         const nextProfile = {
           isAuthenticated: true,
+          hasPassword: Boolean(data.customer?.hasPassword),
           memberCode: data.customer?.id,
           name: data.customer?.name,
           points: data.rewards?.points?.current ?? 0,
@@ -305,6 +308,20 @@ export function BakeryHome({
           areVouchersLoading={areVouchersLoading}
           isProfileLoading={isProfileLoading}
         />
+        {profileSummary.isAuthenticated &&
+        profileSummary.hasPassword === false ? (
+          <div className="mt-3">
+            <CustomerPinSetupPrompt
+              isVisible
+              onCompleted={() =>
+                setProfileSummary((current) => ({
+                  ...current,
+                  hasPassword: true,
+                }))
+              }
+            />
+          </div>
+        ) : null}
         <CategoryStrip categories={categoryVisuals} />
         <RecommendationSections
           groups={recommendationGroups}

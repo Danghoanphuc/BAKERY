@@ -1,5 +1,6 @@
 import type { CartItem } from "@/types/cart";
 import type { Order, OrderStatus, OrderType, PaymentStatus } from "@/types/order";
+import type { Product } from "@/types/product";
 
 export type HistoryFilter = "all" | "active" | "pickup" | "delivery" | "completed";
 
@@ -52,8 +53,11 @@ const activeStatuses = new Set<OrderStatus>([
   "processing",
 ]);
 
-export function mapOrderToHistoryItem(order: Order): OrderHistoryViewItem {
-  const items = parseOrderItems(order.items);
+export function mapOrderToHistoryItem(
+  order: Order,
+  products: Product[] = [],
+): OrderHistoryViewItem {
+  const items = resolveItemOptionLabels(parseOrderItems(order.items), products);
   const firstItem = items[0];
   const itemCount = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
   const status = normalizeOrderStatus(order.status);
@@ -170,10 +174,33 @@ function normalizeCartItem(value: unknown): CartItem | null {
     price,
     imageUrl: stringValue(item.imageUrl) || stringValue(item.image) || fallbackOrderImage,
     selectedSize: stringValue(item.selectedSize),
+    selectedSizeLabel: stringValue(item.selectedSizeLabel),
     selectedFlavor: stringValue(item.selectedFlavor),
+    selectedFlavorLabel: stringValue(item.selectedFlavorLabel),
     customMessage: stringValue(item.customMessage),
     candles: numberValue(item.candles),
   };
+}
+
+function resolveItemOptionLabels(items: CartItem[], products: Product[]) {
+  if (products.length === 0) return items;
+  const productsById = new Map(products.map((product) => [product.id, product]));
+
+  return items.map((item) => {
+    const product = productsById.get(item.productId);
+    return {
+      ...item,
+      selectedSizeLabel:
+        item.selectedSizeLabel ||
+        product?.sizeOptions?.find((option) => option.id === item.selectedSize)
+          ?.label,
+      selectedFlavorLabel:
+        item.selectedFlavorLabel ||
+        product?.flavorOptions?.find(
+          (option) => option.id === item.selectedFlavor,
+        )?.label,
+    };
+  });
 }
 
 function getLooseItemImage(item?: CartItem) {

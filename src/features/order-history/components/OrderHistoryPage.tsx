@@ -20,9 +20,15 @@ import {
 import { clsx } from "clsx";
 
 import { formatPrice } from "@/lib/utils";
+import { CustomerPinSetupPrompt } from "@/features/auth/CustomerPinSetupPrompt";
 import { useCartStore } from "@/store/cartStore";
 import type { Order } from "@/types/order";
-import type { CartItem } from "@/types/cart";
+import {
+  getCartItemFlavorLabel,
+  getCartItemSizeLabel,
+  type CartItem,
+} from "@/types/cart";
+import type { Product } from "@/types/product";
 import {
   filterHistoryOrders,
   getActionLabel,
@@ -48,6 +54,7 @@ export default function OrderHistoryPage() {
   const [selectedOrder, setSelectedOrder] = useState<OrderHistoryViewItem | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [needsPinSetup, setNeedsPinSetup] = useState(false);
 
   const filteredOrders = useMemo(
     () => filterHistoryOrders(orders, activeFilter, query),
@@ -63,7 +70,11 @@ export default function OrderHistoryPage() {
     setError(null);
 
     try {
-      const response = await fetch("/api/orders");
+      const [response, productsResponse, customerResponse] = await Promise.all([
+        fetch("/api/orders"),
+        fetch("/api/products"),
+        fetch("/api/auth/me"),
+      ]);
 
       if (response.status === 401) {
         window.location.href = "/account/login?next=/order";
@@ -73,7 +84,16 @@ export default function OrderHistoryPage() {
       if (!response.ok) throw new Error("Không thể tải lịch sử đơn hàng.");
 
       const payload = (await response.json()) as Order[];
-      const nextOrders = payload.map(mapOrderToHistoryItem);
+      const products = productsResponse.ok
+        ? ((await productsResponse.json()) as Product[])
+        : [];
+      if (customerResponse.ok) {
+        const customerPayload = await customerResponse.json();
+        setNeedsPinSetup(!customerPayload.customer?.hasPassword);
+      }
+      const nextOrders = payload.map((order) =>
+        mapOrderToHistoryItem(order, products),
+      );
       setOrders(nextOrders);
 
       const requestedOrderId = new URLSearchParams(window.location.search).get("orderId");
@@ -101,7 +121,9 @@ export default function OrderHistoryPage() {
         price: item.price,
         imageUrl: item.imageUrl,
         selectedSize: item.selectedSize,
+        selectedSizeLabel: item.selectedSizeLabel,
         selectedFlavor: item.selectedFlavor,
+        selectedFlavorLabel: item.selectedFlavorLabel,
         customMessage: item.customMessage,
         candles: item.candles,
       });
@@ -188,6 +210,15 @@ export default function OrderHistoryPage() {
           </section>
         )}
 
+        {!selectedOrder && needsPinSetup ? (
+          <div className="mt-3">
+            <CustomerPinSetupPrompt
+              isVisible
+              onCompleted={() => setNeedsPinSetup(false)}
+            />
+          </div>
+        ) : null}
+
         <div className="-mx-4 mt-4 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex w-max gap-2">
             {filters.map((filter) => (
@@ -238,6 +269,8 @@ export default function OrderHistoryPage() {
               window.location.href = selectedOrder.payosCheckoutUrl;
             }
           }}
+          needsPinSetup={needsPinSetup}
+          onPinSetupCompleted={() => setNeedsPinSetup(false)}
         />
       )}
     </main>
@@ -329,11 +362,15 @@ function OrderDetailSheet({
   onClose,
   onBuyAgain,
   onPay,
+  needsPinSetup,
+  onPinSetupCompleted,
 }: {
   order: OrderHistoryViewItem;
   onClose: () => void;
   onBuyAgain: () => void;
   onPay: () => void;
+  needsPinSetup: boolean;
+  onPinSetupCompleted: () => void;
 }) {
   const subtotal = order.productSubtotal ?? order.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
@@ -381,8 +418,12 @@ function OrderDetailSheet({
                   <p className="line-clamp-1 text-sm font-black text-[#542413]">{item.productName}</p>
                   <p className="mt-0.5 text-xs font-semibold text-[#9b715b]">
                     SL {item.quantity}
-                    {item.selectedSize ? ` · Size ${item.selectedSize}` : ""}
-                    {item.selectedFlavor ? ` · ${item.selectedFlavor}` : ""}
+                    {getCartItemSizeLabel(item)
+                      ? ` · Size ${getCartItemSizeLabel(item)}`
+                      : ""}
+                    {getCartItemFlavorLabel(item)
+                      ? ` · Vị ${getCartItemFlavorLabel(item)}`
+                      : ""}
                   </p>
                   {item.customMessage && (
                     <p className="mt-0.5 line-clamp-1 text-xs font-semibold text-[#b38a76]">
@@ -421,6 +462,15 @@ function OrderDetailSheet({
             </div>
           </div>
         </section>
+
+        {needsPinSetup ? (
+          <div className="mt-4">
+            <CustomerPinSetupPrompt
+              isVisible
+              onCompleted={onPinSetupCompleted}
+            />
+          </div>
+        ) : null}
 
         <div className="sticky bottom-0 -mx-4 mt-4 flex gap-2 bg-[#fffaf5]/95 px-4 pb-1 pt-3 backdrop-blur">
           {order.action === "pay" && (

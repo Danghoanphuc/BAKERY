@@ -68,6 +68,7 @@ export default function CheckoutPage() {
 
   const applyAuthenticatedCustomer = useCallback(
     (nextCustomer: Customer, preserveEnteredContact = false) => {
+      setError(null);
       setCustomer(nextCustomer);
       setContact((current) =>
         preserveEnteredContact

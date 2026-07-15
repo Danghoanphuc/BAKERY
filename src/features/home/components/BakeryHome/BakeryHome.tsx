@@ -119,7 +119,6 @@ export function BakeryHome({
     isAuthenticated: false,
     points: 0,
   });
-  const [, setIsProfileLoading] = useState(true);
   const { vouchers: guestVouchers, isLoading: areVouchersLoading } =
     useAvailableVouchers();
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
@@ -227,7 +226,7 @@ export function BakeryHome({
         }
       })
       .finally(() => {
-        if (!cancelled) setIsProfileLoading(false);
+        // Profile loading complete
       });
 
     return () => {

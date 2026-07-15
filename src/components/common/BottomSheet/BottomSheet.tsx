@@ -39,6 +39,7 @@ export function BottomSheet({
 }: BottomSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
   const dragStartRef = useRef<number | null>(null);
   const dragOffsetRef = useRef(0);
   const [dragOffset, setDragOffset] = useState(0);
@@ -48,6 +49,10 @@ export function BottomSheet({
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -66,7 +71,7 @@ export function BottomSheet({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -94,7 +99,7 @@ export function BottomSheet({
       document.body.style.paddingRight = previousPaddingRight;
       previousFocusRef.current?.focus();
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) setDragOffset(0);
@@ -150,7 +155,8 @@ export function BottomSheet({
         )}
         style={{
           transform: `translateY(${dragOffset}px)`,
-          transition: dragStartRef.current === null ? "transform 180ms ease-out" : "none",
+          transition:
+            dragStartRef.current === null ? "transform 180ms ease-out" : "none",
         }}
       >
         <button
@@ -178,7 +184,12 @@ export function BottomSheet({
           <X className="h-4 w-4" />
         </button>
 
-        <div className={clsx("min-h-0 flex-1 overflow-y-auto overscroll-contain", contentClassName)}>
+        <div
+          className={clsx(
+            "min-h-0 flex-1 overflow-y-auto overscroll-contain",
+            contentClassName,
+          )}
+        >
           {children}
         </div>
 

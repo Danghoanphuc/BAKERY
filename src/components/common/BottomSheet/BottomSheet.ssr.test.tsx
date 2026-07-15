@@ -34,4 +34,37 @@ describe("BottomSheet server rendering", () => {
     await act(async () => root.unmount());
     container.remove();
   });
+
+  it("keeps input focus when parent props change while the sheet stays open", async () => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        <BottomSheet isOpen onClose={() => undefined} title="Người nhận">
+          <input aria-label="Họ tên" value="A" onChange={() => undefined} />
+        </BottomSheet>,
+      );
+    });
+
+    const input = document.querySelector<HTMLInputElement>(
+      'input[aria-label="Họ tên"]',
+    );
+    input?.focus();
+    expect(document.activeElement).toBe(input);
+
+    await act(async () => {
+      root.render(
+        <BottomSheet isOpen onClose={() => undefined} title="Người nhận">
+          <input aria-label="Họ tên" value="An" onChange={() => undefined} />
+        </BottomSheet>,
+      );
+    });
+
+    expect(document.activeElement).toBe(input);
+
+    await act(async () => root.unmount());
+    container.remove();
+  });
 });

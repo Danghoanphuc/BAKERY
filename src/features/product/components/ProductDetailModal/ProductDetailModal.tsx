@@ -12,11 +12,11 @@ import {
   CakeSlice,
   ChevronDown,
   Clock3,
-  CreditCard,
   MapPin,
   Minus,
   Plus,
   ShoppingCart,
+  Sparkles,
   Store,
   Truck,
 } from "lucide-react";
@@ -49,7 +49,7 @@ interface ProductDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddToCart: (customization: ProductCustomization) => void;
-  onBuyNow?: (customization: ProductCustomization) => void;
+  onBuyNow: (customization: ProductCustomization) => void;
 }
 
 export function ProductDetailModal({
@@ -128,52 +128,56 @@ export function ProductDetailModal({
       expanded={expanded}
       className="lg:max-w-3xl"
       footer={
-        <div className="flex items-center gap-3">
-          <QuantityControl
-            quantity={quantity}
-            maxQuantity={maxQuantity}
-            onChange={(next) => setQuantity(Math.min(maxQuantity, Math.max(1, next)))}
-          />
-          <button
-            type="button"
-            onClick={() => runValidatedAction(onAddToCart)}
-            disabled={!availability.canOrder}
-            className={clsx(
-              "flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-[14px] px-3 text-sm font-black transition active:scale-[0.98]",
-              onBuyNow
-                ? availability.canOrder
-                  ? "border border-[#b84a39] bg-white text-[#b84a39]"
-                  : "cursor-not-allowed border border-[#d7cbc4] bg-[#f5f0ed] text-[#aa9a91]"
-                : availability.canOrder
-                  ? "bg-[#b84a39] text-white shadow-[0_8px_18px_rgba(184,74,57,0.24)] hover:bg-[#9e3e2f]"
-                  : "cursor-not-allowed bg-[#cdbeb5] text-white",
-            )}
-          >
-            <ShoppingCart className="h-4 w-4 shrink-0" />
-            <span className="truncate">
-              {availability.canOrder
-                ? onBuyNow
-                  ? "Thêm vào giỏ"
-                  : `Thêm · ${formatPrice(totalPrice)}`
-                : availability.shortLabel}
-            </span>
-          </button>
-          {onBuyNow ? (
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <QuantityControl
+              quantity={quantity}
+              maxQuantity={maxQuantity}
+              onChange={(next) =>
+                setQuantity(Math.min(maxQuantity, Math.max(1, next)))
+              }
+            />
+            <div className="min-w-0 text-right">
+              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#9b8171]">
+                Tạm tính
+              </p>
+              <p className="truncate text-base font-black text-[#b84a39]">
+                {formatPrice(totalPrice)}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              type="button"
+              onClick={() => runValidatedAction(onAddToCart)}
+              disabled={!availability.canOrder}
+              className={clsx(
+                "flex h-12 min-w-0 items-center justify-center gap-2 rounded-[14px] border px-3 text-sm font-black transition active:scale-[0.98]",
+                availability.canOrder
+                  ? "border-[#e2b8aa] bg-[#fff8f5] text-[#a74434] hover:bg-[#fff0eb]"
+                  : "cursor-not-allowed border-[#d7cbc4] bg-[#f5f0ed] text-[#aa9a91]",
+              )}
+            >
+              <ShoppingCart className="h-4 w-4 shrink-0" />
+              <span className="truncate">
+                {availability.canOrder ? "Thêm vào giỏ" : availability.shortLabel}
+              </span>
+            </button>
             <button
               type="button"
               onClick={() => runValidatedAction(onBuyNow)}
               disabled={!availability.canOrder}
               className={clsx(
-                "flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-[14px] px-3 text-sm font-black text-white transition active:scale-[0.98]",
+                "flex h-12 min-w-0 items-center justify-center gap-2 rounded-[14px] px-3 text-sm font-black text-white transition active:scale-[0.98]",
                 availability.canOrder
-                  ? "bg-[#b84a39] shadow-[0_8px_18px_rgba(184,74,57,0.24)] hover:bg-[#9e3e2f]"
+                  ? "bg-[linear-gradient(135deg,#c45440,#a53d2f)] shadow-[0_8px_18px_rgba(184,74,57,0.28)] hover:brightness-95"
                   : "cursor-not-allowed bg-[#cdbeb5]",
               )}
             >
-              <CreditCard className="h-4 w-4 shrink-0" />
+              <Sparkles className="h-4 w-4 shrink-0" />
               <span className="truncate">Mua ngay</span>
             </button>
-          ) : null}
+          </div>
         </div>
       }
     >

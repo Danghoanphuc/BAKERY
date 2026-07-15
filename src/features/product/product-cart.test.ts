@@ -46,7 +46,9 @@ describe("product cart helpers", () => {
       price: 400_000,
       imageUrl: "/cake.jpg",
       selectedSize: "large",
+      selectedSizeLabel: "20cm",
       selectedFlavor: "vanilla",
+      selectedFlavorLabel: "Vanilla",
       customMessage: "Chúc mừng",
       candles: undefined,
     });

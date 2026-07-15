@@ -22,6 +22,7 @@ import {
 import { clsx } from "clsx";
 
 import { ProductDetailModal } from "@/features/product/components/ProductDetailModal";
+import { useProductBuyNow } from "@/features/product/use-product-buy-now";
 import {
   buildProductCartItem,
   canQuickAddProduct,
@@ -107,6 +108,7 @@ export function BakeryHome({
   const { addItem, totalQuantity } = useCartStore();
   const { config } = useOrderConfigStore();
   const { toast, showToast, hideToast } = useToast();
+  const buyProductNow = useProductBuyNow();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(
     initialProduct ?? null,
   );
@@ -320,6 +322,9 @@ export function BakeryHome({
           isOpen={!!selectedProduct}
           onClose={closeProductSheet}
           onAddToCart={handleAddToCart}
+          onBuyNow={(customization) =>
+            buyProductNow(selectedProduct, customization)
+          }
         />
       )}
 

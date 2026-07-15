@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ProductCollection } from "@/features/home/components";
 import { ProductDetailModal } from "@/features/product/components/ProductDetailModal";
+import { useProductBuyNow } from "@/features/product/use-product-buy-now";
 import {
   buildProductCartItem,
   type ProductCustomization,
@@ -20,6 +21,7 @@ interface HomepageClientProps {
 export function HomepageClient({ title, products }: HomepageClientProps) {
   const { addItem } = useCartStore();
   const { toast, showToast, hideToast } = useToast();
+  const buyProductNow = useProductBuyNow();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const handleProductClick = (product: Product) => {
@@ -60,6 +62,9 @@ export function HomepageClient({ title, products }: HomepageClientProps) {
           isOpen={!!selectedProduct}
           onClose={handleCloseModal}
           onAddToCart={handleAddToCart}
+          onBuyNow={(customization) =>
+            buyProductNow(selectedProduct, customization)
+          }
         />
       )}
 

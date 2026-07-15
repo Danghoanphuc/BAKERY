@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 
 import { ProductDetailModal } from "@/features/product/components/ProductDetailModal";
+import { useProductBuyNow } from "@/features/product/use-product-buy-now";
 import {
   buildProductCartItem,
   type ProductCustomization,
@@ -28,6 +29,7 @@ const FAVORITE_STORAGE_KEY = "bakery-favorite-products";
 export function FavoritesClient({ products }: { products: Product[] }) {
   const { addItem } = useCartStore();
   const { toast, showToast, hideToast } = useToast();
+  const buyProductNow = useProductBuyNow();
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
@@ -132,6 +134,9 @@ export function FavoritesClient({ products }: { products: Product[] }) {
           isOpen={!!selectedProduct}
           onClose={() => setSelectedProduct(null)}
           onAddToCart={handleAddToCart}
+          onBuyNow={(customization) =>
+            buyProductNow(selectedProduct, customization)
+          }
         />
       )}
 

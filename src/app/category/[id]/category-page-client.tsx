@@ -5,6 +5,7 @@ import { Header } from "@/components/layout";
 import { StickyCart } from "@/components/layout/StickyCart";
 import { ProductCollection } from "@/features/home/components/ProductCollection";
 import { ProductDetailModal } from "@/features/product/components/ProductDetailModal";
+import { useProductBuyNow } from "@/features/product/use-product-buy-now";
 import {
   buildProductCartItem,
   type ProductCustomization,
@@ -26,6 +27,7 @@ export function CategoryPageClient({
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const addToCart = useCartStore((state) => state.addItem);
   const { toast, showToast, hideToast } = useToast();
+  const buyProductNow = useProductBuyNow();
 
   const handleProductClick = (product: Product) => {
     setSelectedProduct(product);
@@ -90,6 +92,9 @@ export function CategoryPageClient({
           isOpen={!!selectedProduct}
           onClose={handleCloseModal}
           onAddToCart={handleAddToCart}
+          onBuyNow={(customization) =>
+            buyProductNow(selectedProduct, customization)
+          }
         />
       )}
 

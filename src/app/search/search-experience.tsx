@@ -15,6 +15,7 @@ import {
 import { clsx } from "clsx";
 
 import { ProductDetailModal } from "@/features/product/components/ProductDetailModal";
+import { useProductBuyNow } from "@/features/product/use-product-buy-now";
 import {
   buildProductCartItem,
   type ProductCustomization,
@@ -160,6 +161,7 @@ export function SearchExperience({
   const { addItem, totalQuantity } = useCartStore();
   const { config } = useOrderConfigStore();
   const { toast, showToast, hideToast } = useToast();
+  const buyProductNow = useProductBuyNow();
   const [query, setQuery] = useState("");
   const [activeFilters, setActiveFilters] = useState<string[]>([]);
   const [sortMode, setSortMode] = useState<SortMode>("relevance");
@@ -440,6 +442,9 @@ export function SearchExperience({
           isOpen={!!selectedProduct}
           onClose={() => setSelectedProduct(null)}
           onAddToCart={handleAddToCart}
+          onBuyNow={(customization) =>
+            buyProductNow(selectedProduct, customization)
+          }
         />
       )}
 

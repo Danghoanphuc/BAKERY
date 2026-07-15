@@ -8,6 +8,7 @@ import {
   buildProductCartItem,
   type ProductCustomization,
 } from "@/features/product/product-cart";
+import { useProductBuyNow } from "@/features/product/use-product-buy-now";
 import { getProductPath } from "@/lib/product-path";
 import { formatPrice } from "@/lib/utils";
 import { useCartStore } from "@/store/cartStore";
@@ -22,13 +23,11 @@ export function FacebookProductExperience({
 }: FacebookProductExperienceProps) {
   const router = useRouter();
   const addItem = useCartStore((state) => state.addItem);
+  const buyProductNow = useProductBuyNow();
 
-  const addAndNavigate = (
-    customization: ProductCustomization,
-    destination: "/cart" | "/checkout",
-  ) => {
+  const addToCart = (customization: ProductCustomization) => {
     addItem(buildProductCartItem(product, customization));
-    router.push(destination);
+    router.push("/cart");
   };
 
   return (
@@ -51,12 +50,8 @@ export function FacebookProductExperience({
         product={product}
         isOpen
         onClose={() => router.push("/")}
-        onAddToCart={(customization) =>
-          addAndNavigate(customization, "/cart")
-        }
-        onBuyNow={(customization) =>
-          addAndNavigate(customization, "/checkout")
-        }
+        onAddToCart={addToCart}
+        onBuyNow={(customization) => buyProductNow(product, customization)}
       />
       <noscript>
         <p className="mx-auto max-w-md p-6 text-center text-sm text-[#65483a]">

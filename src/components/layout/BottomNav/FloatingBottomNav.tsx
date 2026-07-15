@@ -11,11 +11,15 @@ export default function FloatingBottomNav() {
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
+    if (pathname.startsWith("/checkout")) return;
+
     // Check if user is logged in
     fetch("/api/auth/me")
       .then((res) => setIsLoggedIn(res.ok))
       .catch(() => setIsLoggedIn(false));
-  }, []);
+  }, [pathname]);
+
+  if (pathname.startsWith("/checkout")) return null;
 
   // Use the same four-item navigation across customer-facing pages.
   return <ProfileBottomNav pathname={pathname} isLoggedIn={isLoggedIn} />;

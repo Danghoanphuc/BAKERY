@@ -45,6 +45,26 @@ describe("bakery edge router", () => {
     expect(originRequest.headers.has("X-Facebook-In-App")).toBe(false);
   });
 
+  it("keeps origin redirects on the public hostname", async () => {
+    const fetchMock = vi.fn(async () =>
+      Response.redirect("https://origin.example/cart?from=product", 307),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await worker.fetch(
+      new Request("https://bakery.example/san-pham/cake"),
+      env,
+    );
+
+    expect(response.status).toBe(307);
+    expect(response.headers.get("Location")).toBe(
+      "https://bakery.example/cart?from=product",
+    );
+    expect(fetchMock.mock.calls[0]![0].headers.get("X-Forwarded-Host")).toBe(
+      "bakery.example",
+    );
+  });
+
   it("keeps Facebook crawler metadata separate from the customer UI", async () => {
     const fetchMock = vi.fn(async (_request: Request) => new Response("ok"));
     vi.stubGlobal("fetch", fetchMock);

@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { persist, createJSONStorage } from "zustand/middleware";
+import { persist } from "zustand/middleware";
+import { createSafeJsonStorage } from "@/lib/storage/safe-json-storage";
 import { DeliveryMode, OrderConfig, OrderTiming } from "@/types";
 
 interface OrderConfigState {
@@ -8,66 +9,6 @@ interface OrderConfigState {
   setOrderTiming: (timing: OrderTiming) => void;
   setDeliveryAddress: (address: OrderConfig["deliveryAddress"]) => void;
 }
-
-// Custom storage with error handling for localStorage quota exceeded
-const createSafeStorage = () => {
-  return createJSONStorage<OrderConfigState>(() => ({
-    getItem: (name: string) => {
-      if (typeof window === "undefined") {
-        return null;
-      }
-
-      try {
-        const str = localStorage.getItem(name);
-        return str ? JSON.parse(str) : null;
-      } catch (error) {
-        console.error(
-          "Failed to retrieve order config from localStorage:",
-          error,
-        );
-        return null;
-      }
-    },
-    setItem: (name: string, value: string) => {
-      if (typeof window === "undefined") {
-        return;
-      }
-
-      try {
-        localStorage.setItem(name, value);
-      } catch (error) {
-        // Handle quota exceeded error
-        if (
-          error instanceof DOMException &&
-          (error.name === "QuotaExceededError" ||
-            error.name === "NS_ERROR_DOM_QUOTA_REACHED")
-        ) {
-          console.error(
-            "localStorage quota exceeded. Order config changes will not be persisted.",
-          );
-          // Optionally notify user through a toast or notification system
-          // For now, we log the error and continue with in-memory state
-        } else {
-          console.error("Failed to save order config to localStorage:", error);
-        }
-      }
-    },
-    removeItem: (name: string) => {
-      if (typeof window === "undefined") {
-        return;
-      }
-
-      try {
-        localStorage.removeItem(name);
-      } catch (error) {
-        console.error(
-          "Failed to remove order config from localStorage:",
-          error,
-        );
-      }
-    },
-  }));
-};
 
 export const useOrderConfigStore = create<OrderConfigState>()(
   persist(
@@ -146,7 +87,7 @@ export const useOrderConfigStore = create<OrderConfigState>()(
     {
       name: "bakery-order-config-storage",
       version: 1,
-      storage: createSafeStorage(),
+      storage: createSafeJsonStorage<OrderConfigState>("order config"),
     },
   ),
 );

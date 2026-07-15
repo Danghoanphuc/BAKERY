@@ -61,12 +61,42 @@ async function fetchFacebookCrawlerPage(request, config, productId) {
 
 async function fetchApplication(request, config, pathname, isFacebookInApp) {
   const headers = new Headers(request.headers);
+  const incomingUrl = new URL(request.url);
   headers.set("X-Customer-App-Url", config.customerAppUrl);
+  headers.set("X-Forwarded-Host", incomingUrl.host);
+  headers.set("X-Forwarded-Proto", incomingUrl.protocol.replace(":", ""));
   if (isFacebookInApp) headers.set("X-Facebook-In-App", "1");
-  return fetchOriginWithRetry(
+  const response = await fetchOriginWithRetry(
     () => createOriginRequest(request, config.origin, pathname, headers),
     request.method,
   );
+
+  return rewriteOriginRedirect(response, request, config.origin);
+}
+
+function rewriteOriginRedirect(response, request, origin) {
+  const location = response.headers.get("Location");
+  if (!location || response.status < 300 || response.status >= 400) {
+    return response;
+  }
+
+  const originUrl = new URL(origin);
+  const redirectUrl = new URL(location, originUrl);
+  if (redirectUrl.origin !== originUrl.origin) return response;
+
+  const publicUrl = new URL(request.url);
+  publicUrl.pathname = redirectUrl.pathname;
+  publicUrl.search = redirectUrl.search;
+  publicUrl.hash = redirectUrl.hash;
+
+  const responseHeaders = new Headers(response.headers);
+  responseHeaders.set("Location", publicUrl.toString());
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: responseHeaders,
+  });
 }
 
 function isRetryableResponse(response) {

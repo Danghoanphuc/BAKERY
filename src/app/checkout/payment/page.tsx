@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft,
@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { resolvePaymentQrImageSrc } from "@/lib/payment-qr";
 import { formatPrice } from "@/lib/utils";
+import { getCustomerOrderPath } from "@/lib/order-routes";
 
 type PaymentStatusPayload = {
   id: string;
@@ -55,7 +56,7 @@ function CheckoutPaymentContent() {
   const [isChecking, setIsChecking] = useState(false);
   const [isSavingQr, setIsSavingQr] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasRedirected, setHasRedirected] = useState(false);
+  const hasRedirected = useRef(false);
   const [clockTick, setClockTick] = useState(0);
 
   const qrImageSrc = useMemo(
@@ -168,19 +169,15 @@ function CheckoutPaymentContent() {
   }, [isCancelled, isPaid, payment?.expiresAt]);
 
   useEffect(() => {
-    if (!isPaid || hasRedirected) return;
+    if (!isPaid || hasRedirected.current || !orderId) return;
 
-    setHasRedirected(true);
+    hasRedirected.current = true;
     const timer = window.setTimeout(() => {
-      router.replace(
-        `/order-success?orderNumber=${encodeURIComponent(
-          orderNumber ?? "",
-        )}&payment=paid`,
-      );
-    }, 1600);
+      router.replace(getCustomerOrderPath(orderId));
+    }, 1200);
 
     return () => window.clearTimeout(timer);
-  }, [hasRedirected, isPaid, orderNumber, router]);
+  }, [isPaid, orderId, router]);
 
   return (
     <main className="brand-page px-4 py-3">

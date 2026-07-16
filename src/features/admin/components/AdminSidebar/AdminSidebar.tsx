@@ -17,6 +17,8 @@ import {
   Users,
 } from "lucide-react";
 import { clsx } from "clsx";
+import { BrandLogo } from "@/components/brand/BrandLogo";
+import { ADMIN_ROLE_LABELS, canAdminAccessPath, type AdminPrincipal } from "@/lib/auth/admin-rbac";
 
 const menuItems = [
   {
@@ -75,7 +77,7 @@ const menuItems = [
   },
 ];
 
-export function AdminSidebar() {
+export function AdminSidebar({ admin }: { admin: AdminPrincipal }) {
   const pathname = usePathname();
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -103,9 +105,7 @@ export function AdminSidebar() {
             isExpanded ? "flex" : "hidden",
           )}
         >
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#d94a34] text-sm font-black text-white shadow-sm">
-            ST
-          </span>
+          <BrandLogo variant="mark" className="h-10 w-10 shrink-0 rounded-xl shadow-sm" alt="" />
           <span className="min-w-0">
             <span className="block truncate text-base font-black text-[#123e66]">
               SweetTime Admin
@@ -133,7 +133,7 @@ export function AdminSidebar() {
 
       <nav className="flex-1 px-3 py-4">
         <ul className="space-y-2">
-          {menuItems.map((item) => {
+          {menuItems.filter((item) => canAdminAccessPath(admin.role, item.href)).map((item) => {
             const Icon = item.icon;
             const isActive =
               pathname === item.href ||
@@ -173,8 +173,8 @@ export function AdminSidebar() {
         <div className="rounded-xl bg-[#f3f6f7] px-3 py-3 text-xs font-semibold text-[#6f777b] ring-1 ring-[#dfe5e8]">
           {isExpanded ? (
             <>
-              <p className="text-[#123e66]">SweetTime POS</p>
-              <p className="mt-1">Version 1.0.0</p>
+              <p className="truncate text-[#123e66]">{admin.name}</p>
+              <p className="mt-1 truncate">{ADMIN_ROLE_LABELS[admin.role]}</p>
             </>
           ) : (
             <span>v1</span>

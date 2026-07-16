@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 150" role="img" aria-labelledby="title desc">
+  <title id="title">SweetTime</title>
+  <desc id="desc">SweetTime wordmark in brick red and deep navy with the Bake Joy, Share Time tagline.</desc>
+  <rect width="520" height="150" rx="18" fill="#F4EBDD"/>
+  <g transform="translate(28 27)">
+    <path d="M36 31c-4.5-8-16.8-4.9-16.8 4.5 0 7.8 9.5 13.2 16.8 19.3 7.3-6.1 16.8-11.5 16.8-19.3C52.8 26.1 40.5 23 36 31Z" fill="#D94A34"/>
+    <path d="M18 62h36M24 62v6h24v-6" fill="none" stroke="#123E66" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="102" y="78" fill="#D94A34" font-family="Georgia, 'Times New Roman', serif" font-size="62" font-weight="700" font-style="italic">Sweet</text>
+  <text x="292" y="78" fill="#123E66" font-family="Georgia, 'Times New Roman', serif" font-size="62" font-weight="700" font-style="italic">Time</text>
+  <text x="105" y="111" fill="#2F8D88" font-family="Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="3">BAKE JOY, SHARE TIME</text>
+</svg>

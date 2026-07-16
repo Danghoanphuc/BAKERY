@@ -10,5 +10,5 @@ export default async function AdminLayout({
 }) {
   const session = parseAdminSessionValue((await cookies()).get(ADMIN_SESSION_COOKIE)?.value);
   if (!session) redirect("/admin-login");
-  return <AdminFrame>{children}</AdminFrame>;
+  return <AdminFrame admin={{ id: session.id, name: session.name, role: session.role }}>{children}</AdminFrame>;
 }

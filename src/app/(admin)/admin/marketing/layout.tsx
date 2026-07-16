@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Gift, TicketPercent } from "lucide-react";
+import { BarChart3, Gift, Palette, TicketPercent } from "lucide-react";
 
 const sections = [
   { href: "/admin/marketing", label: "Tổng quan", icon: BarChart3, exact: true },
   { href: "/admin/marketing/vouchers", label: "Voucher", icon: TicketPercent },
   { href: "/admin/marketing/loyalty", label: "Tích điểm", icon: Gift },
+  { href: "/admin/marketing/brand", label: "Thương hiệu", icon: Palette },
 ];
 
 export default function MarketingLayout({ children }: { children: React.ReactNode }) {

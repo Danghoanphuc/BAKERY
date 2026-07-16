@@ -1,12 +1,22 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import { clsx } from "clsx";
 import { AdminSidebar } from "@/features/admin/components/AdminSidebar";
+import { canAdminAccessPath, getAdminHomeForRole, type AdminPrincipal } from "@/lib/auth/admin-rbac";
 
-export function AdminFrame({ children }: { children: React.ReactNode }) {
+export function AdminFrame({ children, admin }: { children: React.ReactNode; admin: AdminPrincipal }) {
   const pathname = usePathname();
+  const router = useRouter();
   const isPosRoute = pathname === "/admin/pos" || pathname.startsWith("/admin/pos/");
+  const canAccess = canAdminAccessPath(admin.role, pathname);
+
+  useEffect(() => {
+    if (!canAccess) router.replace(getAdminHomeForRole(admin.role));
+  }, [admin.role, canAccess, router]);
+
+  if (!canAccess) return null;
 
   return (
     <div
@@ -15,7 +25,7 @@ export function AdminFrame({ children }: { children: React.ReactNode }) {
         isPosRoute ? "bg-[#f3f5f4]" : "admin-ui-frame bg-[#f3f5f4]",
       )}
     >
-      <AdminSidebar />
+      <AdminSidebar admin={admin} />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <main
           className={clsx(

@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   BarChart3,
   Loader2,
+  Palette,
   Plus,
   ReceiptText,
   Save,
@@ -180,9 +181,10 @@ export default function MarketingPage() {
         <SummaryCard icon={<BarChart3 className="h-5 w-5" />} label="Doanh thu tạo ra" value={formatCurrency(totals.revenueGenerated)} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <Link href="/admin/marketing/vouchers" className="group rounded-2xl border border-[#f0d8b8] bg-[#fffaf0] p-6 transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-lg"><div className="flex items-start justify-between gap-4"><span className="grid h-12 w-12 place-items-center rounded-xl bg-[#ffc845] text-[#74351f]"><TicketPercent className="h-6 w-6" /></span><span className="text-sm font-black text-brand-600">Mở workspace →</span></div><h2 className="mt-5 text-xl font-black text-[#3d2417]">Voucher</h2><p className="mt-2 text-sm leading-6 text-[#7b6254]">Tạo bằng AI, quản lý phát hành, lượt dùng, ngân sách, phiên bản và audit tại một nơi duy nhất.</p><div className="mt-5 flex gap-5 text-sm"><span><b className="block text-lg text-[#3d2417]">{formatNumber(campaigns.length)}</b> chương trình</span><span><b className="block text-lg text-emerald-700">{formatNumber(totals.active)}</b> đang chạy</span></div></Link>
         <Link href="/admin/marketing/loyalty" className="group rounded-2xl border border-neutral-200 bg-white p-6 text-left transition hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-lg"><div className="flex items-start justify-between gap-4"><span className="grid h-12 w-12 place-items-center rounded-xl bg-brand-50 text-brand-600"><SlidersHorizontal className="h-6 w-6" /></span><span className="text-sm font-black text-brand-600">Mở workspace →</span></div><h2 className="mt-5 text-xl font-black text-neutral-950">Loyalty Operating System</h2><p className="mt-2 text-sm leading-6 text-neutral-600">Vận hành điểm, hạng thành viên, luật thưởng, kho phần thưởng, phân khúc và mô phỏng.</p><p className="mt-5 text-sm font-bold text-neutral-700">{settings?.pointsPerAmount ? `${formatCurrency(settings.pointsPerAmount)} = 1 điểm` : "Chưa cấu hình"}</p></Link>
+        <Link href="/admin/marketing/brand" className="group rounded-2xl border border-[#cde5e1] bg-[#f6fbfa] p-6 text-left transition hover:-translate-y-0.5 hover:border-[#2f8d88]/60 hover:shadow-lg"><div className="flex items-start justify-between gap-4"><span className="grid h-12 w-12 place-items-center rounded-xl bg-[#e3f1ee] text-[#2f8d88]"><Palette className="h-6 w-6" /></span><span className="text-sm font-black text-[#2f8d88]">Xem hướng dẫn →</span></div><h2 className="mt-5 text-xl font-black text-[#123e66]">Thương hiệu SweetTime</h2><p className="mt-2 text-sm leading-6 text-[#647078]">Tra cứu màu sắc, typography, logo, giọng điệu và nguyên tắc ứng dụng nhất quán.</p><p className="mt-5 text-sm font-bold text-[#123e66]">Warm · Joyful · Refined</p></Link>
       </div>
 
       {isSettingsOpen && settingsDraft && (

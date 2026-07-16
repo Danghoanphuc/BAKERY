@@ -207,6 +207,9 @@ export const AddressModal: React.FC<AddressModalProps> = ({
           // Suppress all Goong map errors since they are usually non-critical warnings
           console.debug("Goong map event (suppressed):", event);
         });
+        map.on("load", () => {
+          console.debug("Goong map loaded successfully");
+        });
         const marker = new window.goongjs.Marker({
           draggable: true,
           color: "#d94a34",
@@ -238,18 +241,29 @@ export const AddressModal: React.FC<AddressModalProps> = ({
     };
   }, [coords.lat, coords.lng, isOpen]);
 
+  // Call map.resize() when modal is fully opened to ensure proper rendering
+  useEffect(() => {
+    if (isOpen && mapRef.current) {
+      // Wait a bit for the modal to render completely
+      const timer = setTimeout(() => {
+        mapRef.current?.resize();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     markerRef.current?.setLngLat([coords.lng, coords.lat]);
     mapRef.current?.flyTo({ center: [coords.lng, coords.lat], zoom: 16 });
   }, [coords.lat, coords.lng]);
 
   useEffect(() => {
-    if (isOpen) return;
-
-    markerRef.current?.remove();
-    mapRef.current?.remove();
-    markerRef.current = null;
-    mapRef.current = null;
+    if (!isOpen) {
+      markerRef.current?.remove();
+      mapRef.current?.remove();
+      markerRef.current = null;
+      mapRef.current = null;
+    }
   }, [isOpen]);
 
   async function selectPrediction(prediction: GoongPrediction) {
@@ -460,7 +474,7 @@ export const AddressModal: React.FC<AddressModalProps> = ({
         </div>
 
         <div className="overflow-hidden rounded-2xl border border-sand bg-cream">
-          <div ref={mapContainerRef} className="h-42 w-full" />
+          <div ref={mapContainerRef} className="h-56 w-full" />
           {mapError && (
             <div className="border-t border-sand px-3 py-2 text-xs font-bold text-amber-800">
               {mapError}
@@ -522,7 +536,7 @@ function loadGoongSdk() {
       link.id = GOONG_CSS_ID;
       link.rel = "stylesheet";
       link.href =
-        "https://cdn.jsdelivr.net/npm/@goongmaps/goong-js@1.0.9/dist/goong-js.css";
+        "https://cdn.jsdelivr.net/npm/@goongmaps/goong-js@1.0.11/dist/goong-js.css";
       document.head.appendChild(link);
     }
 
@@ -538,7 +552,7 @@ function loadGoongSdk() {
     const script = document.createElement("script");
     script.id = GOONG_SCRIPT_ID;
     script.src =
-      "https://cdn.jsdelivr.net/npm/@goongmaps/goong-js@1.0.9/dist/goong-js.js";
+      "https://cdn.jsdelivr.net/npm/@goongmaps/goong-js@1.0.11/dist/goong-js.js";
     script.async = true;
     script.onload = () => resolve();
     script.onerror = () => reject(new Error("GOONG_SCRIPT_LOAD_FAILED"));

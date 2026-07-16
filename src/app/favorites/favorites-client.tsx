@@ -71,34 +71,34 @@ export function FavoritesClient({ products }: { products: Product[] }) {
   };
 
   return (
-    <main className="min-h-screen bg-bg-main text-text-primary">
+    <main className="brand-page">
       <div className="mx-auto min-h-screen w-full max-w-[480px] px-4 pb-32 pt-3">
         <header className="mb-4 flex items-center justify-between">
           <Link
             href="/"
-            className="grid h-10 w-10 place-items-center rounded-full border border-[#efdfd1] bg-white text-[#3d2417] shadow-sm"
+            className="grid h-10 w-10 place-items-center rounded-xl border border-sand bg-bg-card text-navy shadow-sm"
             aria-label="Về trang chủ"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <div className="text-center">
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#b84a39]">
+            <p className="brand-eyebrow">
               Bộ sưu tập
             </p>
-            <h1 className="text-xl font-black text-[#3d2417]">Yêu thích</h1>
+            <h1 className="brand-heading text-xl">Yêu thích</h1>
           </div>
           <Link
             href="/cart"
-            className="grid h-10 w-10 place-items-center rounded-full border border-[#efdfd1] bg-white text-[#3d2417] shadow-sm"
+            className="grid h-10 w-10 place-items-center rounded-xl border border-sand bg-bg-card text-navy shadow-sm"
             aria-label="Giỏ hàng"
           >
             <ShoppingCart className="h-5 w-5" />
           </Link>
         </header>
 
-        <section className="mb-5 rounded-[18px] border border-[#f0dfcc] bg-white p-4 shadow-sm">
+        <section className="brand-card mb-5 p-4">
           <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-full bg-[#fff0f2] text-[#b84a39]">
+            <span className="grid h-11 w-11 place-items-center rounded-xl bg-brand-50 text-brand-500">
               <Heart className="h-5 w-5 fill-current" />
             </span>
             <div className="min-w-0 flex-1">
@@ -160,14 +160,14 @@ function FavoriteProductCard({
   onRemove: () => void;
 }) {
   return (
-    <article className="overflow-hidden rounded-[16px] border border-[#f0e3d3] bg-white shadow-[0_4px_12px_rgba(139,75,31,0.06)]">
+    <article className="brand-card overflow-hidden">
       <button
         type="button"
         onClick={onOpen}
         className="block w-full text-left"
         aria-label={`Xem ${product.name}`}
       >
-        <div className="relative aspect-[4/5] bg-[#fdf9f4]">
+        <div className="relative aspect-[4/5] bg-cream">
           <ProductImage
             src={product.imageUrl}
             alt={product.name}
@@ -179,10 +179,10 @@ function FavoriteProductCard({
           </span>
         </div>
         <div className="p-3">
-          <h2 className="line-clamp-2 min-h-[36px] text-[13px] font-bold leading-tight text-[#3d2417]">
+          <h2 className="line-clamp-2 min-h-[40px] text-sm font-bold leading-5 text-navy">
             {product.name}
           </h2>
-          <p className="mt-2 text-[14px] font-black text-[#b84a39]">
+          <p className="mt-2 text-sm font-black text-brand-500">
             {formatPrice(product.price)}
           </p>
         </div>
@@ -192,7 +192,7 @@ function FavoriteProductCard({
         <button
           type="button"
           onClick={onOpen}
-          className="flex h-9 flex-1 items-center justify-center rounded-full bg-[#b84a39] text-xs font-black text-white shadow-sm transition active:scale-95"
+          className="flex h-10 flex-1 items-center justify-center rounded-xl bg-brand-500 text-xs font-extrabold text-white shadow-sm transition active:scale-95"
         >
           Thêm vào giỏ
         </button>

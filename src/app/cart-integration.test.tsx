@@ -29,6 +29,11 @@ describe("Cart Integration", () => {
     useCartStore.getState().clearCart();
   });
 
+  const addProductFromCard = async () => {
+    fireEvent.click(screen.getByText("Thêm"));
+    fireEvent.click(await screen.findByText("Thêm vào giỏ"));
+  };
+
   it("adds product to cart and triggers StickyCart to appear", async () => {
     const { rerender } = render(
       <div>
@@ -41,8 +46,7 @@ describe("Cart Integration", () => {
     expect(screen.queryByText("Xem giỏ hàng")).not.toBeInTheDocument();
 
     // Find and click the "Thêm" button
-    const addButton = screen.getByText("Thêm");
-    fireEvent.click(addButton);
+    await addProductFromCard();
 
     // Wait for the toast notification
     await waitFor(() => {
@@ -79,9 +83,8 @@ describe("Cart Integration", () => {
     );
 
     // Add product twice
-    const addButton = screen.getByText("Thêm");
-    fireEvent.click(addButton);
-    fireEvent.click(addButton);
+    await addProductFromCard();
+    await addProductFromCard();
 
     // Wait for the second toast notification
     await waitFor(() => {
@@ -111,8 +114,7 @@ describe("Cart Integration", () => {
   it("displays toast notification on successful add to cart", async () => {
     render(<HomepageClient title="Test Collection" products={[mockProduct]} />);
 
-    const addButton = screen.getByText("Thêm");
-    fireEvent.click(addButton);
+    await addProductFromCard();
 
     // Check that toast notification appears
     await waitFor(() => {
@@ -130,8 +132,7 @@ describe("Cart Integration", () => {
   it("closes toast notification when close button is clicked", async () => {
     render(<HomepageClient title="Test Collection" products={[mockProduct]} />);
 
-    const addButton = screen.getByText("Thêm");
-    fireEvent.click(addButton);
+    await addProductFromCard();
 
     // Wait for toast to appear
     await waitFor(() => {

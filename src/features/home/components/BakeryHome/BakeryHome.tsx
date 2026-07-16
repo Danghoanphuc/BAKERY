@@ -275,12 +275,10 @@ export function BakeryHome({
   };
 
   return (
-    <div className="min-h-screen bg-[#fffaf5] text-[#542413]">
-      <div className="pointer-events-none fixed inset-x-0 top-0 h-[360px] bg-[radial-gradient(circle_at_top_left,#fff2dc,transparent_42%),linear-gradient(180deg,#fff8ec_0%,#fffaf5_75%)]" />
+    <div className="brand-page">
 
       <div className="relative mx-auto min-h-screen w-full max-w-[480px] px-4 pb-28">
-        <div className="sticky top-0 z-40 -mx-4 overflow-visible border-b border-white/65 bg-white/[0.26] px-4 pb-2 pt-2 shadow-[0_10px_28px_rgba(83,38,12,0.07),inset_0_-1px_0_rgba(255,255,255,0.7)] backdrop-blur-[26px] backdrop-brightness-[1.06] backdrop-saturate-[1.7]">
-          <span className="pointer-events-none absolute inset-0 -z-10 bg-[linear-gradient(155deg,rgba(255,255,255,0.62),rgba(255,255,255,0.12)_58%,rgba(184,74,57,0.05))]" />
+        <div className="sticky top-0 z-40 -mx-4 overflow-visible border-b border-sand/80 bg-bg-main/95 px-4 pb-3 pt-3 shadow-[0_5px_18px_rgba(18,62,102,0.06)] backdrop-blur-md">
           <HomeHeader
             cartCount={totalQuantity}
             address={deliveryAddress}
@@ -361,7 +359,7 @@ function HomeHeader({
     <header>
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="truncate text-[21px] font-black leading-tight text-[#542413]">
+          <h1 className="truncate text-xl font-extrabold leading-tight text-navy">
             {name ? (
               <>
                 <span className="font-semibold">Chào mừng</span> {name}
@@ -369,19 +367,19 @@ function HomeHeader({
             ) : (
               <span className="font-semibold">Xin chào quý khách</span>
             )}{" "}
-            <span className="text-[#e86a5c]">♥</span>
+            <span className="text-brand-500">♥</span>
           </h1>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
           <Link
             href="/favorites"
-            className="relative grid h-10 w-10 place-items-center rounded-full border border-white/70 bg-white/35 text-[#542413] shadow-[0_5px_14px_rgba(83,38,12,0.09),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-xl transition active:scale-90"
+            className="relative grid h-10 w-10 place-items-center rounded-xl border border-sand bg-bg-card text-navy shadow-sm transition active:scale-95"
             aria-label="Yêu thích"
           >
             <Heart className="h-7 w-7" strokeWidth={1.8} />
             {favoriteCount > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#c35847] px-1 text-[11px] font-black text-white">
+              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1 text-[11px] font-black text-white">
                 {favoriteCount}
               </span>
             )}
@@ -389,12 +387,12 @@ function HomeHeader({
 
           <Link
             href="/cart"
-            className="relative grid h-10 w-10 place-items-center rounded-full border border-white/70 bg-white/35 text-[#542413] shadow-[0_5px_14px_rgba(83,38,12,0.09),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-xl transition active:scale-90"
+            className="relative grid h-10 w-10 place-items-center rounded-xl border border-sand bg-bg-card text-navy shadow-sm transition active:scale-95"
             aria-label="Giỏ hàng"
           >
             <ShoppingCart className="h-8 w-8" strokeWidth={1.8} />
             {cartCount > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-7 min-w-7 items-center justify-center rounded-full bg-[#c35847] px-1.5 text-sm font-black text-white max-sm:h-5 max-sm:min-w-5 max-sm:text-[11px]">
+              <span className="absolute -right-1.5 -top-1.5 flex h-7 min-w-7 items-center justify-center rounded-full bg-brand-500 px-1.5 text-sm font-black text-white max-sm:h-5 max-sm:min-w-5 max-sm:text-[11px]">
                 {cartCount}
               </span>
             )}
@@ -406,7 +404,7 @@ function HomeHeader({
         <button
           type="button"
           onClick={onAddressClick}
-          className="flex min-w-0 items-center gap-1.5 text-left text-[12px] font-semibold text-[#6a321f]"
+          className="flex min-w-0 items-center gap-1.5 text-left text-xs font-semibold text-charcoal"
         >
           <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.6} />
           <span className="truncate">{address}</span>
@@ -734,14 +732,14 @@ function SearchPill({
       <form
         onSubmit={handleSubmit}
         className={clsx(
-          "relative z-[82] flex h-11 items-center gap-2.5 overflow-hidden rounded-full border bg-white/[0.34] px-3.5 shadow-[0_6px_18px_rgba(83,38,12,0.09),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-[20px] backdrop-saturate-[1.6] transition-all duration-300",
+          "relative z-[82] flex h-12 items-center gap-2.5 overflow-hidden rounded-xl border bg-bg-card px-3.5 shadow-sm transition-all duration-200",
           isOpen
-            ? "border-white/90 bg-white/55 shadow-[0_10px_26px_rgba(184,74,57,0.16),0_0_0_2px_rgba(184,74,57,0.1),inset_0_1px_0_white]"
-            : "border-white/75",
+            ? "border-teal ring-2 ring-teal/15"
+            : "border-sand",
         )}
       >
         <Search
-          className="h-[18px] w-[18px] shrink-0 text-[#9b715b]"
+          className="h-[18px] w-[18px] shrink-0 text-teal"
           strokeWidth={1.8}
         />
         <input
@@ -751,7 +749,7 @@ function SearchPill({
           onChange={(event) => setQuery(event.target.value)}
           onFocus={openSearch}
           placeholder="Tìm bánh sinh nhật, croissant, trà trái cây, trà sữa, bánh ngọt..."
-          className="min-w-0 flex-1 bg-transparent text-xs font-medium text-[#542413] outline-none placeholder:text-[#b58c78]"
+          className="min-w-0 flex-1 bg-transparent text-sm font-medium text-charcoal outline-none placeholder:text-text-light"
           aria-label="Tìm bánh"
         />
         {query && (
@@ -780,7 +778,7 @@ function SearchPill({
 
       <div
         className={clsx(
-          "absolute left-0 right-0 top-[58px] z-[81] max-h-[70vh] overflow-y-auto rounded-[23px] border border-white/90 bg-[#fffaf6]/95 shadow-[0_20px_42px_rgba(83,38,12,0.2),inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-[32px] backdrop-saturate-[1.35] transition-all duration-200",
+          "absolute left-0 right-0 top-[58px] z-[81] max-h-[70vh] overflow-y-auto rounded-2xl border border-sand bg-bg-card/95 shadow-[0_18px_38px_rgba(18,62,102,0.15)] backdrop-blur-lg transition-all duration-200",
           isOpen
             ? "pointer-events-auto translate-y-0 opacity-100"
             : "pointer-events-none -translate-y-1 opacity-0",
@@ -990,7 +988,7 @@ function normalizeSuggestionText(value: string) {
 function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
   return (
     <section className="pt-4">
-      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.14em] text-[#a17864]">
+      <p className="brand-eyebrow mb-3">
         Danh mục sản phẩm
       </p>
       <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -998,9 +996,9 @@ function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
           <Link
             key={`${category.name}-${index}`}
             href={category.href}
-            className="group w-[calc((100%_-_32px)/5)] min-w-[calc((100%_-_32px)/5)] shrink-0 snap-start overflow-hidden rounded-[10px] border border-white/80 bg-white/35 shadow-[0_4px_12px_rgba(83,38,12,0.07),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-[14px] backdrop-saturate-150 transition active:scale-[0.96]"
+            className="group w-[calc((100%_-_24px)/4)] min-w-[calc((100%_-_24px)/4)] shrink-0 snap-start overflow-hidden rounded-xl border border-sand bg-bg-card shadow-sm transition active:scale-[0.97]"
           >
-            <span className="flex h-10 items-start overflow-hidden px-1.5 pt-1.5 text-[10px] font-black leading-[11px] text-[#542413]">
+            <span className="flex h-11 items-start overflow-hidden px-2 pt-2 text-[11px] font-extrabold leading-[13px] text-navy">
               {category.name}
             </span>
             <span className="relative block h-16 w-full overflow-hidden">
@@ -1016,7 +1014,7 @@ function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
         ))}
         <Link
           href="/category"
-          className="group flex h-[104px] w-[calc((100%_-_32px)/5)] min-w-[calc((100%_-_32px)/5)] shrink-0 snap-start flex-col items-center justify-center gap-1.5 overflow-hidden rounded-[10px] border border-white/80 bg-white/30 shadow-[0_4px_12px_rgba(83,38,12,0.07),inset_0_1px_0_rgba(255,255,255,0.95)] backdrop-blur-[14px] transition active:scale-[0.96]"
+          className="group flex h-[108px] w-[calc((100%_-_24px)/4)] min-w-[calc((100%_-_24px)/4)] shrink-0 snap-start flex-col items-center justify-center gap-1.5 overflow-hidden rounded-xl border border-sand bg-bg-card shadow-sm transition active:scale-[0.97]"
         >
           <div className="grid h-8 w-8 place-items-center rounded-full bg-[#f0d8c2]/40">
             <LayoutGrid className="h-4 w-4 text-[#8a6855]" strokeWidth={2.5} />
@@ -1142,7 +1140,7 @@ function RecommendationSections({
             href="/search"
             action="Xem tất cả"
           />
-          <div className="mt-3 grid grid-cols-3 items-start gap-2.5">
+          <div className="mt-3 grid grid-cols-2 items-start gap-3">
             {group.products.map((product) => (
               <ProductMiniCard
                 key={product.id}
@@ -1182,8 +1180,8 @@ function ProductMiniCard({
   onQuickAdd: () => void;
 }) {
   return (
-    <article className="relative w-full min-w-0 overflow-hidden rounded-[12px] bg-white shadow-[0_4px_12px_rgba(116,57,21,0.1)]">
-      <div className="relative aspect-[0.82/1] w-full overflow-hidden bg-[#fdf9f4]">
+    <article className="relative w-full min-w-0 overflow-hidden rounded-2xl border border-sand bg-bg-card shadow-[0_7px_20px_rgba(18,62,102,0.07)]">
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-cream">
         <button
           type="button"
           onClick={onClick}
@@ -1200,8 +1198,8 @@ function ProductMiniCard({
           type="button"
           onClick={onToggleFavorite}
           className={clsx(
-            "absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-white/90 text-[#b98f80] shadow-sm transition active:scale-95",
-            isFavorite ? "text-[#b84a39]" : "text-[#c99b9b]",
+            "absolute right-2 top-2 grid h-9 w-9 place-items-center rounded-xl bg-bg-card/95 text-beige shadow-sm transition active:scale-95",
+            isFavorite ? "text-brand-500" : "text-text-light",
           )}
           aria-label={isFavorite ? "Bỏ yêu thích" : "Thêm yêu thích"}
         >
@@ -1212,23 +1210,23 @@ function ProductMiniCard({
         </button>
       </div>
 
-      <div className="relative min-h-[82px] p-2.5">
+      <div className="relative min-h-[112px] p-3">
         <button
           type="button"
           onClick={onClick}
           className="block w-full text-left"
           aria-label={`Xem ${product.name}`}
         >
-          <h3 className="line-clamp-2 min-h-[32px] text-[12px] font-semibold leading-tight text-[#542413]">
+          <h3 className="line-clamp-2 min-h-[40px] text-sm font-bold leading-5 text-navy">
             {product.name}
           </h3>
           {reason && (
-            <span className="mt-1 block truncate text-[8px] font-bold text-[#9b715b]">
+            <span className="mt-1 block truncate text-xs font-semibold text-text-muted">
               {reason}
             </span>
           )}
-          <div className="mt-2 pr-7">
-            <span className="block w-full whitespace-nowrap text-[9px] font-black leading-tight text-[#c35847]">
+          <div className="mt-2 pr-9">
+            <span className="block w-full whitespace-nowrap text-sm font-black leading-tight text-brand-500">
               {formatPrice(product.price).replace(" ", "")}
             </span>
           </div>
@@ -1236,7 +1234,7 @@ function ProductMiniCard({
         <button
           type="button"
           onClick={onQuickAdd}
-          className="absolute bottom-2 right-2 grid h-7 w-7 place-items-center rounded-full bg-[#c35847] text-white shadow-sm transition active:scale-95"
+          className="absolute bottom-3 right-3 grid h-9 w-9 place-items-center rounded-xl bg-brand-500 text-white shadow-sm transition active:scale-95"
           aria-label={`Thêm nhanh ${product.name}`}
         >
           <Plus className="h-4 w-4" />
@@ -1260,16 +1258,16 @@ function SectionHeader({
   return (
     <div className="flex items-end justify-between gap-3">
       <div className="min-w-0">
-        <h2 className="text-[17px] font-bold text-text-primary">{title}</h2>
+        <h2 className="text-lg font-extrabold tracking-[-0.02em] text-navy">{title}</h2>
         {description && (
-          <p className="mt-0.5 truncate text-[10px] font-medium text-text-muted">
+          <p className="mt-0.5 truncate text-xs font-medium text-text-muted">
             {description}
           </p>
         )}
       </div>
       <Link
         href={href}
-        className="flex items-center gap-0.5 text-[11px] font-medium text-text-muted"
+        className="flex min-h-8 items-center gap-0.5 text-xs font-bold text-brand-500"
       >
         {action}
         <ChevronRight className="h-3.5 w-3.5" />

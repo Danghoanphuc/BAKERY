@@ -49,7 +49,7 @@ describe("ProductCollection", () => {
     expect(screen.getByText("Gợi ý cho bạn")).toBeInTheDocument();
   });
 
-  it("renders all products in horizontal scrollable container", () => {
+  it("renders every product once in the responsive grid", () => {
     render(
       <ProductCollection
         title="Mới ra lò sáng nay"
@@ -95,7 +95,7 @@ describe("ProductCollection", () => {
     expect(mockOnAddToCart).toHaveBeenCalledWith(mockProducts[0]);
   });
 
-  it("has horizontal scroll container with proper styling", () => {
+  it("uses a two-column mobile and four-column desktop grid", () => {
     const { container } = render(
       <ProductCollection
         title="Test Collection"
@@ -104,9 +104,9 @@ describe("ProductCollection", () => {
       />,
     );
 
-    const scrollContainer = container.querySelector(".overflow-x-auto");
-    expect(scrollContainer).toBeInTheDocument();
-    expect(scrollContainer).toHaveClass("overflow-x-auto");
+    const grid = container.querySelector(".grid-cols-2");
+    expect(grid).toBeInTheDocument();
+    expect(grid).toHaveClass("lg:grid-cols-4");
   });
 
   it("applies custom className when provided", () => {

@@ -144,20 +144,20 @@ export default function OrderHistoryPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#fffaf5] text-[#542413]">
+    <main className="brand-page">
       <div className="mx-auto min-h-screen w-full max-w-[520px] px-4 pb-28 pt-4">
-        <header className="sticky top-0 z-30 -mx-4 bg-[#fffaf5]/95 px-4 pb-3 pt-4 backdrop-blur">
+        <header className="sticky top-0 z-30 -mx-4 border-b border-sand bg-bg-main/95 px-4 pb-3 pt-4 backdrop-blur-md">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <Link
                 href="/"
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#f4ebe1] text-[#542413] active:scale-95"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-sand bg-bg-card text-navy active:scale-95"
                 aria-label="Về trang chủ"
               >
                 <ChevronLeft className="h-5 w-5" />
               </Link>
               <div className="min-w-0">
-                <h1 className="text-xl font-black leading-tight">Lịch sử đơn hàng</h1>
+                <h1 className="brand-heading text-xl leading-tight">Lịch sử đơn hàng</h1>
                 <p className="truncate text-xs font-semibold text-[#9b715b]">
                   {orders.length} đơn hàng của bạn
                 </p>
@@ -173,8 +173,8 @@ export default function OrderHistoryPage() {
             </button>
           </div>
 
-          <div className="mt-3 flex h-11 items-center gap-2 rounded-full border border-[#f0e3d3] bg-white px-3 shadow-sm">
-            <Search className="h-4 w-4 shrink-0 text-[#9b715b]" />
+          <div className="mt-3 flex h-12 items-center gap-2 rounded-xl border border-sand bg-bg-card px-3 shadow-sm focus-within:border-teal">
+            <Search className="h-4 w-4 shrink-0 text-teal" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -195,9 +195,9 @@ export default function OrderHistoryPage() {
         </header>
 
         {activeOrders.length > 0 && (
-          <section className="mt-3 rounded-[18px] border border-[#f0d8c2] bg-[#fff3df] p-3 shadow-sm">
+          <section className="mt-3 rounded-2xl border border-teal/25 bg-teal-soft p-3 shadow-sm">
             <div className="flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-full bg-[#c35847] text-white">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-teal text-white">
                 <Clock3 className="h-5 w-5" />
               </span>
               <div className="min-w-0 flex-1">

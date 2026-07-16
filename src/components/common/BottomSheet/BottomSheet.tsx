@@ -196,7 +196,7 @@ export function BottomSheet({
     >
       <button
         type="button"
-        className="absolute inset-0 cursor-default bg-[#2e170f]/45 backdrop-blur-[2px] animate-in fade-in duration-200"
+        className="absolute inset-0 cursor-default bg-navy/45 animate-in fade-in duration-200"
         onClick={onClose}
         aria-label="Đóng bảng sản phẩm"
       />
@@ -204,9 +204,9 @@ export function BottomSheet({
       <div
         ref={sheetRef}
         className={clsx(
-          "relative flex w-full flex-col overflow-hidden rounded-t-[26px] border-t border-white/80 bg-white/94 shadow-[0_-18px_46px_rgba(61,36,23,0.22),inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-[28px] backdrop-saturate-[1.5]",
+          "relative flex w-full flex-col overflow-hidden rounded-t-2xl border-t border-sand bg-bg-card shadow-[0_-16px_42px_rgba(18,62,102,0.2)]",
           "animate-in slide-in-from-bottom-full duration-300 ease-out",
-          "lg:max-h-[90vh] lg:max-w-3xl lg:rounded-[18px] lg:slide-in-from-bottom-0",
+          "lg:max-h-[90vh] lg:max-w-3xl lg:rounded-2xl lg:slide-in-from-bottom-0",
           expanded ? "max-h-[92dvh]" : "max-h-[76dvh]",
           className,
         )}
@@ -221,14 +221,14 @@ export function BottomSheet({
       >
         <button
           type="button"
-          className="relative flex h-8 shrink-0 touch-none items-center justify-center bg-white/25 backdrop-blur-xl lg:hidden"
+          className="relative flex h-8 shrink-0 touch-none items-center justify-center bg-bg-card lg:hidden"
           onPointerDown={startDrag}
           onPointerMove={moveDrag}
           onPointerUp={finishDrag}
           onPointerCancel={finishDrag}
           aria-label="Kéo xuống để đóng"
         >
-          <span className="h-1 w-10 rounded-full bg-[#8c776b]/45 shadow-[0_1px_0_rgba(255,255,255,0.9)]" />
+          <span className="h-1 w-10 rounded-full bg-beige" />
         </button>
 
         <h2 id={titleId} className="sr-only">
@@ -238,7 +238,7 @@ export function BottomSheet({
           type="button"
           data-sheet-close="true"
           onClick={onClose}
-          className="absolute right-3 top-9 z-20 grid h-9 w-9 place-items-center rounded-full border border-white/80 bg-white/45 text-[#4f3022] shadow-[0_6px_18px_rgba(61,36,23,0.14),inset_0_1px_0_rgba(255,255,255,1)] backdrop-blur-[18px] backdrop-saturate-150 transition active:scale-90 lg:top-3"
+          className="absolute right-3 top-9 z-20 grid h-9 w-9 place-items-center rounded-xl border border-sand bg-bg-card text-navy shadow-sm transition active:scale-95 lg:top-3"
           aria-label="Đóng"
         >
           <X className="h-4 w-4" />
@@ -254,7 +254,7 @@ export function BottomSheet({
         </div>
 
         {footer && (
-          <div className="shrink-0 border-t border-white/75 bg-white/55 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 shadow-[0_-10px_28px_rgba(61,36,23,0.1),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-[24px] backdrop-saturate-150 lg:px-5">
+          <div className="shrink-0 border-t border-sand bg-bg-card px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_22px_rgba(18,62,102,0.08)] lg:px-5">
             {footer}
           </div>
         )}

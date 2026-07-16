@@ -25,7 +25,7 @@ export const StickyCart = ({ className }: StickyCartProps) => {
     <div
       className={cn(
         "fixed bottom-0 left-0 right-0 z-50 transform transition-transform duration-300 ease-out animate-slide-up",
-        "bg-white border-t border-gray-200 shadow-lg",
+        "border-t border-sand bg-bg-card shadow-[0_-8px_24px_rgba(18,62,102,0.1)]",
         "px-4 py-3 pb-safe-bottom",
         className,
       )}
@@ -34,16 +34,16 @@ export const StickyCart = ({ className }: StickyCartProps) => {
         onClick={handleCartClick}
         className={cn(
           "w-full flex items-center justify-between",
-          "bg-red-500 hover:bg-red-600 active:bg-red-700",
-          "text-white font-medium rounded-lg",
+          "bg-brand-500 hover:bg-brand-600 active:bg-brand-700",
+          "rounded-xl font-extrabold text-white",
           "px-4 py-3 min-h-[48px]",
           "transition-colors duration-200",
-          "focus:outline-none focus:ring-2 focus:ring-red-300 focus:ring-offset-2",
+          "focus:outline-none focus:ring-2 focus:ring-teal focus:ring-offset-2",
         )}
         aria-label={`Xem giỏ hàng với ${totalQuantity} món, tổng ${formatPrice(totalPrice)}`}
       >
         <div className="flex items-center space-x-2">
-          <div className="bg-red-600 rounded-full px-2 py-1 text-xs font-bold min-w-[24px] h-6 flex items-center justify-center">
+          <div className="flex h-6 min-w-6 items-center justify-center rounded-lg bg-brand-700 px-2 py-1 text-xs font-bold">
             {totalQuantity}
           </div>
           <span className="text-sm">{totalQuantity} món</span>

@@ -35,7 +35,7 @@ export default function CheckoutPaymentPage() {
   return (
     <Suspense
       fallback={
-        <main className="grid min-h-screen place-items-center bg-[#fff8ef] px-4 text-[#3d2417]">
+        <main className="brand-page grid place-items-center px-4">
           <p className="text-sm font-black">Đang tải thông tin thanh toán...</p>
         </main>
       }
@@ -183,22 +183,22 @@ function CheckoutPaymentContent() {
   }, [hasRedirected, isPaid, orderNumber, router]);
 
   return (
-    <main className="min-h-screen bg-[#fff8ef] px-4 py-3 text-[#3d2417]">
+    <main className="brand-page px-4 py-3">
       <div className="mx-auto w-full max-w-[440px]">
         <header className="mb-3 flex items-center justify-between">
           <button
             type="button"
             onClick={() => router.push("/cart")}
-            className="grid h-10 w-10 place-items-center rounded-full bg-white text-[#3d2417] shadow-sm"
+            className="grid h-10 w-10 place-items-center rounded-xl border border-sand bg-bg-card text-navy shadow-sm"
             aria-label="Quay lại giỏ hàng"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div className="text-center leading-tight">
-            <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#b84a39]">
+            <p className="brand-eyebrow">
               Thanh toán chuyển khoản
             </p>
-            <h1 className="text-lg font-black text-[#3d2417]">
+            <h1 className="brand-heading text-lg">
               {isPaid
                 ? "Đã thanh toán"
                 : isCancelled
@@ -220,14 +220,14 @@ function CheckoutPaymentContent() {
           </div>
         )}
 
-        <section className="overflow-hidden rounded-[24px] border border-[#f0dfcc] bg-white shadow-[0_18px_44px_rgba(83,38,12,0.08)]">
+        <section className="brand-card overflow-hidden">
           <div
             className={
               isPaid
                 ? "flex items-center gap-3 bg-[#eff9ea] px-4 py-4"
                 : isCancelled
                   ? "flex items-center gap-3 bg-[#f4ebe1] px-4 py-4"
-                  : "flex items-center gap-3 bg-[#fff1f0] px-4 py-4"
+                    : "flex items-center gap-3 bg-teal-soft px-4 py-4"
             }
           >
             <div
@@ -236,7 +236,7 @@ function CheckoutPaymentContent() {
                   ? "grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[#2f8a45] text-white shadow-[0_14px_30px_rgba(47,138,69,0.24)]"
                   : isCancelled
                     ? "grid h-14 w-14 shrink-0 place-items-center rounded-full bg-white text-[#8a6f5b] shadow-sm"
-                    : "grid h-14 w-14 shrink-0 place-items-center rounded-full bg-white text-[#b84a39] shadow-sm"
+                    : "grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-bg-card text-teal shadow-sm"
               }
             >
               {isPaid ? (
@@ -246,7 +246,7 @@ function CheckoutPaymentContent() {
               )}
             </div>
             <div className="min-w-0">
-              <h2 className="text-xl font-black leading-tight text-[#3d2417]">
+              <h2 className="text-xl font-black leading-tight text-navy">
                 {isPaid
                   ? "Thanh toán thành công!"
                   : isCancelled
@@ -330,7 +330,7 @@ function CheckoutPaymentContent() {
                       type="button"
                       onClick={saveQrImage}
                       disabled={isSavingQr}
-                      className="flex h-10 items-center justify-center gap-1.5 rounded-[14px] bg-[#3d2417] text-xs font-black text-white shadow-[0_8px_18px_rgba(61,36,23,0.18)] disabled:cursor-not-allowed disabled:bg-[#d8c8bd]"
+                      className="flex h-10 items-center justify-center gap-1.5 rounded-xl bg-navy text-xs font-extrabold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-beige"
                     >
                       <Download className="h-4 w-4" />
                       {isSavingQr ? "Đang lưu..." : "Lưu QR"}
@@ -342,7 +342,7 @@ function CheckoutPaymentContent() {
                       href={payment.payosCheckoutUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex h-10 items-center justify-center gap-1.5 rounded-[14px] border border-[#eadbcc] bg-white text-xs font-black text-[#3d2417]"
+                      className="flex h-10 items-center justify-center gap-1.5 rounded-xl border border-navy bg-bg-card text-xs font-extrabold text-navy"
                     >
                       <ExternalLink className="h-4 w-4" />
                       Mở chuyển khoản
@@ -364,7 +364,7 @@ function CheckoutPaymentContent() {
                   type="button"
                   onClick={checkPayment}
                   disabled={isChecking || isPaid}
-                  className="flex h-11 items-center justify-center gap-2 rounded-[14px] bg-[#b84a39] text-sm font-black text-white shadow-[0_8px_18px_rgba(184,74,57,0.24)] disabled:cursor-not-allowed disabled:bg-[#d8c8bd]"
+                  className="flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-500 text-sm font-extrabold text-white shadow-[0_8px_18px_rgba(217,74,52,0.2)] disabled:cursor-not-allowed disabled:bg-beige"
                 >
                   <RefreshCcw
                     className={`h-4 w-4 ${isChecking ? "animate-spin" : ""}`}

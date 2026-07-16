@@ -299,26 +299,26 @@ export function SearchExperience({
   const showDiscovery = query.trim().length === 0 && combinedFilters.length === 0;
 
   return (
-    <main className="min-h-screen bg-bg-main text-text-primary">
+    <main className="brand-page">
       <div className="mx-auto min-h-screen w-full max-w-[480px] px-4 pb-32 pt-3">
-        <header className="sticky top-0 z-20 -mx-4 bg-bg-main/95 px-4 pb-3 pt-3 backdrop-blur">
+        <header className="sticky top-0 z-20 -mx-4 border-b border-sand bg-bg-main/95 px-4 pb-3 pt-3 backdrop-blur-md">
           <div className="mb-3 flex items-center justify-between">
             <Link
               href="/"
-              className="grid h-10 w-10 place-items-center rounded-full border border-[#efdfd1] bg-white text-[#3d2417] shadow-sm"
+              className="grid h-10 w-10 place-items-center rounded-xl border border-sand bg-bg-card text-navy shadow-sm"
               aria-label="Về trang chủ"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div className="text-center">
-              <p className="text-xs font-bold uppercase tracking-[0.08em] text-[#b84a39]">
+              <p className="brand-eyebrow">
                 Tìm nhanh
               </p>
-              <h1 className="text-xl font-black text-[#3d2417]">Chọn bánh</h1>
+              <h1 className="brand-heading text-xl">Chọn bánh</h1>
             </div>
             <Link
               href="/cart"
-              className="relative grid h-10 w-10 place-items-center rounded-full border border-[#efdfd1] bg-white text-[#3d2417] shadow-sm"
+              className="relative grid h-10 w-10 place-items-center rounded-xl border border-sand bg-bg-card text-navy shadow-sm"
               aria-label="Giỏ hàng"
             >
               <ShoppingCart className="h-5 w-5" />
@@ -330,8 +330,8 @@ export function SearchExperience({
             </Link>
           </div>
 
-          <div className="flex h-11 items-center gap-2 rounded-full border border-[#efdfd1] bg-white px-3 shadow-sm">
-            <Search className="h-4 w-4 shrink-0 text-[#9b8171]" />
+          <div className="flex h-12 items-center gap-2 rounded-xl border border-sand bg-bg-card px-3 shadow-sm focus-within:border-teal focus-within:ring-2 focus-within:ring-teal/15">
+            <Search className="h-4 w-4 shrink-0 text-teal" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -339,7 +339,7 @@ export function SearchExperience({
                 if (event.key === "Enter") applyQuery(query);
               }}
               placeholder="VD: sinh nhật bé gái, ít ngọt, giao chiều nay"
-              className="min-w-0 flex-1 bg-transparent text-sm font-medium text-[#3d2417] outline-none placeholder:text-[#b7a397]"
+              className="min-w-0 flex-1 bg-transparent text-sm font-medium text-charcoal outline-none placeholder:text-text-light"
             />
             {query && (
               <button
@@ -366,8 +366,8 @@ export function SearchExperience({
                     className={clsx(
                       "h-8 rounded-full border px-3 text-xs font-bold transition",
                       active
-                        ? "border-[#b84a39] bg-[#b84a39] text-white"
-                        : "border-[#eadbcc] bg-white text-[#7b6254]",
+                        ? "border-brand-500 bg-brand-500 text-white"
+                        : "border-sand bg-bg-card text-charcoal",
                     )}
                   >
                     {chip.label}
@@ -382,7 +382,7 @@ export function SearchExperience({
             <IntentSummary intents={queryAnalysis.intents} />
           )}
 
-          <div className="mt-3 rounded-[14px] border border-[#efdfd1] bg-white px-3 py-2 text-xs font-bold text-[#7b6254]">
+          <div className="mt-3 rounded-xl border border-teal/25 bg-teal-soft px-3 py-2 text-xs font-bold text-teal">
             {config.deliveryMode === "pickup"
               ? "Đang hiển thị các món có thể nhận tại quán."
               : "Đang hiển thị các món có thể giao tận nơi."}

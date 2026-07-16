@@ -86,13 +86,13 @@ export function AdminSidebar() {
   return (
     <aside
       className={clsx(
-        "sticky top-0 flex h-screen shrink-0 flex-col border-r border-[#eadbcc] bg-[#fffaf6] shadow-[8px_0_24px_rgba(61,36,23,0.06)] transition-[width] duration-200",
+        "sticky top-0 flex h-screen shrink-0 flex-col border-r border-[#dfe5e8] bg-[#fffdf9] shadow-[6px_0_20px_rgba(18,62,102,0.06)] transition-[width] duration-200",
         isExpanded ? "w-64" : "w-[76px]",
       )}
     >
       <div
         className={clsx(
-          "flex h-20 items-center border-b border-[#f0e1d2] px-3",
+          "flex h-20 items-center border-b border-[#e5eaec] px-3",
           isExpanded ? "justify-between" : "justify-center",
         )}
       >
@@ -103,14 +103,14 @@ export function AdminSidebar() {
             isExpanded ? "flex" : "hidden",
           )}
         >
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-[#b84a39] text-sm font-black text-white shadow-[0_10px_20px_rgba(184,74,57,0.22)]">
-            B
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#d94a34] text-sm font-black text-white shadow-sm">
+            ST
           </span>
           <span className="min-w-0">
-            <span className="block truncate text-base font-black text-[#3d2417]">
-              Bakery Admin
+            <span className="block truncate text-base font-black text-[#123e66]">
+              SweetTime Admin
             </span>
-            <span className="block truncate text-xs font-semibold text-[#9b8171]">
+            <span className="block truncate text-xs font-semibold text-[#6f777b]">
               Tiệm bánh & vận hành
             </span>
           </span>
@@ -119,7 +119,7 @@ export function AdminSidebar() {
         <button
           type="button"
           onClick={() => setIsExpanded((current) => !current)}
-          className="grid h-10 w-10 place-items-center rounded-2xl border border-[#eadbcc] bg-white text-[#65483a] transition hover:border-[#b84a39]/40 hover:text-[#b84a39]"
+          className="grid h-10 w-10 place-items-center rounded-xl border border-[#d7e0e3] bg-white text-[#123e66] transition hover:border-[#2f8d88] hover:text-[#2f8d88]"
           aria-label={isExpanded ? "Thu gọn sidebar" : "Mở rộng sidebar"}
           title={isExpanded ? "Thu gọn" : "Mở rộng"}
         >
@@ -145,15 +145,15 @@ export function AdminSidebar() {
                   href={item.href}
                   title={!isExpanded ? item.label : undefined}
                   className={clsx(
-                    "group relative flex h-12 items-center rounded-2xl text-sm font-bold transition",
+                    "group relative flex h-12 items-center rounded-xl text-sm font-bold transition",
                     isExpanded ? "gap-3 px-3" : "justify-center px-0",
                     isActive
-                      ? "bg-white text-[#b84a39] shadow-sm ring-1 ring-[#f0e1d2]"
-                      : "text-[#7b6254] hover:bg-white/80 hover:text-[#3d2417]",
+                      ? "bg-[#e9f0f5] text-[#123e66] shadow-sm ring-1 ring-[#d7e0e3]"
+                      : "text-[#65727a] hover:bg-white hover:text-[#123e66]",
                   )}
                 >
                   {isActive && (
-                    <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-[#b84a39]" />
+                    <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-[#d94a34]" />
                   )}
                   <Icon className="h-5 w-5 shrink-0" />
                   {isExpanded && <span className="truncate">{item.label}</span>}
@@ -166,14 +166,14 @@ export function AdminSidebar() {
 
       <div
         className={clsx(
-          "border-t border-[#f0e1d2] p-3",
+          "border-t border-[#e5eaec] p-3",
           isExpanded ? "text-left" : "text-center",
         )}
       >
-        <div className="rounded-2xl bg-white px-3 py-3 text-xs font-semibold text-[#9b8171] ring-1 ring-[#f0e1d2]">
+        <div className="rounded-xl bg-[#f3f6f7] px-3 py-3 text-xs font-semibold text-[#6f777b] ring-1 ring-[#dfe5e8]">
           {isExpanded ? (
             <>
-              <p className="text-[#3d2417]">Bakery POS</p>
+              <p className="text-[#123e66]">SweetTime POS</p>
               <p className="mt-1">Version 1.0.0</p>
             </>
           ) : (

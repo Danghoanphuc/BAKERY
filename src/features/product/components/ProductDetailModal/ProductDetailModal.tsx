@@ -138,10 +138,10 @@ export function ProductDetailModal({
               }
             />
             <div className="min-w-0 text-right">
-              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#9b8171]">
+              <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-text-muted">
                 Tạm tính
               </p>
-              <p className="truncate text-base font-black text-[#b84a39]">
+              <p className="truncate text-base font-black text-brand-500">
                 {formatPrice(totalPrice)}
               </p>
             </div>
@@ -152,9 +152,9 @@ export function ProductDetailModal({
               onClick={() => runValidatedAction(onAddToCart)}
               disabled={!availability.canOrder}
               className={clsx(
-                "flex h-12 min-w-0 items-center justify-center gap-2 rounded-[14px] border px-3 text-sm font-black transition active:scale-[0.98]",
+                "flex h-12 min-w-0 items-center justify-center gap-2 rounded-xl border px-3 text-sm font-extrabold transition active:scale-[0.98]",
                 availability.canOrder
-                  ? "border-[#e2b8aa] bg-[#fff8f5] text-[#a74434] hover:bg-[#fff0eb]"
+                  ? "border-navy bg-bg-card text-navy hover:bg-navy-soft"
                   : "cursor-not-allowed border-[#d7cbc4] bg-[#f5f0ed] text-[#aa9a91]",
               )}
             >
@@ -168,9 +168,9 @@ export function ProductDetailModal({
               onClick={() => runValidatedAction(onBuyNow)}
               disabled={!availability.canOrder}
               className={clsx(
-                "flex h-12 min-w-0 items-center justify-center gap-2 rounded-[14px] px-3 text-sm font-black text-white transition active:scale-[0.98]",
+                "flex h-12 min-w-0 items-center justify-center gap-2 rounded-xl px-3 text-sm font-extrabold text-white transition active:scale-[0.98]",
                 availability.canOrder
-                  ? "bg-[linear-gradient(135deg,#c45440,#a53d2f)] shadow-[0_8px_18px_rgba(184,74,57,0.28)] hover:brightness-95"
+                  ? "bg-brand-500 shadow-[0_8px_18px_rgba(217,74,52,0.2)] hover:bg-brand-600"
                   : "cursor-not-allowed bg-[#cdbeb5]",
               )}
             >
@@ -292,7 +292,7 @@ function ProductGallery({
   return (
     <div className="lg:sticky lg:top-0 lg:self-start">
       <div
-        className="relative flex aspect-[4/3] w-full snap-x snap-mandatory overflow-x-auto bg-[#fdf7f0] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:aspect-square lg:rounded-[16px]"
+        className="relative flex aspect-[4/3] w-full snap-x snap-mandatory overflow-x-auto bg-cream [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:aspect-square lg:rounded-2xl"
         onScroll={(event) => {
           const element = event.currentTarget;
           const index = Math.round(element.scrollLeft / Math.max(1, element.clientWidth));
@@ -333,10 +333,10 @@ function ProductSummary({
 }) {
   return (
     <div className="border-b border-[#f3e6dc] pb-4">
-      <h3 className="pr-12 text-[20px] font-black leading-tight text-[#3d2417] lg:pr-0 lg:text-2xl">
+      <h3 className="pr-12 text-xl font-black leading-tight text-navy lg:pr-0 lg:text-2xl">
         {product.name}
       </h3>
-      <p className="mt-1.5 text-xl font-black text-[#b84a39]">
+      <p className="mt-1.5 text-xl font-black text-brand-500">
         {product.sizeOptions?.length ? (
           <span className="mr-1 text-xs font-bold text-[#9b8171]">từ</span>
         ) : null}
@@ -388,9 +388,9 @@ function FulfillmentCard({
 }) {
   const Icon = mode === "pickup" ? Store : Truck;
   return (
-    <section className="rounded-[14px] border border-[#dcece7] bg-[#f2faf7] p-3">
+    <section className="rounded-xl border border-teal/25 bg-teal-soft p-3">
       <div className="flex gap-3">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-white text-[#278477] shadow-sm">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-bg-card text-teal shadow-sm">
           <Icon className="h-4 w-4" />
         </span>
         <div className="min-w-0">
@@ -415,8 +415,8 @@ const OptionGroup = forwardRef<
   return (
     <section ref={ref}>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <h4 className="text-sm font-black text-[#3d2417]">
-          {title} <span className="text-[#b84a39]">*</span>
+        <h4 className="text-sm font-black text-navy">
+          {title} <span className="text-brand-500">*</span>
         </h4>
         {error && <span className="text-[11px] font-bold text-[#9e3e2f]">{error}</span>}
       </div>

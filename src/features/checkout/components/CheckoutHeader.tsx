@@ -8,20 +8,20 @@ export function CheckoutHeader({
   onBack: () => void;
 }) {
   return (
-    <header className="sticky top-0 z-20 -mx-3.5 mb-2.5 flex items-center justify-between border-b border-white/70 bg-bg-main/90 px-3.5 py-2.5 backdrop-blur-[18px]">
+    <header className="sticky top-0 z-20 -mx-3.5 mb-3 flex items-center justify-between border-b border-sand bg-bg-main/95 px-3.5 py-3 backdrop-blur-md">
       <button
         type="button"
         onClick={onBack}
-        className="grid h-9 w-9 place-items-center rounded-full bg-white text-[#3d2417] shadow-sm"
+        className="grid h-10 w-10 place-items-center rounded-xl border border-sand bg-bg-card text-navy shadow-sm"
         aria-label="Quay lại"
       >
         <ArrowLeft className="h-5 w-5" />
       </button>
       <div className="text-center">
-        <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-[#b84a39]">
+        <p className="brand-eyebrow text-[10px]">
           {isPickup ? "Tự đến lấy" : "Giao tận nơi"}
         </p>
-        <h1 className="text-[17px] font-black text-[#3d2417]">
+        <h1 className="brand-heading text-lg">
           Xác nhận đơn hàng
         </h1>
       </div>

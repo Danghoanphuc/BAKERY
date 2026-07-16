@@ -14,13 +14,13 @@ export function CheckoutStickyBar({
   isSubmitting: boolean;
 }) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[110] border-t border-white/80 bg-white/85 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 shadow-[0_-12px_32px_rgba(61,36,23,0.12)] backdrop-blur-[24px]">
+    <div className="fixed inset-x-0 bottom-0 z-[110] border-t border-sand bg-bg-card/95 px-4 pb-[max(12px,env(safe-area-inset-bottom))] pt-3 shadow-[0_-10px_28px_rgba(18,62,102,0.1)] backdrop-blur-md">
       <div className="mx-auto flex w-full max-w-[480px] items-center gap-3">
         <div className="min-w-0 shrink-0">
-          <p className="text-[10px] font-bold uppercase tracking-[0.07em] text-[#9b8171]">
+          <p className="text-[10px] font-bold uppercase tracking-[0.07em] text-text-muted">
             Tổng cộng
           </p>
-          <p className="text-lg font-black text-[#b84a39]">
+          <p className="text-lg font-black text-brand-500">
             {formatPrice(finalTotal)}
           </p>
           {discountAmount > 0 ? (
@@ -32,7 +32,7 @@ export function CheckoutStickyBar({
         <button
           type="submit"
           disabled={isSubmitting}
-          className="flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-[15px] bg-[linear-gradient(135deg,#c45440,#a53d2f)] px-4 text-sm font-black text-white shadow-[0_8px_18px_rgba(184,74,57,0.28)] transition active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-[#d8c8bd]"
+          className="flex h-12 min-w-0 flex-1 items-center justify-center gap-2 rounded-xl bg-brand-500 px-4 text-sm font-extrabold text-white shadow-[0_8px_18px_rgba(217,74,52,0.2)] transition active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-beige"
         >
           <LockKeyhole className="h-4 w-4" />
           <span className="truncate">

@@ -72,15 +72,15 @@ export default function CartPage() {
 
   if (totalQuantity === 0) {
     return (
-      <main className="min-h-screen bg-bg-main text-text-primary">
+      <main className="brand-page">
         <div className="mx-auto flex min-h-screen w-full max-w-[480px] flex-col px-4 pb-32 pt-5">
           <CartHeader title="Giỏ hàng" onBack={() => router.back()} />
 
           <section className="flex flex-1 flex-col items-center justify-center text-center">
-            <div className="grid h-24 w-24 place-items-center rounded-full bg-[#fff0e9] text-[#b84a39] shadow-inner">
+            <div className="grid h-24 w-24 place-items-center rounded-2xl bg-teal-soft text-teal">
               <ShoppingBag className="h-11 w-11" />
             </div>
-            <h1 className="mt-5 text-[24px] font-black tracking-[0]">
+            <h1 className="brand-heading mt-5 text-2xl">
               Giỏ hàng trống
             </h1>
             <p className="mt-2 max-w-[280px] text-[14px] leading-6 text-text-muted">
@@ -88,7 +88,7 @@ export default function CartPage() {
             </p>
             <Link
               href="/"
-              className="mt-6 inline-flex h-12 items-center justify-center rounded-[14px] bg-[#b84a39] px-6 text-[15px] font-black text-white shadow-[0_8px_16px_rgba(184,74,57,0.24)]"
+              className="brand-button-primary mt-6"
             >
               Tiếp tục mua sắm
             </Link>
@@ -99,8 +99,8 @@ export default function CartPage() {
   }
 
   return (
-    <main className="min-h-screen bg-bg-main text-text-primary">
-      <div className="mx-auto min-h-screen w-full max-w-[480px] bg-[linear-gradient(180deg,#fff3e5_0%,#fffdf9_45%,#fff8ef_100%)] px-4 pb-36 pt-5 shadow-[0_0_50px_rgba(96,42,12,0.06)]">
+    <main className="brand-page">
+      <div className="mx-auto min-h-screen w-full max-w-[480px] px-4 pb-36 pt-5">
         <CartHeader
           title={`Giỏ hàng (${totalQuantity})`}
           onBack={() => router.back()}
@@ -108,7 +108,7 @@ export default function CartPage() {
             <button
               type="button"
               onClick={clearCart}
-              className="grid h-10 w-10 place-items-center rounded-full bg-white/80 text-[#df5a67] shadow-sm transition active:scale-95"
+              className="grid h-10 w-10 place-items-center rounded-xl border border-sand bg-bg-card text-brand-500 shadow-sm transition active:scale-95"
               aria-label="Xóa tất cả"
             >
               <Trash2 className="h-5 w-5" />
@@ -128,10 +128,10 @@ export default function CartPage() {
             return (
               <article
                 key={item.cartItemId}
-                className="rounded-[20px] border border-white bg-white/82 p-3 shadow-[0_10px_24px_rgba(83,38,12,0.08)]"
+                className="brand-card p-3"
               >
                 <div className="flex gap-3">
-                  <div className="h-[88px] w-[88px] shrink-0 overflow-hidden rounded-[16px] bg-[#fff0df]">
+                  <div className="h-[88px] w-[88px] shrink-0 overflow-hidden rounded-xl bg-cream">
                     <img
                       src={item.imageUrl}
                       alt={item.productName}
@@ -142,7 +142,7 @@ export default function CartPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start gap-2">
                       <div className="min-w-0 flex-1">
-                        <h2 className="line-clamp-2 text-[15px] font-black leading-tight">
+                        <h2 className="line-clamp-2 text-[15px] font-extrabold leading-tight text-navy">
                           {item.productName}
                         </h2>
                         <CustomizationSummary item={item} />
@@ -150,7 +150,7 @@ export default function CartPage() {
                       <button
                         type="button"
                         onClick={() => removeItem(item.cartItemId)}
-                        className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#fff1f0] text-[#df5a67] transition active:scale-95"
+                        className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-500 transition active:scale-95"
                         aria-label="Xóa sản phẩm"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -159,7 +159,7 @@ export default function CartPage() {
 
                     <div className="mt-3 flex items-end justify-between gap-3">
                       <div>
-                        <p className="text-[16px] font-black text-[#b84a39]">
+                        <p className="text-base font-black text-brand-500">
                           {formatPrice(item.price)}
                         </p>
                         <p className="mt-0.5 text-[11px] font-semibold text-text-muted">
@@ -192,7 +192,7 @@ export default function CartPage() {
                   </div>
                 </div>
 
-                <div className="mt-3 rounded-[14px] border border-dashed border-[#f0c47e] bg-[#fffaf0] px-3 py-2">
+                <div className="mt-3 rounded-xl border border-dashed border-sand bg-cream px-3 py-2">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate text-[12px] font-black text-[#7a351f]">
@@ -221,7 +221,7 @@ export default function CartPage() {
                       <button
                         type="button"
                         onClick={() => setIsVoucherPickerOpen(true)}
-                        className="rounded-full bg-[#7a351f] px-3 py-1.5 text-[11px] font-black text-white"
+                        className="rounded-lg bg-navy px-3 py-1.5 text-xs font-extrabold text-white"
                       >
                         {selectedVoucher ? "Đổi" : "Chọn"}
                       </button>
@@ -300,12 +300,12 @@ function CartHeader({
       <button
         type="button"
         onClick={onBack}
-        className="grid h-10 w-10 place-items-center rounded-full bg-white/80 text-text-primary shadow-sm transition active:scale-95"
+        className="grid h-10 w-10 place-items-center rounded-xl border border-sand bg-bg-card text-navy shadow-sm transition active:scale-95"
         aria-label="Quay lại"
       >
         <ArrowLeft className="h-5 w-5" />
       </button>
-      <h1 className="min-w-0 flex-1 truncate text-center text-[20px] font-black tracking-[0]">
+      <h1 className="brand-heading min-w-0 flex-1 truncate text-center text-xl">
         {title}
       </h1>
       <div className="h-10 w-10">{action}</div>
@@ -336,7 +336,7 @@ function CustomizationSummary({ item }: { item: CartItem }) {
       {details.slice(0, 3).map((detail) => (
         <span
           key={detail}
-          className="max-w-full truncate rounded-full bg-[#fff2e2] px-2 py-0.5 text-[11px] font-semibold text-[#8a4a28]"
+          className="max-w-full truncate rounded-full bg-teal-soft px-2 py-0.5 text-[11px] font-semibold text-teal"
         >
           {detail}
         </span>
@@ -355,11 +355,11 @@ function QuantityStepper({
   onIncrease: () => void;
 }) {
   return (
-    <div className="grid h-9 grid-cols-[34px_30px_34px] items-center rounded-full bg-[#f9eedf] p-0.5">
+    <div className="grid h-9 grid-cols-[34px_30px_34px] items-center rounded-xl bg-cream p-0.5">
       <button
         type="button"
         onClick={onDecrease}
-        className="grid h-8 w-8 place-items-center rounded-full bg-white text-text-secondary shadow-sm transition active:scale-95"
+        className="grid h-8 w-8 place-items-center rounded-lg bg-bg-card text-charcoal shadow-sm transition active:scale-95"
         aria-label="Giảm số lượng"
       >
         <Minus className="h-4 w-4" />
@@ -368,7 +368,7 @@ function QuantityStepper({
       <button
         type="button"
         onClick={onIncrease}
-        className="grid h-8 w-8 place-items-center rounded-full bg-[#b84a39] text-white shadow-sm transition active:scale-95"
+        className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500 text-white shadow-sm transition active:scale-95"
         aria-label="Tăng số lượng"
       >
         <Plus className="h-4 w-4" />
@@ -407,7 +407,7 @@ function CheckoutSummary({
       className="mt-4 w-full"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <section className="rounded-[22px] border border-white bg-white/92 p-4 shadow-[0_14px_34px_rgba(83,38,12,0.12)]">
+      <section className="brand-card p-4">
         <div className="mb-3 space-y-2">
           <div className="flex items-center justify-between text-[13px] font-semibold text-text-muted">
             <span>Tạm tính</span>
@@ -457,7 +457,7 @@ function CheckoutSummary({
           )}
           <div className="flex items-center justify-between border-t border-[#f0dfd4] pt-3">
             <span className="text-[15px] font-black">Tổng cộng</span>
-            <span className="text-[22px] font-black text-[#b84a39]">
+            <span className="text-[22px] font-black text-brand-500">
               {formatPrice(finalTotal)}
             </span>
           </div>
@@ -466,7 +466,7 @@ function CheckoutSummary({
         <button
           type="button"
           onClick={onCheckout}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-[15px] bg-[#b84a39] text-[15px] font-black text-white shadow-[0_8px_18px_rgba(184,74,57,0.26)] transition active:scale-[0.99]"
+          className="brand-button-primary w-full"
         >
           <CakeSlice className="h-5 w-5" />
           {isPickup ? "Đặt để đến lấy" : "Đặt giao tận nơi"} ({totalQuantity}{" "}

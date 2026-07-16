@@ -37,10 +37,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   return (
-    <div className="w-[140px] overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-sm transition-shadow duration-200 hover:shadow-md lg:w-full">
+    <div className="brand-card w-full overflow-hidden transition-shadow duration-200 hover:shadow-md">
       <a
         href={getProductPath(product)}
-        className="group relative block aspect-[5/4] w-full overflow-hidden bg-neutral-100 lg:aspect-square"
+        className="group relative block aspect-[4/5] w-full overflow-hidden bg-cream lg:aspect-square"
         aria-label={`Xem ${product.name}`}
       >
         <ProductImage
@@ -53,9 +53,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         />
       </a>
 
-      <div className="p-2 lg:p-4">
+      <div className="p-3 lg:p-4">
         <h3
-          className="mb-1.5 min-h-[2.5rem] overflow-hidden text-[13px] font-medium text-neutral-900 lg:min-h-[3rem] lg:text-base"
+          className="mb-1.5 min-h-[2.5rem] overflow-hidden text-sm font-bold leading-5 text-navy lg:min-h-[3rem] lg:text-base"
           style={{
             display: "-webkit-box",
             WebkitLineClamp: 2,
@@ -66,7 +66,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </h3>
 
         <div className="flex flex-col items-start justify-between gap-1.5 lg:flex-row lg:items-center">
-          <span className="text-[14px] font-bold text-primary-600 lg:text-base">
+          <span className="text-sm font-black text-brand-500 lg:text-base">
             {formatPrice(product.price)}
           </span>
           <div className="flex w-full items-center gap-1.5 lg:w-auto">
@@ -77,7 +77,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             />
             <Button
               variant="primary"
-              className="touch-target min-h-8 w-full min-w-[48px] rounded-md px-2 py-1 text-[12px] font-bold leading-tight lg:min-h-10 lg:w-auto lg:min-w-[96px] lg:px-4 lg:py-2 lg:text-sm"
+              className="touch-target min-h-10 w-full min-w-[48px] rounded-xl px-2 py-1 text-xs font-extrabold leading-tight lg:w-auto lg:min-w-[96px] lg:px-4 lg:py-2 lg:text-sm"
               onClick={handleAddToCart}
               data-testid="add-to-cart-btn"
             >
@@ -90,7 +90,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </div>
 
-        <div className="mt-2 rounded-md border border-dashed border-[#f0c47e] bg-[#fffaf0] px-2 py-1.5">
+        <div className="mt-2 rounded-xl border border-dashed border-sand bg-cream px-2 py-1.5">
           {selectedVoucher ? (
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">

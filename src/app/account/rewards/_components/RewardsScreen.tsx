@@ -23,13 +23,13 @@ export function RewardsScreen({ data }: { data: MyRewardsData; unlockedVoucherCo
   const [view, setView] = useState<View>("overview");
 
   return (
-    <div className="w-full overflow-x-clip bg-[#fffaf5] text-[#542413]">
+    <div className="brand-page w-full overflow-x-clip">
       <div className="mx-auto w-full max-w-5xl px-3 pb-6 pt-3 sm:px-5 lg:py-6">
         <MemberHeader data={data} onNavigate={setView} />
 
-        <nav className="mt-4 flex min-w-0 gap-5 overflow-x-auto border-b border-[#efdfcf] px-1">
+        <nav className="mt-4 flex min-w-0 gap-5 overflow-x-auto border-b border-sand px-1">
           {navigation.map(({ id, label, icon: Icon }) => (
-            <button key={id} type="button" onClick={() => setView(id)} className={`relative flex h-10 shrink-0 items-center justify-center gap-1.5 text-xs font-bold transition ${view === id ? "text-[#c35847] after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-[#c35847]" : "text-[#9a7462] hover:text-[#c35847]"}`}>
+            <button key={id} type="button" onClick={() => setView(id)} className={`relative flex h-10 shrink-0 items-center justify-center gap-1.5 text-xs font-bold transition ${view === id ? "text-brand-500 after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:rounded-full after:bg-brand-500" : "text-text-muted hover:text-brand-500"}`}>
               <Icon className="h-3.5 w-3.5" />
               <span>{label}</span>
             </button>

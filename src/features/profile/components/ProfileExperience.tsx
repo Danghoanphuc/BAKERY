@@ -67,8 +67,8 @@ export function ProfileExperience({ data }: ProfileExperienceProps) {
   const { customer, rewards, profile } = data;
 
   return (
-    <main className="min-h-screen bg-[#fff8ef] text-[#3b170c]">
-      <div className="mx-auto min-h-screen w-full max-w-[480px] bg-[linear-gradient(180deg,#fff3e5_0%,#fff9f0_42%,#fffdf8_100%)] pb-28 shadow-[0_0_50px_rgba(96,42,12,0.08)]">
+    <main className="brand-page">
+      <div className="mx-auto min-h-screen w-full max-w-[480px] pb-28">
         <ProfileHero
           customer={customer}
           isPhoneVerified={profile.isPhoneVerified}
@@ -98,8 +98,8 @@ function ProfileHero({
 
   return (
     <section className="relative overflow-hidden px-4 pb-8 pt-5">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,#ffd9a8_0%,#fff4e7_36%,#fff8ef_76%)]" />
-      <div className="absolute -right-10 top-8 h-36 w-36 rounded-full bg-[#f5b7aa]/40 blur-2xl" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(240,122,88,0.22),transparent_45%),linear-gradient(180deg,#f4ebdd,#f8f0e5)]" />
+      <div className="absolute -right-10 top-8 h-36 w-36 rounded-full bg-teal/15 blur-2xl" />
       <div className="relative z-10">
         <Link
           href="/account/preferences"
@@ -111,7 +111,7 @@ function ProfileHero({
 
         <div className="flex items-center gap-3">
           <div className="relative shrink-0">
-            <div className="grid h-[72px] w-[72px] place-items-center rounded-full border-[4px] border-white bg-[#8a4a28] text-[24px] font-black uppercase text-white shadow-[0_8px_18px_rgba(83,38,12,0.15)]">
+            <div className="grid h-[72px] w-[72px] place-items-center rounded-2xl border-[4px] border-bg-card bg-navy text-2xl font-black uppercase text-white shadow-sm">
               {getInitials(customer.name)}
             </div>
             <Link
@@ -124,7 +124,7 @@ function ProfileHero({
           </div>
 
           <div className="min-w-0 flex-1 pr-8">
-            <h1 className="truncate text-[20px] font-black leading-tight tracking-[0] text-[#3b170c]">
+            <h1 className="truncate text-xl font-black leading-tight text-navy">
               {customer.name}
             </h1>
             <p className="mt-1.5 text-[14px] font-semibold text-[#3b170c]">
@@ -165,7 +165,7 @@ function MemberCard({
   const { currentTier, nextTier } = rewards.journey;
 
   return (
-    <section className="relative overflow-hidden rounded-[22px] border-2 border-white bg-[#fff4df]/88 p-4 shadow-[0_12px_28px_rgba(83,38,12,0.13)]">
+    <section className="brand-card relative overflow-hidden p-4">
       <div className="absolute inset-y-0 left-[49%] w-px rotate-[-28deg] bg-[#e8c9a9]" />
       <div className="grid grid-cols-[1.08fr_0.92fr] gap-3">
         <div className="min-w-0">

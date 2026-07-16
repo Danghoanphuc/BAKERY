@@ -1,37 +1,50 @@
-@import url("https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&family=Dancing+Script:wght@700&display=swap");
 @import "tailwindcss";
 
 @theme {
   /* Bakery Brand Color Palette */
   /* Backgrounds (Kem) */
-  --color-bg-main: #fffdf9;
-  --color-bg-soft: #fff2e2;
-  --color-bg-card: #fdf5eb;
-  --color-bg-surface: #f9eedf;
+  --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Dancing Script", cursive;
+
+  --color-bg-main: #f8f0e5;
+  --color-bg-soft: #f4ebdd;
+  --color-bg-card: #fffaf3;
+  --color-bg-surface: #ead8c5;
 
   /* Typography (Nâu) */
-  --color-text-primary: #542914;
-  --color-text-secondary: #5b2b14;
-  --color-text-muted: #8a6855;
-  --color-text-light: #a88a7c;
+  --color-text-primary: #123e66;
+  --color-text-secondary: #2d2a28;
+  --color-text-muted: #75685f;
+  --color-text-light: #9a8a7e;
 
   /* Brand Colors (Cam Đất/Đỏ Gạch) */
-  --color-brand-50: #fff1f0;
-  --color-brand-100: #ffdcd9;
-  --color-brand-200: #ffb9b3;
-  --color-brand-300: #ff8f85;
-  --color-brand-400: #e86a5c;
-  --color-brand-500: #c35847;
-  --color-brand-600: #b84a39;
-  --color-brand-700: #9e3e2f;
-  --color-brand-800: #7f3227;
-  --color-brand-900: #5a221b;
+  --color-brand-50: #fff1ed;
+  --color-brand-100: #ffddd4;
+  --color-brand-200: #ffb9a8;
+  --color-brand-300: #f79279;
+  --color-brand-400: #ef6d50;
+  --color-brand-500: #d94a34;
+  --color-brand-600: #c33d29;
+  --color-brand-700: #a63022;
+  --color-brand-800: #84291f;
+  --color-brand-900: #6d251e;
+
+  --color-navy: #123e66;
+  --color-navy-soft: #e9f0f5;
+  --color-teal: #2f8d88;
+  --color-teal-soft: #e3f1ee;
+  --color-cream: #f4ebdd;
+  --color-sand: #e6d7c5;
+  --color-beige: #dcc8b4;
+  --color-coral: #f07a58;
+  --color-charcoal: #2d2a28;
 
   /* Accents */
   --color-accent-star: #e8a22b;
-  --color-accent-healthy: #5c7a29;
-  --color-accent-healthy-light: #789645;
-  --color-accent-pink: #c35847;
+  --color-accent-healthy: #2f8d88;
+  --color-accent-healthy-light: #56aaa4;
+  --color-accent-pink: #d94a34;
   --color-accent-gold: #f3cf99;
 
   /* Neutral (from original, kept for compatibility) */
@@ -85,7 +98,18 @@
   }
 
   body {
-    @apply bg-bg-main text-text-primary antialiased;
+    @apply bg-bg-main font-sans text-text-primary antialiased;
+    font-size: 16px;
+  }
+
+  ::selection {
+    background: #f07a58;
+    color: white;
+  }
+
+  :focus-visible {
+    outline: 3px solid rgba(47, 141, 136, 0.35);
+    outline-offset: 2px;
   }
 }
 
@@ -160,64 +184,125 @@
   .font-dancing-script {
     font-family: "Dancing Script", cursive;
   }
+
+  .brand-page {
+    @apply min-h-screen bg-bg-main text-charcoal;
+    background-image:
+      radial-gradient(circle at 8% 0%, rgba(240, 122, 88, 0.1), transparent 26rem),
+      radial-gradient(circle at 95% 10%, rgba(47, 141, 136, 0.08), transparent 22rem);
+  }
+
+  .brand-card {
+    @apply border border-sand/80 bg-bg-card;
+    border-radius: 1rem;
+    box-shadow: 0 8px 24px rgba(18, 62, 102, 0.07);
+  }
+
+  .brand-eyebrow {
+    @apply text-xs font-extrabold uppercase text-brand-500;
+    letter-spacing: 0.1em;
+  }
+
+  .brand-heading {
+    @apply font-extrabold text-navy;
+    letter-spacing: -0.025em;
+  }
+
+  .brand-button-primary {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 text-sm font-extrabold text-white transition;
+    box-shadow: 0 8px 18px rgba(217, 74, 52, 0.2);
+  }
+
+  .brand-button-primary:hover {
+    @apply bg-brand-600;
+  }
+
+  .brand-button-secondary {
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-navy bg-transparent px-5 text-sm font-extrabold text-navy transition;
+  }
+
+  .brand-chip {
+    @apply inline-flex min-h-8 items-center rounded-full border border-sand bg-cream px-3 text-xs font-bold text-charcoal;
+  }
 }
 
 .admin-ui-frame {
-  color: #3d2417;
+  color: #2d2a28;
+  background: #f3f5f4;
 }
 
 .admin-ui-frame h1,
 .admin-ui-frame h2,
 .admin-ui-frame h3 {
-  color: #3d2417;
-  letter-spacing: 0;
+  color: #123e66;
+  letter-spacing: -0.015em;
 }
 
 .admin-ui-frame :where(.bg-white) {
-  background-color: #fffaf6;
+  background-color: #fffdf9;
 }
 
 .admin-ui-frame :where(.bg-neutral-50) {
-  background-color: #f9f2eb;
+  background-color: #f3f6f7;
 }
 
 .admin-ui-frame :where(.border-neutral-100, .border-neutral-200, .border-neutral-300) {
-  border-color: #f0e1d2;
+  border-color: #dfe5e8;
 }
 
 .admin-ui-frame :where(.text-neutral-950, .text-neutral-900) {
-  color: #3d2417;
+  color: #123e66;
 }
 
 .admin-ui-frame :where(.text-neutral-800, .text-neutral-700) {
-  color: #65483a;
+  color: #2d2a28;
 }
 
 .admin-ui-frame :where(.text-neutral-600, .text-neutral-500) {
-  color: #8a6f60;
+  color: #6f777b;
 }
 
 .admin-ui-frame :where(.rounded-lg) {
-  border-radius: 1rem;
+  border-radius: 0.75rem;
 }
 
 .admin-ui-frame :where(.shadow-sm) {
-  box-shadow: 0 14px 34px rgba(61, 36, 23, 0.06);
+  box-shadow: 0 8px 22px rgba(18, 62, 102, 0.06);
 }
 
 .admin-ui-frame :where(input, select, textarea) {
-  background-color: #fffaf6;
-  border-color: #eadbcc;
-  color: #3d2417;
+  background-color: #fffdf9;
+  border-color: #d7e0e3;
+  color: #2d2a28;
 }
 
 .admin-ui-frame :where(input:focus, select:focus, textarea:focus) {
-  border-color: #b84a39;
-  box-shadow: 0 0 0 3px rgba(216, 93, 108, 0.12);
+  border-color: #2f8d88;
+  box-shadow: 0 0 0 3px rgba(47, 141, 136, 0.14);
 }
 
 .admin-ui-frame :where(table) {
-  color: #3d2417;
+  color: #2d2a28;
+}
+
+.admin-ui-frame :where(thead) {
+  background-color: #f3f6f7;
+  color: #123e66;
+}
+
+.admin-ui-frame :where(th) {
+  color: #52656f;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.admin-ui-frame :where(tbody tr) {
+  border-color: #e5eaec;
+}
+
+.admin-ui-frame :where(tbody tr:hover) {
+  background-color: rgba(47, 141, 136, 0.045);
 }
 
 .admin-ui-frame .btn-primary,
@@ -235,14 +320,14 @@
 }
 
 .admin-ui-frame .btn-primary {
-  background: #b84a39;
+  background: #d94a34;
   color: white;
 }
 
 .admin-ui-frame .btn-secondary {
-  border: 1px solid #eadbcc;
-  background: white;
-  color: #65483a;
+  border: 1px solid #cad5da;
+  background: #fffdf9;
+  color: #123e66;
 }
 
 .admin-ui-frame :where(.btn-primary, .btn-secondary):disabled {

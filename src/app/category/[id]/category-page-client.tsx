@@ -55,13 +55,14 @@ export function CategoryPageClient({
     <>
       <Header />
 
-      <main className="min-h-screen pt-14 pb-20 bg-neutral-50">
+      <main className="brand-page pb-20 pt-8">
         <div className="max-w-7xl mx-auto">
-          <section className="px-4 lg:px-6 pt-4 pb-6 border-b border-neutral-200">
-            <h1 className="text-2xl lg:text-3xl font-bold text-neutral-900">
+          <section className="border-b border-sand px-4 pb-6 pt-4 lg:px-6">
+            <p className="brand-eyebrow">Danh mục sản phẩm</p>
+            <h1 className="brand-heading mt-1 text-2xl lg:text-3xl">
               {category.name}
             </h1>
-            <p className="text-sm lg:text-base text-neutral-600 mt-2">
+            <p className="mt-2 text-sm text-text-muted lg:text-base">
               {products.length} sản phẩm
             </p>
           </section>

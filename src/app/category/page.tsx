@@ -40,20 +40,20 @@ export default async function CategoryPage() {
         }));
 
   return (
-    <div className="min-h-screen bg-[#fff8ea] px-4 pb-28 pt-20 text-[#5b2b14]">
+    <div className="brand-page px-4 pb-28 pt-10">
       <div className="mx-auto max-w-3xl">
         <div className="mb-5">
           <Link
             href="/"
-            className="mb-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-[#5b2b14] shadow-sm ring-1 ring-[#efcfad] transition hover:bg-[#fffbf5]"
+            className="brand-button-secondary mb-4 min-h-10 px-4 py-2"
           >
             <ArrowLeft className="h-4 w-4" />
             Quay lại
           </Link>
-          <p className="mt-4 text-sm font-medium text-[#a36a43]">
-            Sweet Bakery
+          <p className="brand-eyebrow mt-4">
+            SweetTime Bakery
           </p>
-          <h1 className="text-2xl font-extrabold tracking-tight">
+          <h1 className="brand-heading text-2xl">
             Danh mục bánh
           </h1>
         </div>
@@ -63,9 +63,9 @@ export default async function CategoryPage() {
             <Link
               key={category.id}
               href={category.href}
-              className="group overflow-hidden rounded-[18px] border border-[#efcfad] bg-white shadow-[0_8px_18px_rgba(116,63,25,0.08)]"
+              className="brand-card group overflow-hidden"
             >
-              <div className="relative aspect-[1.25] bg-[#fff1d8]">
+              <div className="relative aspect-[1.25] bg-cream">
                 <Image
                   src={category.imageUrl}
                   alt={category.name}
@@ -75,8 +75,8 @@ export default async function CategoryPage() {
                 />
               </div>
               <div className="flex items-center justify-between px-3 py-3">
-                <span className="font-bold">{category.name}</span>
-                <ChevronRight className="h-4 w-4 text-[#8a461f]" />
+                <span className="font-bold text-navy">{category.name}</span>
+                <ChevronRight className="h-4 w-4 text-brand-500" />
               </div>
             </Link>
           ))}

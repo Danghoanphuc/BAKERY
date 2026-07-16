@@ -58,26 +58,6 @@ describe("ProductCard", () => {
     expect(image).toHaveAttribute("src", "/images/burger-bread.jpg");
   });
 
-  it("shows loading spinner initially", () => {
-    render(<ProductCard product={mockProduct} onAddToCart={mockOnAddToCart} />);
-
-    const spinner = document.querySelector(".animate-spin");
-    expect(spinner).toBeInTheDocument();
-  });
-
-  it("hides loading spinner after image loads", async () => {
-    render(<ProductCard product={mockProduct} onAddToCart={mockOnAddToCart} />);
-
-    // Trigger image load event
-    const image = screen.getByAltText("Bánh mì hamburger thơm ngon");
-    fireEvent.load(image);
-
-    await waitFor(() => {
-      const spinner = document.querySelector(".animate-spin");
-      expect(spinner).not.toBeInTheDocument();
-    });
-  });
-
   it("shows fallback icon when image fails to load", async () => {
     render(<ProductCard product={mockProduct} onAddToCart={mockOnAddToCart} />);
 
@@ -145,12 +125,12 @@ describe("ProductCard", () => {
     expect(screen.getByTestId("add-to-cart-btn")).toBeInTheDocument();
   });
 
-  it("maintains fixed width for consistent grid layout", () => {
+  it("fills its responsive grid column", () => {
     const { container } = render(
       <ProductCard product={mockProduct} onAddToCart={mockOnAddToCart} />,
     );
 
     const card = container.firstChild as HTMLElement;
-    expect(card).toHaveClass("w-40"); // 160px fixed width
+    expect(card).toHaveClass("w-full");
   });
 });

@@ -12,7 +12,7 @@ export function AdminFrame({ children }: { children: React.ReactNode }) {
     <div
       className={clsx(
         "flex h-screen overflow-hidden",
-        isPosRoute ? "bg-[#f5f0eb]" : "admin-ui-frame bg-[#f5f0eb]",
+        isPosRoute ? "bg-[#f3f5f4]" : "admin-ui-frame bg-[#f3f5f4]",
       )}
     >
       <AdminSidebar />

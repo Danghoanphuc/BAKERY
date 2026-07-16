@@ -247,7 +247,7 @@ export default function CheckoutPage() {
   };
 
   return (
-    <main className="min-h-screen bg-bg-main text-text-primary">
+    <main className="brand-page">
       <div className="mx-auto min-h-screen w-full max-w-[480px] px-3.5 pb-40 pt-2">
         <CheckoutHeader isPickup={isPickup} onBack={() => router.back()} />
 

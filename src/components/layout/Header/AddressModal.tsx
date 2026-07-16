@@ -204,16 +204,8 @@ export const AddressModal: React.FC<AddressModalProps> = ({
           zoom: 15,
         });
         map.on("error", (event) => {
-          const message = event.error?.message || "";
-          const isKnownGoongStyleWarning =
-            message.includes('Source layer "trees"') ||
-            message.includes("poi-tree") ||
-            message.toLowerCase().includes("missing image") ||
-            message.toLowerCase().includes("could not load");
-
-          if (!isKnownGoongStyleWarning) {
-            console.error("Goong map error:", event.error);
-          }
+          // Suppress all Goong map errors since they are usually non-critical warnings
+          console.debug("Goong map event (suppressed):", event);
         });
         const marker = new window.goongjs.Marker({
           draggable: true,

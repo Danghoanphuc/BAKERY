@@ -8,6 +8,7 @@ import {
 import { getVoucherCodeFromScanInput, parsePosVoucherToken } from "@/lib/pos-voucher-token";
 import { validateVoucherRedemption } from "@/lib/voucher-redemption-policy";
 import type { PublicVoucher, VoucherUseMode } from "@/types/voucher";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 type PreviewRequest = {
   code?: string;
@@ -46,6 +47,9 @@ async function previewVoucher({
 }
 
 export async function POST(request: Request) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const payload = (await request.json()) as PreviewRequest;
     const subtotal = Math.max(0, Number(payload.subtotal) || 0);

@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { reorderCategories } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 export async function PUT(request: Request) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const data = await request.json();
     const items = Array.isArray(data.items) ? data.items : [];
@@ -25,9 +29,9 @@ export async function PUT(request: Request) {
       ),
     );
 
-    // Revalidate pages that display categories
     revalidatePath("/");
     revalidatePath("/admin/categories");
+    revalidatePath("/category");
 
     return NextResponse.json({ ok: true });
   } catch (error) {

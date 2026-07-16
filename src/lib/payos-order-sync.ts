@@ -3,7 +3,7 @@ import {
 } from "@/lib/db";
 import { getPayOSClient, isPayOSEnabled } from "@/lib/payos";
 import type { Order } from "@/types";
-import { captureOrderFinancials, recordProductSaleInventory } from "@/features/finance";
+import { fulfillPaidPosOrder } from "@/lib/pos-order-fulfillment";
 
 type PayOSPaymentLink = Awaited<
   ReturnType<ReturnType<typeof getPayOSClient>["paymentRequests"]["get"]>
@@ -22,6 +22,15 @@ export async function syncOrderPaidFromPayOS(
   payosLink: PayOSPaymentLink,
 ) {
   if (order.paymentStatus === "paid") {
+    if (order.salesChannel === "pos" && !order.posFulfilledAt) {
+      const fulfillment = await fulfillPaidPosOrder(order, "payos");
+      return {
+        ...order,
+        payosStockDeducted: true,
+        actualCostOfGoods: fulfillment.actualCostOfGoods,
+        posFulfilledAt: fulfillment.fulfilledAt,
+      };
+    }
     return order;
   }
 
@@ -33,30 +42,14 @@ export async function syncOrderPaidFromPayOS(
     payosLink.transactions[payosLink.transactions.length - 1];
   const nextStatus = order.salesChannel === "pos" ? "completed" : order.status;
 
-  let actualCostOfGoods = order.actualCostOfGoods;
-  if (!order.payosStockDeducted) {
-    const inventorySale = await recordProductSaleInventory({
-      orderId: order.id,
-      items: order.items.map((item) => ({
-        ...item,
-        unitStandardCost: order.itemFinancialSnapshots?.find(
-          (snapshot) => snapshot.productId === item.productId,
-        )?.unitCost,
-      })),
-      actor: "payos",
-    });
-    actualCostOfGoods = inventorySale.inventoryValue;
-  }
-
   const paidAt = new Date();
-  await updateOrder(order.id, {
+  const paidOrder: Order = {
+    ...order,
     paymentStatus: "paid",
     paidAt,
     payosPaymentLinkId: payosLink.id,
     payosReference: transaction?.reference,
     payosTransactionDateTime: transaction?.transactionDateTime,
-    payosStockDeducted: true,
-    actualCostOfGoods,
     status: nextStatus,
     statusHistory: [
       ...(order.statusHistory ?? []),
@@ -69,27 +62,23 @@ export async function syncOrderPaidFromPayOS(
           : "PayOS thanh toán thành công",
       },
     ],
+  };
+  await updateOrder(order.id, {
+    paymentStatus: paidOrder.paymentStatus,
+    paidAt: paidOrder.paidAt,
+    payosPaymentLinkId: paidOrder.payosPaymentLinkId,
+    payosReference: paidOrder.payosReference,
+    payosTransactionDateTime: paidOrder.payosTransactionDateTime,
+    status: paidOrder.status,
+    statusHistory: paidOrder.statusHistory,
   });
-
-  await captureOrderFinancials(
-    {
-      ...order,
-      paymentStatus: "paid",
-      status: nextStatus,
-      paidAt,
-      payosReference: transaction?.reference,
-      actualCostOfGoods,
-    },
-    "payos",
-  );
+  const fulfillment = await fulfillPaidPosOrder(paidOrder, "payos");
 
   return {
-    ...order,
-    paymentStatus: "paid" as const,
-    status: nextStatus,
-    paidAt,
+    ...paidOrder,
     payosStockDeducted: true,
-    actualCostOfGoods,
+    actualCostOfGoods: fulfillment.actualCostOfGoods,
+    posFulfilledAt: fulfillment.fulfilledAt,
   };
 }
 

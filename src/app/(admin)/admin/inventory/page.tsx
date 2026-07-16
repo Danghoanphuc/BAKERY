@@ -1,40 +1,48 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { Plus } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Loader2, Plus, RefreshCw } from "lucide-react";
 import type { Category, Product } from "@/types";
+import type { ProductCostSummary } from "@/features/finance";
 import { InventoryStats } from "./_components/InventoryStats";
 import { InventoryTable } from "./_components/InventoryTable";
-import { ProductFormModal } from "./_components/ProductFormModal";
 import {
-  applyProductAssistant,
-  buildCategoryNameMap,
   filterProducts,
   getInventoryStats,
 } from "./_lib/inventory-utils";
-import {
-  createEmptyProductForm,
-  ProductFilter,
-  ProductFormData,
-  productFormToPayload,
-  productToForm,
-} from "./_lib/product-form";
+import { ProductFilter } from "./_lib/product-form";
+
+type CostingSummaryResponse = {
+  byProductId: Record<string, ProductCostSummary>;
+  coverage: {
+    total: number;
+    recipe: number;
+    legacy: number;
+    missing: number;
+  };
+};
 
 export default function InventoryPage() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [costingByProductId, setCostingByProductId] = useState<
+    Record<string, ProductCostSummary>
+  >({});
+  const [costingCoverage, setCostingCoverage] = useState({
+    total: 0,
+    recipe: 0,
+    legacy: 0,
+    missing: 0,
+  });
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
   const [savingProductId, setSavingProductId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [assistantNote, setAssistantNote] = useState<string | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filter, setFilter] = useState<ProductFilter>("all");
-  const [formData, setFormData] = useState<ProductFormData>(
-    createEmptyProductForm(),
-  );
+  const [isSyncingCardTemplate, setIsSyncingCardTemplate] = useState(false);
 
   useEffect(() => {
     loadInventory();
@@ -45,9 +53,10 @@ export default function InventoryPage() {
       if (showLoading) {
         setIsLoading(true);
       }
-      const [productsRes, categoriesRes] = await Promise.all([
+      const [productsRes, categoriesRes, costingRes] = await Promise.all([
         fetch("/api/products", { cache: "no-store" }),
         fetch("/api/categories", { cache: "no-store" }),
+        fetch("/api/admin/finance/costing-summary", { cache: "no-store" }),
       ]);
 
       if (!productsRes.ok || !categoriesRes.ok) {
@@ -56,6 +65,17 @@ export default function InventoryPage() {
 
       setProducts((await productsRes.json()) as Product[]);
       setCategories((await categoriesRes.json()) as Category[]);
+
+      if (costingRes.ok) {
+        const costing = (await costingRes.json()) as CostingSummaryResponse;
+        setCostingByProductId(costing.byProductId ?? {});
+        setCostingCoverage(
+          costing.coverage ?? { total: 0, recipe: 0, legacy: 0, missing: 0 },
+        );
+      } else {
+        setCostingByProductId({});
+        setCostingCoverage({ total: 0, recipe: 0, legacy: 0, missing: 0 });
+      }
       setError(null);
     } catch (err) {
       console.error("Failed to load inventory:", err);
@@ -67,74 +87,11 @@ export default function InventoryPage() {
     }
   }
 
-  const categoryNameById = useMemo(
-    () => buildCategoryNameMap(categories),
-    [categories],
-  );
   const stats = useMemo(() => getInventoryStats(products), [products]);
   const filteredProducts = useMemo(
-    () => filterProducts(products, categoryNameById, searchTerm, filter),
-    [categoryNameById, filter, products, searchTerm],
+    () => filterProducts(products, categories, searchTerm, filter),
+    [categories, filter, products, searchTerm],
   );
-
-  const openAddModal = () => {
-    setEditingProduct(null);
-    setAssistantNote(null);
-    setFormData(createEmptyProductForm(categories[0]?.id ?? ""));
-    setIsModalOpen(true);
-  };
-
-  const openEditModal = (product: Product) => {
-    setEditingProduct(product);
-    setAssistantNote(null);
-    setFormData(productToForm(product, categories[0]?.id ?? ""));
-    setIsModalOpen(true);
-  };
-
-  const saveProduct = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setIsSaving(true);
-    setError(null);
-
-    if (!formData.imageUrl.trim()) {
-      setIsSaving(false);
-      setError("Vui lòng tải lên ít nhất một ảnh sản phẩm.");
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        editingProduct ? `/api/products/${editingProduct.id}` : "/api/products",
-        {
-          method: editingProduct ? "PUT" : "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(productFormToPayload(formData)),
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(await response.text());
-      }
-
-      const savedProduct = (await response.json()) as Product;
-      setProducts((currentProducts) => {
-        if (editingProduct) {
-          return currentProducts.map((product) =>
-            product.id === savedProduct.id ? savedProduct : product,
-          );
-        }
-
-        return [savedProduct, ...currentProducts];
-      });
-      setIsModalOpen(false);
-      void loadInventory({ showLoading: false });
-    } catch (err) {
-      console.error("Failed to save product:", err);
-      setError("Không thể lưu sản phẩm. Kiểm tra lại thông tin rồi thử lại.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const deleteProduct = async (product: Product) => {
     if (!confirm(`Xóa sản phẩm "${product.name}"?`)) return;
@@ -156,7 +113,7 @@ export default function InventoryPage() {
   };
 
   const toggleProductAvailability = async (product: Product) => {
-    const nextIsAvailable = !product.isAvailable;
+    const nextIsAvailable = !(product.isAvailable !== false);
     setSavingProductId(product.id);
     setProducts((currentProducts) =>
       currentProducts.map((currentProduct) =>
@@ -196,12 +153,18 @@ export default function InventoryPage() {
     }
   };
 
-  const applyAssistant = () => {
-    const categoryName = categoryNameById.get(formData.categoryId) ?? "";
-    setFormData((currentForm) => applyProductAssistant(currentForm, categoryName));
-    setAssistantNote(
-      "Đã gợi ý tag, dịp sử dụng, dị ứng và từ khóa tìm kiếm từ tên/mô tả sản phẩm. Đây là trợ lý nội bộ, có thể nâng cấp sang AI thật khi cấu hình API.",
-    );
+  const syncCardTemplate = async () => {
+    setIsSyncingCardTemplate(true);
+    try {
+      const response = await fetch("/api/admin/inventory/workspace-card-template", { method: "POST" });
+      if (!response.ok) throw new Error(await response.text());
+      await loadInventory({ showLoading: false });
+    } catch (syncError) {
+      console.error("Failed to sync workspace card template:", syncError);
+      setError("Không thể đồng bộ ảnh minh hoạ thẻ. Hãy kiểm tra sản phẩm mẫu đã có đủ 5 ảnh.");
+    } finally {
+      setIsSyncingCardTemplate(false);
+    }
   };
 
   return (
@@ -213,17 +176,10 @@ export default function InventoryPage() {
           </h1>
           <p className="mt-1 text-sm text-neutral-600">
             Theo dõi tồn kho, giá bán, kênh giao/lấy tại quán và dữ liệu phục vụ
-            search/filter.
+            search/filter. Giá vốn ưu tiên theo BOM (Finance).
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openAddModal}
-          className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-600"
-        >
-          <Plus className="h-4 w-4" />
-          Thêm sản phẩm
-        </button>
+        <div className="flex flex-wrap items-center gap-2"><button type="button" onClick={syncCardTemplate} disabled={isSyncingCardTemplate} className="inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-300 bg-white px-3 py-2.5 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 disabled:cursor-not-allowed disabled:opacity-50">{isSyncingCardTemplate ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Đồng bộ minh hoạ thẻ</button><Link href="/admin/inventory/new" className="inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-600"><Plus className="h-4 w-4" /> Thêm sản phẩm</Link></div>
       </div>
 
       {error && (
@@ -237,35 +193,23 @@ export default function InventoryPage() {
         sellingProducts={stats.selling}
         lowStockProducts={stats.lowStock}
         inventoryValue={stats.inventoryValue}
+        bomCoverage={costingCoverage}
       />
 
       <InventoryTable
         products={filteredProducts}
+        categories={categories}
+        costingByProductId={costingByProductId}
         isLoading={isLoading}
         searchTerm={searchTerm}
         filter={filter}
-        categoryNameById={categoryNameById}
         onSearchChange={setSearchTerm}
         onFilterChange={setFilter}
-        onEdit={openEditModal}
+        onEdit={(product) => router.push(`/admin/inventory/${product.id}`)}
         onDelete={deleteProduct}
         onToggleAvailability={toggleProductAvailability}
         savingProductId={savingProductId}
       />
-
-      {isModalOpen && (
-        <ProductFormModal
-          categories={categories}
-          editingProduct={editingProduct}
-          formData={formData}
-          assistantNote={assistantNote}
-          isSaving={isSaving}
-          setFormData={setFormData}
-          onClose={() => setIsModalOpen(false)}
-          onSubmit={saveProduct}
-          onApplyAssistant={applyAssistant}
-        />
-      )}
     </div>
   );
 }

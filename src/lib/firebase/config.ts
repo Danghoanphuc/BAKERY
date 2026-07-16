@@ -5,6 +5,7 @@ import {
   getDocFromServer,
   getDocs,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   query,
@@ -38,7 +39,12 @@ function stripUndefined(obj: any): any {
 }
 import { db } from "./app";
 import type { Category, Product, Order } from "@/types";
-import { productBelongsToCategory } from "@/lib/product-category";
+import { isProductListed } from "@/lib/product-availability";
+import {
+  normalizeCategoryReference,
+  productBelongsToCategory,
+  resolveCanonicalCategoryId,
+} from "@/lib/product-category";
 
 // Re-export db for other modules
 export { db };
@@ -82,15 +88,33 @@ export async function createCategory(data: {
   name: string;
   iconUrl: string;
   displayOrder?: number;
+  isVisible?: boolean;
 }): Promise<Category> {
-  const docRef = await addDoc(collection(db, "categories"), {
-    ...data,
+  const baseId =
+    normalizeCategoryReference(data.name) || `category-${Date.now()}`;
+  let id = baseId;
+  let suffix = 2;
+  while ((await getDoc(doc(db, "categories", id))).exists()) {
+    id = `${baseId}-${suffix++}`;
+  }
+
+  const payload = {
+    name: data.name.trim(),
+    iconUrl: data.iconUrl,
     displayOrder: data.displayOrder ?? 0,
+    isVisible: data.isVisible ?? true,
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
-  });
-  const docSnap = await getDoc(docRef);
-  return { id: docRef.id, ...docSnap.data() } as Category;
+  };
+
+  await setDoc(doc(db, "categories", id), payload);
+  return {
+    id,
+    name: payload.name,
+    iconUrl: payload.iconUrl,
+    displayOrder: payload.displayOrder,
+    isVisible: payload.isVisible,
+  };
 }
 
 export async function updateCategory(
@@ -200,15 +224,8 @@ export async function getAllProducts(): Promise<Product[]> {
 
 export async function getProducts(): Promise<Product[]> {
   try {
-    const q = query(
-      collection(db, "products"),
-      where("isAvailable", "==", true),
-    );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Product[];
+    const products = await getAllProducts();
+    return products.filter(isProductListed);
   } catch (error) {
     console.error("Error fetching products:", error);
     return [];
@@ -219,16 +236,24 @@ export async function getProductsByCategory(
   categoryId: string,
 ): Promise<Product[]> {
   try {
-    const q = query(
-      collection(db, "products"),
-      where("categoryId", "==", categoryId),
-      where("isAvailable", "==", true),
+    const [categories, products] = await Promise.all([
+      getCategories(),
+      getAllProducts(),
+    ]);
+    const category =
+      categories.find((item) => item.id === categoryId) ??
+      categories.find(
+        (item) =>
+          normalizeCategoryReference(item.name) ===
+          normalizeCategoryReference(categoryId),
+      );
+
+    if (!category) return [];
+
+    return products.filter(
+      (product) =>
+        isProductListed(product) && productBelongsToCategory(product, category),
     );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Product[];
   } catch (error) {
     console.error("Error fetching products by category:", error);
     return [];
@@ -237,16 +262,10 @@ export async function getProductsByCategory(
 
 export async function getFeaturedProducts(): Promise<Product[]> {
   try {
-    const q = query(
-      collection(db, "products"),
-      where("isFeatured", "==", true),
-      where("isAvailable", "==", true),
+    const products = await getAllProducts();
+    return products.filter(
+      (product) => isProductListed(product) && product.isFeatured === true,
     );
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Product[];
   } catch (error) {
     console.error("Error fetching featured products:", error);
     return [];
@@ -272,8 +291,14 @@ export async function getProductByIdAdmin(id: string): Promise<Product | null> {
 }
 
 export async function createProduct(data: any): Promise<Product> {
+  const categories = await getCategories();
+  const categoryId = resolveCanonicalCategoryId(data.categoryId, categories);
   const docRef = await addDoc(collection(db, "products"), {
-    ...stripUndefined(data),
+    ...stripUndefined({
+      ...data,
+      categoryId,
+      isAvailable: data.isAvailable !== false,
+    }),
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
   });
@@ -289,8 +314,17 @@ export async function updateProduct(
   const docRef = doc(db, "products", id);
   const { id: _ignoredId, createdAt: _ignoredCreatedAt, ...productData } = data;
 
+  let nextData = { ...productData };
+  if (typeof nextData.categoryId === "string") {
+    const categories = await getCategories();
+    nextData = {
+      ...nextData,
+      categoryId: resolveCanonicalCategoryId(nextData.categoryId, categories),
+    };
+  }
+
   await updateDoc(docRef, {
-    ...stripUndefined(productData),
+    ...stripUndefined(nextData),
     updatedAt: Timestamp.now(),
   });
 
@@ -300,7 +334,35 @@ export async function updateProduct(
     throw new Error("PRODUCT_NOT_FOUND");
   }
 
-  return { id: docSnap.id, ...docSnap.data() } as Product;
+  const updated = { id: docSnap.id, ...docSnap.data() } as Product;
+
+  if (typeof data.name === "string" && data.name.trim()) {
+    await syncWholesaleProductName(id, data.name.trim());
+  }
+
+  return updated;
+}
+
+async function syncWholesaleProductName(productId: string, productName: string) {
+  try {
+    const wholesaleQuery = query(
+      collection(db, "wholesale_products"),
+      where("productId", "==", productId),
+    );
+    const snapshot = await getDocs(wholesaleQuery);
+    if (snapshot.empty) return;
+
+    const batch = writeBatch(db);
+    snapshot.docs.forEach((wholesaleDoc) => {
+      batch.update(wholesaleDoc.ref, {
+        productName,
+        updatedAt: Timestamp.now(),
+      });
+    });
+    await batch.commit();
+  } catch (error) {
+    console.error("Failed to sync wholesale product name:", error);
+  }
 }
 
 export async function deleteProduct(id: string): Promise<void> {
@@ -432,6 +494,7 @@ export async function createOrder(data: any): Promise<Order> {
   const docSnap = await getDoc(docRef);
   return { id: docRef.id, ...docSnap.data() } as Order;
 }
+
 
 export async function updateOrder(
   id: string,

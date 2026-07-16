@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { LayoutGrid, Monitor, ScanLine, Search, X } from "lucide-react";
+import { History, LayoutGrid, Monitor, ScanLine, Search, X } from "lucide-react";
 import { clsx } from "clsx";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
+import { productBelongsToCategory } from "@/lib/product-category";
 import type { Category, Product } from "@/types";
 import {
   formatCurrency,
@@ -18,6 +19,8 @@ type PosProductGridProps = {
   onSearchChange: (value: string) => void;
   onProductClick: (product: Product) => void;
   onOpenCustomerDisplay: () => void;
+  onScannerInput?: (value: string) => void;
+  onScannerKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
 };
 
 export function PosProductGrid({
@@ -29,9 +32,11 @@ export function PosProductGrid({
   onSearchChange,
   onProductClick,
   onOpenCustomerDisplay,
+  onScannerInput,
+  onScannerKeyDown,
 }: PosProductGridProps) {
   return (
-    <section className="flex min-h-0 min-w-0 flex-col">
+    <section className="flex min-h-[65vh] min-w-0 flex-col xl:min-h-0">
       <div className="border-b border-[#f0e1d2] bg-white">
         <div className="grid gap-2.5 px-3 py-2.5 xl:grid-cols-[minmax(180px,0.75fr)_minmax(240px,1.25fr)] xl:items-center">
           <div className="min-w-0">
@@ -41,7 +46,8 @@ export function PosProductGrid({
             </p>
           </div>
           <div className="flex min-w-0 items-center gap-2">
-            <SearchBox value={searchTerm} onChange={onSearchChange} />
+            <SearchBox value={searchTerm} onChange={onSearchChange} onScannerInput={onScannerInput} onScannerKeyDown={onScannerKeyDown} />
+            <Link href="/admin/pos/orders" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#eadbcc] bg-[#fffaf6] text-[#7b6254] transition hover:border-[#b84a39]/50 hover:bg-white hover:text-[#b84a39]" aria-label="Đơn hàng POS" title="Quản lý đơn POS"><History className="h-5 w-5" /></Link>
             <Link href="/admin/pos/vouchers/scan" className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-[#eadbcc] bg-[#fffaf6] text-[#7b6254] transition hover:border-[#b84a39]/50 hover:bg-white hover:text-[#b84a39]" aria-label="Quét voucher" title="Quét voucher"><ScanLine className="h-5 w-5" /></Link>
             <button
               type="button"
@@ -69,7 +75,11 @@ export function PosProductGrid({
                 key={category.id}
                 active={selectedCategory === category.id}
                 label={category.name}
-                count={products.filter((product) => product.categoryId === category.id).length}
+                count={
+                  products.filter((product) =>
+                    productBelongsToCategory(product, category),
+                  ).length
+                }
                 onClick={() => onCategoryChange(category.id)}
               />
             ))}
@@ -134,9 +144,13 @@ export function PosProductGrid({
 function SearchBox({
   value,
   onChange,
+  onScannerInput,
+  onScannerKeyDown,
 }: {
   value: string;
   onChange: (value: string) => void;
+  onScannerInput?: (value: string) => void;
+  onScannerKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
 }) {
   return (
     <label className="relative block min-w-0 flex-1">
@@ -144,8 +158,12 @@ function SearchBox({
       <input
         type="search"
         value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder="Tìm bánh, SKU, tag, dịp sử dụng..."
+        onChange={(event) => {
+          onChange(event.target.value);
+          onScannerInput?.(event.target.value);
+        }}
+        onKeyDown={onScannerKeyDown}
+        placeholder="Quét mã hoặc tìm bánh, SKU, tag..."
         className="h-10 w-full rounded-xl border border-[#eadbcc] bg-[#fffaf6] pl-10 pr-10 text-sm font-semibold text-[#3d2417] shadow-inner outline-none transition placeholder:text-[#b49a8a] focus:border-[#b84a39] focus:bg-white focus:ring-4 focus:ring-[#b84a39]/10"
       />
       {value && (

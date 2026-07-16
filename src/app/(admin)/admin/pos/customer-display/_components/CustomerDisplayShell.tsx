@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
+import { getCartItemVariantDetails } from "@/types";
 import {
   emptyPosDisplaySnapshot,
   PosDisplaySnapshot,
@@ -441,8 +442,7 @@ function DisplayLineItem({
   paid?: boolean;
 }) {
   const details = [
-    item.selectedSize ? `Size ${item.selectedSize}` : null,
-    item.selectedFlavor ? `Vị ${item.selectedFlavor}` : null,
+    ...getCartItemVariantDetails(item),
     item.customMessage ? `Chữ "${item.customMessage}"` : null,
     item.candles ? `${item.candles} nến` : null,
   ].filter(Boolean);

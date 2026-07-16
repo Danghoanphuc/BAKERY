@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import {
-  createOrder,
   generateOrderNumber,
   getAllProducts,
   updateOrder,
@@ -10,7 +9,6 @@ import {
   getCustomerById,
   getMarketingCampaigns,
   getMarketingSettings,
-  recordVoucherRedemption,
 } from "@/lib/firebase";
 import {
   getOrderProductSubtotal,
@@ -31,13 +29,14 @@ import {
 } from "@/lib/payos";
 import {
   buildItemFinancialSnapshots,
-  captureOrderFinancials,
   getStandardCostCatalog,
-  recordProductSaleInventory,
 } from "@/features/finance";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import { fulfillPaidPosOrder } from "@/lib/pos-order-fulfillment";
+import { createReservedPosOrderOnce } from "@/lib/firebase/pos-inventory";
 
 type PosCheckoutPayload = {
+  idempotencyKey?: string;
   customerId?: string;
   customerName?: string;
   customerPhone?: string;
@@ -45,6 +44,8 @@ type PosCheckoutPayload = {
   voucherCode?: string;
   voucherId?: string;
   paymentMethod?: PaymentMethod;
+  cashReceived?: number;
+  note?: string;
 };
 
 function stripUndefinedDeep<T>(value: T): T {
@@ -107,6 +108,13 @@ export async function POST(request: Request) {
   if (unauthorized) return unauthorized;
   try {
     const payload = (await request.json()) as PosCheckoutPayload;
+    const idempotencyKey = payload.idempotencyKey?.trim();
+    if (!idempotencyKey || !/^[a-zA-Z0-9_-]{16,80}$/.test(idempotencyKey)) {
+      return NextResponse.json(
+        { error: "Yêu cầu thanh toán không có khóa chống trùng hợp lệ." },
+        { status: 400 },
+      );
+    }
     const rawItems = payload.items ?? [];
 
     if (rawItems.length === 0) {
@@ -197,16 +205,6 @@ export async function POST(request: Request) {
           )
         : 0;
 
-    if (customer && loyaltyPointsEarned > 0) {
-      await createOrUpdateCustomerFromPurchase({
-        name: customer.name,
-        phone: customer.phone,
-        status: "active",
-        loyaltyPoints: loyaltyPointsEarned,
-        personalization: customer.personalization ?? {},
-      });
-    }
-
     const itemFinancialSnapshots = buildItemFinancialSnapshots({
       items,
       discountAmount,
@@ -220,6 +218,15 @@ export async function POST(request: Request) {
     );
     const paymentMethod = payload.paymentMethod ?? "cash";
     const isBankTransfer = paymentMethod === "bank_transfer";
+    const cashReceived = paymentMethod === "cash"
+      ? Math.max(0, Math.floor(Number(payload.cashReceived) || 0))
+      : undefined;
+    if (paymentMethod === "cash" && (cashReceived ?? 0) < totalAmount) {
+      return NextResponse.json(
+        { error: "Số tiền khách đưa chưa đủ." },
+        { status: 400 },
+      );
+    }
 
     if (isBankTransfer && !isPayOSEnabled()) {
       return NextResponse.json(
@@ -229,7 +236,9 @@ export async function POST(request: Request) {
     }
 
     const isPayOSPayment = isBankTransfer;
-    const orderPayload = stripUndefinedDeep({
+    const orderPayload: Omit<Order, "id" | "createdAt" | "updatedAt" | "items"> & {
+      items: Array<Omit<CartItem, "cartItemId">>;
+    } = stripUndefinedDeep({
       orderNumber: generateOrderNumber(),
       customerId: customer?.id,
       customerName:
@@ -248,6 +257,9 @@ export async function POST(request: Request) {
       status: isBankTransfer ? "pending" : "completed",
       paymentStatus: isBankTransfer ? "pending" : "paid",
       paymentMethod,
+      cashReceived,
+      changeDue:
+        paymentMethod === "cash" ? (cashReceived ?? 0) - totalAmount : undefined,
       payosOrderCode: isPayOSPayment ? createPayOSOrderCode() : undefined,
       estimatedCostOfGoods,
       itemFinancialSnapshots,
@@ -261,15 +273,13 @@ export async function POST(request: Request) {
           note: isBankTransfer ? "Chờ chuyển khoản" : "Thanh toán POS",
         },
       ],
+      note: payload.note?.trim() || undefined,
     });
 
-    const order = await createOrder(orderPayload);
-    await captureOrderFinancials(
-      { ...order, createdAt: new Date(), updatedAt: new Date() },
-      "pos",
-    ).catch((financeError) => {
-      console.error("POS finance capture failed:", financeError);
-    });
+    const { order, created } = await createReservedPosOrderOnce(
+      idempotencyKey,
+      orderPayload,
+    );
     let payosPayment:
       | {
           checkoutUrl: string;
@@ -279,7 +289,7 @@ export async function POST(request: Request) {
         }
       | undefined;
 
-    if (isPayOSPayment) {
+    if (isPayOSPayment && created) {
       try {
         const paymentLink = await createOrderPaymentLink({
           order,
@@ -308,34 +318,22 @@ export async function POST(request: Request) {
       }
     }
 
-    if (requestedVoucher && discountAmount > 0) {
-      await recordVoucherRedemption({
-        voucherId: requestedVoucher.id,
-        voucherCode: requestedVoucher.code,
-        orderId: order.id,
-        orderNumber: order.orderNumber,
-        customerId: customer?.id,
-        phone: customer?.phone ?? payload.customerPhone,
-        channel: "pos_pickup_now",
-        subtotal: productSubtotal,
-        discountAmount,
-        totalAfterDiscount: totalAmount,
-        source: "pos",
-      });
+    if (isPayOSPayment && !created) {
+      payosPayment = order.payosCheckoutUrl && order.payosQrCode && order.payosPaymentLinkId && order.payosOrderCode
+        ? {
+            checkoutUrl: order.payosCheckoutUrl,
+            qrCode: order.payosQrCode,
+            paymentLinkId: order.payosPaymentLinkId,
+            orderCode: order.payosOrderCode,
+          }
+        : undefined;
     }
 
     if (!isBankTransfer) {
-      const inventorySale = await recordProductSaleInventory({
-        orderId: order.id,
-        items: items.map((item) => ({
-          ...item,
-          unitStandardCost: itemFinancialSnapshots.find(
-            (snapshot) => snapshot.productId === item.productId,
-          )?.unitCost,
-        })),
-        actor: "pos",
-      });
-      await updateOrder(order.id, { actualCostOfGoods: inventorySale.inventoryValue });
+      await fulfillPaidPosOrder(
+        { ...order, createdAt: new Date(), updatedAt: new Date() },
+        "pos",
+      );
     }
 
     return NextResponse.json(

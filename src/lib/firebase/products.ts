@@ -3,14 +3,13 @@ import {
   getDocs,
   doc,
   getDoc,
-  query,
-  where,
-  limit,
   updateDoc,
 } from "firebase/firestore";
 import { db } from "./config";
 import type { InventoryProduct, Product } from "@/types";
 import { getAllCategories } from "./categories";
+import { isProductListed } from "@/lib/product-availability";
+import { productBelongsToCategory } from "@/lib/product-category";
 import { normalizeProduct } from "./utils";
 
 const COLLECTION_NAME = "products";
@@ -51,18 +50,24 @@ export async function getProductById(id: string): Promise<Product | null> {
 }
 
 /**
- * Lấy sản phẩm theo danh mục
+ * Lấy sản phẩm theo danh mục (hỗ trợ legacy categoryId = tên danh mục)
  */
 export async function getProductsByCategory(
   categoryId: string,
 ): Promise<Product[]> {
   try {
-    const productsRef = collection(db, COLLECTION_NAME);
-    const q = query(productsRef, where("categoryId", "==", categoryId));
-    const snapshot = await getDocs(q);
+    const [categories, products] = await Promise.all([
+      getAllCategories(),
+      getAllProducts(),
+    ]);
+    const category =
+      categories.find((item) => item.id === categoryId) ??
+      categories.find((item) => item.name === categoryId);
 
-    return snapshot.docs.map((productDoc) =>
-      normalizeProduct(productDoc.id, productDoc.data()),
+    if (!category) return [];
+
+    return products.filter((product) =>
+      productBelongsToCategory(product, category),
     );
   } catch (error) {
     console.error("Error fetching products by category:", error);
@@ -77,17 +82,12 @@ export async function getFeaturedProducts(
   limitCount: number = 10,
 ): Promise<Product[]> {
   try {
-    const productsRef = collection(db, COLLECTION_NAME);
-    const q = query(
-      productsRef,
-      where("isFeatured", "==", true),
-      limit(limitCount),
-    );
-    const snapshot = await getDocs(q);
-
-    return snapshot.docs.map((productDoc) =>
-      normalizeProduct(productDoc.id, productDoc.data()),
-    );
+    const products = await getAllProducts();
+    return products
+      .filter(
+        (product) => isProductListed(product) && product.isFeatured === true,
+      )
+      .slice(0, limitCount);
   } catch (error) {
     console.error("Error fetching featured products:", error);
     return [];
@@ -101,12 +101,9 @@ export async function getNewProducts(
   limitCount: number = 10,
 ): Promise<Product[]> {
   try {
-    const productsRef = collection(db, COLLECTION_NAME);
-    const q = query(productsRef, where("isNew", "==", true));
-    const snapshot = await getDocs(q);
-
-    return snapshot.docs
-      .map((productDoc) => normalizeProduct(productDoc.id, productDoc.data()))
+    const products = await getAllProducts();
+    return products
+      .filter((product) => isProductListed(product) && product.isNew === true)
       .sort(
         (left, right) =>
           (right.createdAt?.getTime() ?? 0) - (left.createdAt?.getTime() ?? 0),
@@ -125,17 +122,12 @@ export async function getBestsellerProducts(
   limitCount: number = 10,
 ): Promise<Product[]> {
   try {
-    const productsRef = collection(db, COLLECTION_NAME);
-    const q = query(
-      productsRef,
-      where("isBestseller", "==", true),
-      limit(limitCount),
-    );
-    const snapshot = await getDocs(q);
-
-    return snapshot.docs.map((productDoc) =>
-      normalizeProduct(productDoc.id, productDoc.data()),
-    );
+    const products = await getAllProducts();
+    return products
+      .filter(
+        (product) => isProductListed(product) && product.isBestseller === true,
+      )
+      .slice(0, limitCount);
   } catch (error) {
     console.error("Error fetching bestseller products:", error);
     return [];
@@ -149,18 +141,18 @@ export async function getInventoryProducts(): Promise<InventoryProduct[]> {
       getAllCategories(),
     ]);
 
-    const categoriesById = new Map(
-      categories.map((category) => [category.id, category.name]),
-    );
+    return products.map((product) => {
+      const category = categories.find((item) =>
+        productBelongsToCategory(product, item),
+      );
 
-    return products.map((product) => ({
-      ...product,
-      stock: product.stock ?? 0,
-      isAvailable: product.isAvailable ?? true,
-      category: product.categoryId
-        ? (categoriesById.get(product.categoryId) ?? "Chưa phân loại")
-        : "Chưa phân loại",
-    }));
+      return {
+        ...product,
+        stock: product.stock ?? 0,
+        isAvailable: product.isAvailable !== false,
+        category: category?.name ?? "Chưa phân loại",
+      };
+    });
   } catch (error) {
     console.error("Error fetching inventory products:", error);
     return [];

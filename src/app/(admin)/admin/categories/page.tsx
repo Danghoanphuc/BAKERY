@@ -20,6 +20,7 @@ import {
   LayoutGrid,
   List,
   Loader2,
+  Network,
   PackageCheck,
   PackageX,
   Plus,
@@ -28,6 +29,7 @@ import {
   X,
 } from "lucide-react";
 import type { Category } from "@/types";
+import { CategoryMap } from "./_components/CategoryMap";
 
 type CategoryFormData = {
   name: string;
@@ -37,7 +39,7 @@ type CategoryFormData = {
 };
 
 type FilterMode = "all" | "visible" | "hidden" | "empty";
-type ViewMode = "board" | "preview";
+type ViewMode = "board" | "preview" | "map";
 
 const emptyForm: CategoryFormData = {
   name: "",
@@ -74,7 +76,15 @@ export default function CategoriesPage() {
     try {
       setIsLoading(true);
       const res = await fetch("/api/categories");
+      if (!res.ok) {
+        throw new Error(`categories_load_${res.status}`);
+      }
+
       const data = await res.json();
+      if (!Array.isArray(data)) {
+        throw new Error("categories_payload_invalid");
+      }
+
       setCategories(data);
       categoriesOrderRef.current = data;
       setHasUnsavedOrder(false);
@@ -82,6 +92,8 @@ export default function CategoriesPage() {
     } catch (err) {
       console.error("Failed to load categories:", err);
       setError("Không thể tải danh sách danh mục.");
+      setCategories([]);
+      categoriesOrderRef.current = [];
     } finally {
       setIsLoading(false);
     }
@@ -156,6 +168,18 @@ export default function CategoriesPage() {
     setError(null);
     setMessage(null);
 
+    if (!formData.name.trim()) {
+      setIsSaving(false);
+      setError("Vui lòng nhập tên danh mục.");
+      return;
+    }
+
+    if (!formData.iconUrl.trim()) {
+      setIsSaving(false);
+      setError("Vui lòng tải lên ảnh danh mục.");
+      return;
+    }
+
     try {
       const response = await fetch(
         editingCategory
@@ -164,7 +188,11 @@ export default function CategoriesPage() {
         {
           method: editingCategory ? "PUT" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({
+            ...formData,
+            name: formData.name.trim(),
+            iconUrl: formData.iconUrl.trim(),
+          }),
         },
       );
 
@@ -296,6 +324,8 @@ export default function CategoriesPage() {
     } catch (err) {
       console.error("Failed to reorder categories:", err);
       setError("Không thể lưu thứ tự danh mục.");
+      // Resync UI with server so local drag order does not drift.
+      await loadData();
     } finally {
       setIsSaving(false);
     }
@@ -452,7 +482,7 @@ export default function CategoriesPage() {
               </button>
             ))}
           </div>
-          <div className="grid grid-cols-2 rounded-lg border border-neutral-200 p-1">
+          <div className="grid grid-cols-3 rounded-lg border border-neutral-200 p-1">
             <button
               onClick={() => setViewMode("board")}
               className={`grid h-8 w-10 place-items-center rounded-md ${
@@ -474,6 +504,18 @@ export default function CategoriesPage() {
               aria-label="Dạng xem trước"
             >
               <LayoutGrid className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("map")}
+              className={`grid h-8 w-10 place-items-center rounded-md ${
+                viewMode === "map"
+                  ? "bg-neutral-900 text-white"
+                  : "text-neutral-600 hover:bg-neutral-50"
+              }`}
+              aria-label="Dạng bản đồ vận hành"
+              title="Bản đồ vận hành"
+            >
+              <Network className="h-4 w-4" />
             </button>
           </div>
         </div>
@@ -505,7 +547,7 @@ export default function CategoriesPage() {
             />
           ))}
         </div>
-      ) : (
+      ) : viewMode === "preview" ? (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {filteredCategories.map((category) => (
             <PreviewCard
@@ -518,6 +560,14 @@ export default function CategoriesPage() {
             />
           ))}
         </div>
+      ) : (
+        <CategoryMap
+          categories={filteredCategories}
+          isSaving={isSaving}
+          onEdit={handleOpenEditModal}
+          onDelete={deleteCategory}
+          onToggleVisibility={toggleVisibility}
+        />
       )}
 
       {isModalOpen && (
@@ -528,6 +578,7 @@ export default function CategoriesPage() {
           onClose={() => setIsModalOpen(false)}
           onSubmit={handleSubmit}
           isSaving={isSaving}
+          error={error}
         />
       )}
 
@@ -745,6 +796,7 @@ function CategoryModal({
   onClose,
   onSubmit,
   isSaving,
+  error,
 }: {
   editingCategory: Category | null;
   formData: CategoryFormData;
@@ -752,6 +804,7 @@ function CategoryModal({
   onClose: () => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   isSaving: boolean;
+  error: string | null;
 }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -857,6 +910,9 @@ function CategoryModal({
           </div>
 
           <div className="flex items-center justify-end gap-3 border-t border-neutral-200 pt-4 md:col-span-2">
+            {error && (
+              <p className="mr-auto text-sm font-semibold text-red-600">{error}</p>
+            )}
             <button
               type="button"
               onClick={onClose}

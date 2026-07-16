@@ -1,0 +1,1 @@
+export { WholesaleProductTable } from "./WholesaleProductTable";

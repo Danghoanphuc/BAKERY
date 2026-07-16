@@ -66,10 +66,11 @@ const bestsellers = await getBestsellerProducts(10);
 
 ```typescript
 {
-  id: string; // Document ID (e.g., "banh-sinh-nhat")
+  id: string; // Document ID / slug (e.g., "banh-sinh-nhat")
   name: string; // Tên hiển thị
   iconUrl: string; // URL hoặc emoji icon
   displayOrder: number; // Thứ tự sắp xếp
+  isVisible?: boolean; // Storefront/POS visibility (default true)
 }
 ```
 
@@ -80,7 +81,8 @@ const bestsellers = await getBestsellerProducts(10);
   "id": "banh-sinh-nhat",
   "name": "Bánh Sinh Nhật",
   "iconUrl": "🎂",
-  "displayOrder": 1
+  "displayOrder": 1,
+  "isVisible": true
 }
 ```
 
@@ -92,16 +94,23 @@ const bestsellers = await getBestsellerProducts(10);
   name: string;                  // Tên sản phẩm
   price: number;                 // Giá cơ bản (VND)
   imageUrl: string;              // URL hình ảnh
-  categoryId: string;            // ID danh mục
+  categoryId: string;            // ID danh mục (canonical doc id)
   description?: string;          // Mô tả chi tiết
+  sku?: string;
+  barcode?: string;
+  stock?: number;                // Tồn kho (undefined = chưa theo dõi)
+  isAvailable?: boolean;         // Missing = đang bán; false = ẩn
   availableForDelivery?: boolean;
   availableForPickup?: boolean;
-  sizeOptions?: SizeOption[];    // Tùy chọn size
-  flavorOptions?: FlavorOption[]; // Tùy chọn hương vị
+  sizeOptions?: SizeOption[];    // Tùy chọn size (+ optional sku/barcode/stock)
+  flavorOptions?: FlavorOption[]; // Tùy chọn hương vị (+ optional sku/barcode/stock)
   requiresMessage?: boolean;     // Có cho phép viết lời nhắn
   isFeatured?: boolean;          // Sản phẩm nổi bật
   isNew?: boolean;               // Sản phẩm mới
   isBestseller?: boolean;        // Bán chạy
+  dailyStock?: number;
+  availableFrom?: string;
+  availableUntil?: string;
   createdAt?: Date;              // Ngày tạo
 }
 ```

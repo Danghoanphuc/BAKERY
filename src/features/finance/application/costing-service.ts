@@ -1,4 +1,4 @@
-import type { FinanceIngredient, RecipeVersion } from "@/types";
+import type { FinanceIngredient, Product, RecipeVersion } from "@/types";
 import {
   activateRecipeVersion as persistRecipeActivation,
   createFinanceIngredient, createRecipeVersion,
@@ -6,9 +6,34 @@ import {
   recordIngredientCost,
 } from "../infrastructure/firestore-costing-repository";
 import { financeRepository } from "../infrastructure/firestore-finance-repository";
-import { calculateRecipeStandardUnitCost } from "../domain/standard-costing";
+import {
+  calculateLegacyStandardUnitCost,
+  calculateRecipeStandardUnitCost,
+  type StandardUnitCost,
+} from "../domain/standard-costing";
 
 const baseUnits = new Set(["gram", "millilitre", "each"]);
+
+export type ProductCostLineSummary = {
+  ingredientId: string;
+  ingredientName: string;
+  quantity: number;
+  baseUnit: FinanceIngredient["baseUnit"];
+};
+
+export type ProductCostSummary = {
+  productId: string;
+  source: StandardUnitCost["source"];
+  totalCost: number;
+  unitCost: StandardUnitCost;
+  recipe?: {
+    id: string;
+    version: number;
+    yieldQuantity: number;
+    wasteBasisPoints: number;
+    lines: ProductCostLineSummary[];
+  };
+};
 
 export async function getStandardCostCatalog() {
   const [ingredients, recipes] = await Promise.all([
@@ -22,6 +47,69 @@ export async function getCostingWorkspace() {
     getFinanceIngredients(), getAllRecipeVersions(),
   ]);
   return { ingredients, recipes };
+}
+
+export async function buildProductCostSummaries(
+  products: Product[],
+): Promise<Record<string, ProductCostSummary>> {
+  const { ingredients, recipes } = await getStandardCostCatalog();
+  const ingredientsById = new Map(ingredients.map((item) => [item.id, item]));
+  const activeRecipeByProductId = new Map(
+    recipes.map((recipe) => [recipe.productId, recipe]),
+  );
+
+  const summaries: Record<string, ProductCostSummary> = {};
+  for (const product of products) {
+    summaries[product.id] = summarizeProductCost(
+      product,
+      activeRecipeByProductId.get(product.id),
+      ingredientsById,
+    );
+  }
+  return summaries;
+}
+
+export function summarizeProductCost(
+  product: Product,
+  recipe: RecipeVersion | undefined,
+  ingredientsById: ReadonlyMap<string, FinanceIngredient>,
+): ProductCostSummary {
+  if (recipe) {
+    try {
+      const unitCost = calculateRecipeStandardUnitCost(recipe, ingredientsById);
+      return {
+        productId: product.id,
+        source: "recipe",
+        totalCost: unitCost.totalCost,
+        unitCost,
+        recipe: {
+          id: recipe.id,
+          version: recipe.version,
+          yieldQuantity: recipe.yieldQuantity,
+          wasteBasisPoints: recipe.wasteBasisPoints,
+          lines: recipe.ingredients.map((line) => {
+            const ingredient = ingredientsById.get(line.ingredientId);
+            return {
+              ingredientId: line.ingredientId,
+              ingredientName: ingredient?.name ?? line.ingredientId,
+              quantity: line.quantity,
+              baseUnit: ingredient?.baseUnit ?? "each",
+            };
+          }),
+        },
+      };
+    } catch {
+      // Fall through to legacy when active BOM cannot be priced.
+    }
+  }
+
+  const unitCost = calculateLegacyStandardUnitCost(product);
+  return {
+    productId: product.id,
+    source: unitCost.source,
+    totalCost: unitCost.totalCost,
+    unitCost,
+  };
 }
 
 export async function addIngredient(input: Omit<FinanceIngredient, "id" | "updatedAt">) {

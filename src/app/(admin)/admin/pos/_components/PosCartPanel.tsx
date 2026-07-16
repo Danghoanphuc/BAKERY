@@ -1,6 +1,6 @@
 import { Minus, PauseCircle, Plus, ShoppingCart, Trash2, X } from "lucide-react";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
-import type { CartItem } from "@/types";
+import { getCartItemVariantDetails, type CartItem } from "@/types";
 import { formatCurrency, HeldPosOrder } from "../_lib/pos-utils";
 
 type PosCartPanelProps = {
@@ -166,8 +166,7 @@ export function PosCartPanel({
 
 function ItemMeta({ item }: { item: CartItem }) {
   const details = [
-    item.selectedSize ? `Size: ${item.selectedSize}` : null,
-    item.selectedFlavor ? `Vị: ${item.selectedFlavor}` : null,
+    ...getCartItemVariantDetails(item),
     item.customMessage ? `Chữ: ${item.customMessage}` : null,
     item.candles ? `Nến: ${item.candles}` : null,
   ].filter(Boolean);

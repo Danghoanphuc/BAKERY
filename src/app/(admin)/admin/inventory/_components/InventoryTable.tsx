@@ -1,16 +1,23 @@
-import { Edit2, ImageIcon, Loader2, Search, Trash2 } from "lucide-react";
+import { ImageIcon, Loader2, Search, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
 import { ProductShareButton } from "@/features/product/components/ProductShareButton";
-import type { Product } from "@/types";
+import type { ProductCostSummary } from "@/features/finance";
+import { isProductListed } from "@/lib/product-availability";
+import type { Category, Product } from "@/types";
 import type { ProductFilter } from "../_lib/product-form";
-import { formatPrice, getStockStatus } from "../_lib/inventory-utils";
+import {
+  formatPrice,
+  getStockStatus,
+  resolveInventoryCategoryName,
+} from "../_lib/inventory-utils";
 
 type InventoryTableProps = {
   products: Product[];
+  categories: Category[];
+  costingByProductId?: Record<string, ProductCostSummary>;
   isLoading: boolean;
   searchTerm: string;
   filter: ProductFilter;
-  categoryNameById: Map<string, string>;
   onSearchChange: (value: string) => void;
   onFilterChange: (value: ProductFilter) => void;
   onEdit: (product: Product) => void;
@@ -21,10 +28,11 @@ type InventoryTableProps = {
 
 export function InventoryTable({
   products,
+  categories,
+  costingByProductId = {},
   isLoading,
   searchTerm,
   filter,
-  categoryNameById,
   onSearchChange,
   onFilterChange,
   onEdit,
@@ -48,7 +56,9 @@ export function InventoryTable({
 
         <select
           value={filter}
-          onChange={(event) => onFilterChange(event.target.value as ProductFilter)}
+          onChange={(event) =>
+            onFilterChange(event.target.value as ProductFilter)
+          }
           className="h-10 rounded-lg border border-neutral-300 px-3 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
         >
           <option value="all">Tất cả trạng thái</option>
@@ -65,7 +75,7 @@ export function InventoryTable({
             <tr>
               <TableHead>Sản phẩm</TableHead>
               <TableHead>Danh mục</TableHead>
-              <TableHead>Giá bán</TableHead>
+              <TableHead>Giá / Cost</TableHead>
               <TableHead>Tồn kho</TableHead>
               <TableHead>Kênh bán</TableHead>
               <TableHead>Trạng thái</TableHead>
@@ -80,8 +90,10 @@ export function InventoryTable({
                   key={product.id}
                   product={product}
                   categoryName={
-                    categoryNameById.get(product.categoryId ?? "") ?? "Chưa phân loại"
+                    resolveInventoryCategoryName(product, categories) ||
+                    "Chưa phân loại"
                   }
+                  costing={costingByProductId[product.id]}
                   onEdit={onEdit}
                   onDelete={onDelete}
                   onToggleAvailability={onToggleAvailability}
@@ -99,6 +111,7 @@ export function InventoryTable({
 function InventoryTableRow({
   product,
   categoryName,
+  costing,
   onEdit,
   onDelete,
   onToggleAvailability,
@@ -106,6 +119,7 @@ function InventoryTableRow({
 }: {
   product: Product;
   categoryName: string;
+  costing?: ProductCostSummary;
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
   onToggleAvailability: (product: Product) => void;
@@ -113,9 +127,10 @@ function InventoryTableRow({
 }) {
   const stockStatus = getStockStatus(product.stock ?? 0);
   const StockIcon = stockStatus.icon;
+  const costSource = costing?.source ?? "missing";
 
   return (
-    <tr className="transition hover:bg-neutral-50">
+    <tr onClick={() => onEdit(product)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onEdit(product); } }} tabIndex={0} className="cursor-pointer transition hover:bg-brand-50/40 focus:bg-brand-50/40 focus:outline-none">
       <td className="min-w-[280px] px-4 py-3">
         <div className="flex items-center gap-3">
           {product.imageUrl ? (
@@ -133,6 +148,11 @@ function InventoryTableRow({
             <div className="truncate text-sm font-semibold text-neutral-950">
               {product.name}
             </div>
+            {product.sku && (
+              <div className="mt-0.5 font-mono text-xs text-neutral-400">
+                {product.sku}
+              </div>
+            )}
             <div className="mt-1 flex flex-wrap gap-1">
               {(product.tags ?? []).slice(0, 3).map((tag) => (
                 <Badge key={tag}>{tag}</Badge>
@@ -142,8 +162,18 @@ function InventoryTableRow({
         </div>
       </td>
       <td className="px-4 py-3 text-sm text-neutral-700">{categoryName}</td>
-      <td className="px-4 py-3 text-sm font-semibold text-neutral-950">
-        {formatPrice(product.price)}
+      <td className="px-4 py-3">
+        <div className="text-sm font-semibold text-neutral-950">
+          {formatPrice(product.price)}
+        </div>
+        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+          <CostSourceBadge source={costSource} />
+          {typeof costing?.totalCost === "number" && costing.totalCost > 0 && (
+            <span className="text-xs text-neutral-500">
+              cost {formatPrice(costing.totalCost)}
+            </span>
+          )}
+        </div>
       </td>
       <td className="px-4 py-3">
         <div className="text-sm font-semibold text-neutral-950">
@@ -170,11 +200,11 @@ function InventoryTableRow({
       <td className="px-4 py-3">
         <button
           type="button"
-          onClick={() => onToggleAvailability(product)}
+          onClick={(event) => { event.stopPropagation(); onToggleAvailability(product); }}
           disabled={isSaving}
           className={clsx(
             "inline-flex h-7 w-12 items-center rounded-full px-1 transition focus:outline-none focus:ring-2 focus:ring-brand-200",
-            product.isAvailable ? "bg-emerald-500" : "bg-neutral-300",
+            isProductListed(product) ? "bg-emerald-500" : "bg-neutral-300",
             isSaving && "cursor-wait opacity-70",
           )}
           aria-label="Đổi trạng thái bán"
@@ -185,34 +215,21 @@ function InventoryTableRow({
             <span
               className={clsx(
                 "h-5 w-5 rounded-full bg-white shadow transition",
-                product.isAvailable ? "translate-x-5" : "translate-x-0",
+                isProductListed(product) ? "translate-x-5" : "translate-x-0",
               )}
             />
           )}
         </button>
         <div className="mt-1 text-xs text-neutral-500">
-          {product.isAvailable ? "Đang bán" : "Ngừng bán"}
+          {isProductListed(product) ? "Đang bán" : "Ngừng bán"}
         </div>
       </td>
       <td className="px-4 py-3 text-right">
         <div className="inline-flex items-center gap-1">
+          <span onClick={(event) => event.stopPropagation()}><ProductShareButton product={product} iconOnly label="Copy link san pham" className="border-0 text-neutral-500 hover:text-brand-600" /></span>
           <button
             type="button"
-            onClick={() => onEdit(product)}
-            className="rounded-lg p-2 text-neutral-600 transition hover:bg-neutral-100 hover:text-brand-600"
-            aria-label="Chỉnh sửa sản phẩm"
-          >
-            <Edit2 className="h-4 w-4" />
-          </button>
-          <ProductShareButton
-            product={product}
-            iconOnly
-            label="Copy link san pham"
-            className="border-0 text-neutral-500 hover:text-brand-600"
-          />
-          <button
-            type="button"
-            onClick={() => onDelete(product)}
+            onClick={(event) => { event.stopPropagation(); onDelete(product); }}
             className="rounded-lg p-2 text-neutral-500 transition hover:bg-red-50 hover:text-red-600"
             aria-label="Xóa sản phẩm"
           >
@@ -221,6 +238,32 @@ function InventoryTableRow({
         </div>
       </td>
     </tr>
+  );
+}
+
+function CostSourceBadge({
+  source,
+}: {
+  source: ProductCostSummary["source"];
+}) {
+  if (source === "recipe") {
+    return (
+      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-800">
+        BOM
+      </span>
+    );
+  }
+  if (source === "legacy") {
+    return (
+      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black uppercase text-amber-800">
+        Tay
+      </span>
+    );
+  }
+  return (
+    <span className="rounded-full bg-neutral-100 px-2 py-0.5 text-[10px] font-black uppercase text-neutral-500">
+      Thiếu
+    </span>
   );
 }
 

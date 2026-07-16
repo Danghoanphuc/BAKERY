@@ -1,4 +1,5 @@
 import type { Category, Product } from "@/types";
+import { findCategoryForProduct } from "@/lib/product-category";
 import { getProductPath } from "@/lib/product-path";
 import { getPublicBaseUrl } from "@/lib/public-url";
 
@@ -51,22 +52,20 @@ export function getCategoryName(
   categories: Category[],
   fallback = "San pham",
 ) {
-  return (
-    categories.find((category) => category.id === product.categoryId)?.name ??
-    fallback
-  );
+  return findCategoryForProduct(product, categories)?.name ?? fallback;
 }
 
 export function getProductDescription(product: Product) {
   return (
     cleanText(product.social?.description) ||
+    cleanText(product.shortDescription) ||
     cleanText(product.description) ||
     DEFAULT_DESCRIPTION
   );
 }
 
 export function getProductSocialTitle(product: Product) {
-  return cleanText(product.social?.title) || product.name;
+  return cleanText(product.social?.title) || product.displayName || product.name;
 }
 
 export function getProductSocialImage(product: Product) {
@@ -75,7 +74,10 @@ export function getProductSocialImage(product: Product) {
 
 export function getProductAvailability(product: Product): ProductAvailability {
   if (product.requiresPreorder) return "preorder";
-  if (product.isAvailable === false || (product.stock ?? 1) <= 0) {
+  if (
+    product.isAvailable === false ||
+    (typeof product.stock === "number" && product.stock <= 0)
+  ) {
     return "out_of_stock";
   }
   return "in_stock";
@@ -87,7 +89,7 @@ export function buildProductFeedItem(
 ): ProductFeedItem {
   return {
     id: product.id,
-    name: product.name,
+    name: product.displayName || product.name,
     category: categoryName,
     price: product.price,
     currency: "VND",

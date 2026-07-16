@@ -4,6 +4,7 @@ import {
   createOrUpdateCustomerFromPurchase,
 } from "@/lib/firebase";
 import { sendZaloOaMagicLink } from "@/lib/zalo/oa";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 type OfflineOrderPayload = {
   customerName: string;
@@ -20,6 +21,9 @@ function getOrigin(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const payload = (await request.json()) as OfflineOrderPayload;
 

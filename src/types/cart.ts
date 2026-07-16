@@ -8,8 +8,10 @@ export interface CartItem {
   // Customization fields
   selectedSize?: string; // Size option ID
   selectedSizeLabel?: string; // Human-readable size name
+  selectedSizeSku?: string; // SKU from size option (for barcode matching)
   selectedFlavor?: string; // Flavor option ID
   selectedFlavorLabel?: string; // Human-readable flavor name
+  selectedFlavorSku?: string; // SKU from flavor option (for barcode matching)
   customMessage?: string; // Message on cake
   candles?: number; // Number of candles
 }
@@ -30,9 +32,16 @@ export function getCartItemFlavorLabel(item: CartItem) {
       : undefined);
 }
 
+export function getCartItemVariantDetails(item: CartItem) {
+  const size = getCartItemSizeLabel(item);
+  const flavor = getCartItemFlavorLabel(item);
+  return [size && `Size: ${size}`, flavor && `Vị: ${flavor}`].filter(Boolean);
+}
+
 /**
  * Generate unique cart item ID based on product and customizations
  * Same product with different customizations = different cart items
+ * If SKU is available (from barcode scan), use it for exact matching
  */
 export function generateCartItemId(
   productId: string,
@@ -40,11 +49,13 @@ export function generateCartItemId(
   selectedFlavor?: string,
   customMessage?: string,
   candles?: number,
+  sizeSku?: string,
+  flavorSku?: string,
 ): string {
   const parts = [
     productId,
-    selectedSize || "default",
-    selectedFlavor || "default",
+    sizeSku || selectedSize || "default",
+    flavorSku || selectedFlavor || "default",
     customMessage || "",
     candles?.toString() || "0",
   ];

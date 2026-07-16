@@ -86,6 +86,13 @@ export async function createOrderPaymentLink({
   };
 }
 
+export async function cancelPayOSPaymentLink(
+  orderCode: number,
+  reason = "POS cancelled",
+) {
+  return getPayOSClient().paymentRequests.cancel(orderCode, reason);
+}
+
 function buildPayOSItems(items: CartItem[]) {
   return items.slice(0, 20).map((item) => ({
     name: item.productName.slice(0, 100),

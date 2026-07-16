@@ -699,6 +699,59 @@ export async function recordVoucherRedemption(
   });
 }
 
+export async function reverseVoucherRedemption(input: {
+  voucherId: string;
+  orderId: string;
+  actor: string;
+}) {
+  const safeOrderKey = input.orderId.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const redemptionRef = doc(
+    db,
+    VOUCHER_REDEMPTIONS_COLLECTION,
+    `${input.voucherId}_${safeOrderKey}`,
+  );
+  const campaignRef = doc(db, CAMPAIGNS_COLLECTION, input.voucherId);
+  const auditRef = doc(collection(db, VOUCHER_AUDIT_COLLECTION));
+
+  return runTransaction(db, async (transaction) => {
+    const [redemption, campaign] = await Promise.all([
+      transaction.get(redemptionRef),
+      transaction.get(campaignRef),
+    ]);
+    if (!redemption.exists()) return false;
+    if (!campaign.exists()) throw new Error("VOUCHER_CAMPAIGN_NOT_FOUND");
+
+    const redemptionData = redemption.data();
+    const campaignData = campaign.data();
+    const metrics = (campaignData.metrics ?? {}) as Record<string, unknown>;
+    const discount = Number(redemptionData.discountAmount) || 0;
+    const revenue = Number(redemptionData.totalAfterDiscount) || 0;
+    const nextRedeemed = Math.max(0, (Number(metrics.redeemedCount) || 0) - 1);
+
+    transaction.delete(redemptionRef);
+    transaction.update(campaignRef, {
+      usedCount: Math.max(0, (Number(campaignData.usedCount) || 0) - 1),
+      redeemedCount: Math.max(0, (Number(campaignData.redeemedCount) || 0) - 1),
+      discountSpent: Math.max(0, (Number(campaignData.discountSpent) || 0) - discount),
+      revenueGenerated: Math.max(0, (Number(campaignData.revenueGenerated) || 0) - revenue),
+      "metrics.availableCount": (Number(metrics.availableCount) || 0) + 1,
+      "metrics.redeemedCount": nextRedeemed,
+      "metrics.discountSpent": Math.max(0, (Number(metrics.discountSpent) || 0) - discount),
+      "metrics.revenueGenerated": Math.max(0, (Number(metrics.revenueGenerated) || 0) - revenue),
+      updatedAt: serverTimestamp(),
+    });
+    transaction.set(auditRef, {
+      campaignId: input.voucherId,
+      action: "voucher_redemption_reversed",
+      actor: input.actor,
+      changedFields: ["metrics.redeemedCount", "metrics.availableCount"],
+      after: { orderId: input.orderId },
+      createdAt: serverTimestamp(),
+    });
+    return true;
+  });
+}
+
 export async function getVoucherRedemptionUsage({
   voucherId,
   voucherCode,

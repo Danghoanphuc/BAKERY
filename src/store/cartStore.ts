@@ -43,6 +43,8 @@ export const useCartStore = create<CartState>()(
               itemData.selectedFlavor,
               itemData.customMessage,
               itemData.candles,
+              itemData.selectedSizeSku,
+              itemData.selectedFlavorSku,
             );
 
             const existingItem = state.items.find(

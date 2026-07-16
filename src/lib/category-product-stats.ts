@@ -1,5 +1,10 @@
 import type { Category } from "@/types/category";
 import type { Product } from "@/types/product";
+import {
+  isProductListed,
+  isProductOutOfStock,
+  isProductSellable,
+} from "./product-availability";
 import { productBelongsToCategory } from "./product-category";
 
 export function attachProductStatsToCategories(
@@ -10,11 +15,9 @@ export function attachProductStatsToCategories(
     const assignedProducts = products.filter((product) =>
       productBelongsToCategory(product, category),
     );
-    const activeProducts = assignedProducts.filter(
-      (product) => product.isAvailable !== false && (product.stock ?? 1) > 0,
-    );
+    const activeProducts = assignedProducts.filter(isProductSellable);
     const outOfStockProducts = assignedProducts.filter(
-      (product) => product.isAvailable !== false && (product.stock ?? 1) <= 0,
+      (product) => isProductListed(product) && isProductOutOfStock(product),
     );
 
     return {

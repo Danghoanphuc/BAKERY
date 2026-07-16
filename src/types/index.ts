@@ -10,3 +10,4 @@ export * from "./voucher";
 export * from "./finance";
 export * from "./operations";
 export * from "./management-accounting";
+export * from "./wholesale";

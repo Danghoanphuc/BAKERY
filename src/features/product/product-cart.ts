@@ -13,28 +13,71 @@ export interface ProductCustomizationErrors {
   selectedFlavor?: string;
 }
 
+/** Resolves the data that identifies one selected variant everywhere it is sold. */
+export function getProductVariantSelection(
+  product: Product,
+  selectedSize?: string,
+  selectedFlavor?: string,
+) {
+  const size = product.sizeOptions?.find((option) => option.id === selectedSize);
+  const flavor = product.flavorOptions?.find(
+    (option) => option.id === selectedFlavor,
+  );
+  const combination = product.variantCombinations?.find(
+    (item) =>
+      item.sizeOptionId === selectedSize &&
+      item.flavorOptionId === selectedFlavor,
+  );
+
+  return {
+    size,
+    flavor,
+    combination,
+    imageUrl: flavor?.imageUrl || size?.imageUrl || product.imageUrl,
+  };
+}
+
 export function getProductUnitPrice(
   product: Product,
   selectedSize?: string,
+  selectedFlavor?: string,
 ): number {
-  const sizeAdjustment = product.sizeOptions?.find(
-    (option) => option.id === selectedSize,
-  )?.priceAdjustment;
-
-  return product.price + (sizeAdjustment ?? 0);
+  const { combination, size, flavor } = getProductVariantSelection(
+    product,
+    selectedSize,
+    selectedFlavor,
+  );
+  const combinationAdjustment = combination?.priceAdjustment;
+  if (typeof combinationAdjustment === "number") {
+    return product.price + combinationAdjustment;
+  }
+  const sizeAdjustment = size?.priceAdjustment;
+  const flavorAdjustment = flavor?.priceAdjustment;
+  return product.price + (sizeAdjustment ?? 0) + (flavorAdjustment ?? 0);
 }
 
 export function getProductTotal(
   product: Product,
-  customization: Pick<ProductCustomization, "quantity" | "selectedSize">,
+  customization: Pick<ProductCustomization, "quantity" | "selectedSize" | "selectedFlavor">,
 ): number {
-  return getProductUnitPrice(product, customization.selectedSize) * customization.quantity;
+  return getProductUnitPrice(product, customization.selectedSize, customization.selectedFlavor) * customization.quantity;
 }
 
 export function validateProductCustomization(
   product: Product,
   customization: ProductCustomization,
 ): ProductCustomizationErrors {
+  const selectedCombination = product.variantCombinations?.find(
+    (item) =>
+      item.sizeOptionId === customization.selectedSize &&
+      item.flavorOptionId === customization.selectedFlavor,
+  );
+  const combinationUnavailable =
+    selectedCombination &&
+    (selectedCombination.isAvailable === false ||
+      (typeof selectedCombination.stock === "number" &&
+        selectedCombination.stock <= 0));
+
   return {
     selectedSize:
       product.sizeOptions?.length && !customization.selectedSize
@@ -43,6 +86,8 @@ export function validateProductCustomization(
     selectedFlavor:
       product.flavorOptions?.length && !customization.selectedFlavor
         ? "Vui lòng chọn hương vị"
+        : combinationUnavailable
+          ? "Tổ hợp này hiện chưa thể bán"
         : undefined,
   };
 }
@@ -51,23 +96,24 @@ export function buildProductCartItem(
   product: Product,
   customization: ProductCustomization,
 ): Omit<CartItem, "cartItemId"> {
-  const selectedSizeOption = product.sizeOptions?.find(
-    (option) => option.id === customization.selectedSize,
-  );
-  const selectedFlavorOption = product.flavorOptions?.find(
-    (option) => option.id === customization.selectedFlavor,
+  const { size, flavor, imageUrl } = getProductVariantSelection(
+    product,
+    customization.selectedSize,
+    customization.selectedFlavor,
   );
 
   return {
     productId: product.id,
     productName: product.name,
     quantity: customization.quantity,
-    price: getProductUnitPrice(product, customization.selectedSize),
-    imageUrl: product.imageUrl,
+    price: getProductUnitPrice(product, customization.selectedSize, customization.selectedFlavor),
+    imageUrl,
     selectedSize: customization.selectedSize,
-    selectedSizeLabel: selectedSizeOption?.label,
+    selectedSizeLabel: size?.label,
+    selectedSizeSku: size?.sku,
     selectedFlavor: customization.selectedFlavor,
-    selectedFlavorLabel: selectedFlavorOption?.label,
+    selectedFlavorLabel: flavor?.label,
+    selectedFlavorSku: flavor?.sku,
     customMessage: customization.customMessage?.trim() || undefined,
     candles: customization.candles || undefined,
   };

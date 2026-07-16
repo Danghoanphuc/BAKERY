@@ -9,6 +9,7 @@ import {
   limit,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -29,6 +30,8 @@ import { normalizeCustomer, normalizeMagicLink } from "./utils";
 
 const CUSTOMERS_COLLECTION = "customers";
 const MAGIC_LINKS_COLLECTION = "magic_links";
+const LOYALTY_AWARDS_COLLECTION = "customer_loyalty_awards";
+const LOYALTY_REVERSALS_COLLECTION = "customer_loyalty_reversals";
 const MAGIC_LINK_TTL_MINUTES = 30;
 
 export type ConsumeMagicLinkResult =
@@ -384,6 +387,74 @@ export async function createOrUpdateCustomerFromPurchase(data: CustomerInput) {
       ...data.personalization,
     },
   };
+}
+
+export async function awardCustomerLoyaltyPointsOnce(input: {
+  customerId: string;
+  orderId: string;
+  points: number;
+}) {
+  const points = Math.max(0, Math.floor(input.points));
+  if (!points) return false;
+
+  const awardRef = doc(db, LOYALTY_AWARDS_COLLECTION, input.orderId);
+  const customerRef = doc(db, CUSTOMERS_COLLECTION, input.customerId);
+
+  return runTransaction(db, async (transaction) => {
+    const [award, customer] = await Promise.all([
+      transaction.get(awardRef),
+      transaction.get(customerRef),
+    ]);
+
+    if (award.exists()) return false;
+    if (!customer.exists()) throw new Error("CUSTOMER_NOT_FOUND");
+
+    transaction.set(awardRef, {
+      customerId: input.customerId,
+      orderId: input.orderId,
+      points,
+      createdAt: serverTimestamp(),
+    });
+    transaction.update(customerRef, {
+      loyaltyPoints: increment(points),
+      lastOrderAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    return true;
+  });
+}
+
+export async function reverseCustomerLoyaltyPointsOnce(input: {
+  customerId: string;
+  orderId: string;
+  points: number;
+}) {
+  const points = Math.max(0, Math.floor(input.points));
+  if (!points) return false;
+
+  const reversalRef = doc(db, LOYALTY_REVERSALS_COLLECTION, input.orderId);
+  const customerRef = doc(db, CUSTOMERS_COLLECTION, input.customerId);
+  return runTransaction(db, async (transaction) => {
+    const [reversal, customer] = await Promise.all([
+      transaction.get(reversalRef),
+      transaction.get(customerRef),
+    ]);
+    if (reversal.exists()) return false;
+    if (!customer.exists()) throw new Error("CUSTOMER_NOT_FOUND");
+
+    const currentPoints = Number(customer.data().loyaltyPoints) || 0;
+    transaction.set(reversalRef, {
+      customerId: input.customerId,
+      orderId: input.orderId,
+      points,
+      createdAt: serverTimestamp(),
+    });
+    transaction.update(customerRef, {
+      loyaltyPoints: Math.max(0, currentPoints - points),
+      updatedAt: serverTimestamp(),
+    });
+    return true;
+  });
 }
 
 export async function updateCustomer(

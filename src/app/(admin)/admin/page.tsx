@@ -10,6 +10,7 @@ import {
   Sparkles,
   TrendingUp,
   Users,
+  Building2,
 } from "lucide-react";
 import { getAllOrders, getInventoryProducts } from "@/lib/firebase";
 import type { Order } from "@/types";
@@ -99,6 +100,14 @@ export default function AdminDashboard() {
         detail: "Tính theo đơn hiện có",
         icon: Users,
         href: "/admin/customers",
+      },
+      {
+        id: "wholesale",
+        label: "Bán sỉ",
+        value: "CRM",
+        detail: "Quản lý đại lý & công nợ",
+        icon: Building2,
+        href: "/wholesale",
       },
     ];
   }, [orders, productCount]);

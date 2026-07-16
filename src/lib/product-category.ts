@@ -1,5 +1,6 @@
 import type { Category } from "@/types/category";
 import type { Product } from "@/types/product";
+import { isProductListed } from "./product-availability";
 
 /**
  * Supports both the current category document ID and legacy product records
@@ -18,13 +19,31 @@ export function productBelongsToCategory(
   );
 }
 
+export function findCategoryForProduct(
+  product: Pick<Product, "categoryId">,
+  categories: Array<Pick<Category, "id" | "name">>,
+) {
+  return categories.find((category) => productBelongsToCategory(product, category));
+}
+
+/** Map legacy name/`categoryId` values to the canonical Firestore document ID. */
+export function resolveCanonicalCategoryId(
+  categoryId: string | undefined,
+  categories: Array<Pick<Category, "id" | "name">>,
+): string | undefined {
+  if (!categoryId) return undefined;
+
+  const match = findCategoryForProduct({ categoryId }, categories);
+  return match?.id ?? categoryId;
+}
+
 export function getVisibleProductsForCategory(
   products: Product[],
   category: Pick<Category, "id" | "name">,
 ) {
   return products.filter(
     (product) =>
-      product.isAvailable !== false &&
+      isProductListed(product) &&
       productBelongsToCategory(product, category),
   );
 }

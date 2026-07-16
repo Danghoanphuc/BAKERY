@@ -1,4 +1,8 @@
 import { getCategories, getProducts } from "@/lib/db";
+import {
+  isCategoryVisible,
+  isProductListed,
+} from "@/lib/product-availability";
 import type { Category, Product } from "@/types";
 
 export type HomeData = {
@@ -12,7 +16,7 @@ export async function loadHomeData(featuredProduct?: Product): Promise<HomeData>
     loadProducts(),
   ]);
   const curated = products
-    .filter((product) => product.isAvailable !== false)
+    .filter(isProductListed)
     .sort((left, right) =>
       Number(Boolean(right.isFeatured || right.isBestseller)) -
         Number(Boolean(left.isFeatured || left.isBestseller)) ||
@@ -30,7 +34,7 @@ export async function loadHomeData(featuredProduct?: Product): Promise<HomeData>
 async function loadCategories() {
   try {
     const categories = await getCategories();
-    return categories.filter((category) => category.isVisible ?? true);
+    return categories.filter(isCategoryVisible);
   } catch (error) {
     console.error("Error loading home categories:", error);
     return [];

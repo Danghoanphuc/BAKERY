@@ -141,6 +141,36 @@ export default function OrdersPage() {
     printWindow.print();
   }
 
+  async function refundOrder(order: Order) {
+    const reason = window.prompt("Lý do hoàn tiền:")?.trim();
+    if (!reason) return;
+    const settlementConfirmed =
+      order.paymentMethod !== "bank_transfer" ||
+      window.confirm("Xác nhận bạn đã hoàn tiền chuyển khoản cho khách?");
+    if (!settlementConfirmed) return;
+
+    setIsSaving(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/pos/checkout/${order.id}/refund`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason, settlementConfirmed }),
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(data.error || "Không thể hoàn tiền.");
+      await loadOrders();
+      closeModal();
+      setMessage(`Đã hoàn tiền đơn ${order.orderNumber}.`);
+    } catch (refundError) {
+      setError(
+        refundError instanceof Error ? refundError.message : "Không thể hoàn tiền.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -220,6 +250,7 @@ export default function OrdersPage() {
           onClose={closeModal}
           onUpdate={updateOrder}
           onPrint={printOrder}
+          onRefund={refundOrder}
           isSaving={isSaving}
         />
       )}

@@ -1,9 +1,9 @@
 import {
-  collection, doc, getDocs, runTransaction, serverTimestamp,
+  collection, doc, getDocs, query, runTransaction, serverTimestamp, where,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/app";
 import type {
-  InventoryBalance, InventoryItemType, ProductionBatch,
+  InventoryBalance, InventoryItemType, InventoryMovement, ProductionBatch,
   ProductionIngredientUsage, PurchaseReceipt, WasteReason,
 } from "@/types";
 import { calculateActualBatchCost, calculateWeightedBalance, consumeWeightedInventory } from "../domain/inventory-costing";
@@ -190,9 +190,31 @@ export async function persistWaste(input: {
   });
 }
 
-export async function getInventoryBalances() {
-  const snapshot = await getDocs(collection(db, BALANCES));
+type InventoryReadFilter = { itemType: InventoryItemType; itemId: string };
+
+export async function getInventoryBalances(filter?: InventoryReadFilter) {
+  const source = collection(db, BALANCES);
+  const snapshot = filter
+    ? await getDocs(query(source, where("itemType", "==", filter.itemType), where("itemId", "==", filter.itemId)))
+    : await getDocs(source);
   return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+}
+
+export async function getInventoryMovements(filter?: InventoryReadFilter) {
+  const source = collection(db, MOVEMENTS);
+  const snapshot = filter
+    ? await getDocs(query(source, where("itemType", "==", filter.itemType), where("itemId", "==", filter.itemId)))
+    : await getDocs(source);
+  return snapshot.docs.map((item) => {
+    const data = item.data();
+    const occurredAt = data.occurredAt;
+    const normalizedOccurredAt = occurredAt && typeof occurredAt === "object" && "toDate" in occurredAt && typeof occurredAt.toDate === "function"
+      ? occurredAt.toDate()
+      : occurredAt instanceof Date
+        ? occurredAt
+        : new Date(String(occurredAt ?? 0));
+    return { id: item.id, ...data, occurredAt: normalizedOccurredAt } as InventoryMovement;
+  });
 }
 
 export async function getPurchaseReceipts() {

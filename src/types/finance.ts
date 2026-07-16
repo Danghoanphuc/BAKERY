@@ -22,7 +22,11 @@ export type SalesChannel =
   | "web_delivery"
   | "web_pickup"
   | "social"
-  | "admin";
+  | "admin"
+  | "wholesale";
+
+export type PaymentTerms = "cod" | "net_7" | "next_order";
+export type DebtStatus = "current" | "warning" | "overdue" | "blocked";
 
 export interface FinanceExpense {
   id: string;

@@ -84,6 +84,8 @@ export function normalizeCategory(
     iconUrl: String(data.iconUrl ?? ""),
     displayOrder:
       typeof data.displayOrder === "number" ? data.displayOrder : undefined,
+    isVisible:
+      typeof data.isVisible === "boolean" ? data.isVisible : undefined,
   };
 }
 
@@ -91,6 +93,21 @@ export function normalizeProduct(id: string, data: FirestoreDocument): Product {
   return {
     id,
     name: String(data.name ?? ""),
+    displayName: typeof data.displayName === "string" ? data.displayName : undefined,
+    shortDescription: typeof data.shortDescription === "string" ? data.shortDescription : undefined,
+    itemType: data.itemType === "ingredient" || data.itemType === "semi_finished" || data.itemType === "finished_good" ? data.itemType : undefined,
+    lifecycleStatus: data.lifecycleStatus === "active" || data.lifecycleStatus === "inactive" || data.lifecycleStatus === "draft" ? data.lifecycleStatus : undefined,
+    workspaceCards: data.workspaceCards && typeof data.workspaceCards === "object" ? data.workspaceCards as Product["workspaceCards"] : undefined,
+    productionSteps: Array.isArray(data.productionSteps) ? (data.productionSteps as FirestoreDocument[]).map((step) => ({
+      id: String(step.id ?? ""),
+      name: String(step.name ?? ""),
+      durationMinutes: typeof step.durationMinutes === "number" ? step.durationMinutes : 0,
+      workstation: typeof step.workstation === "string" ? step.workstation : undefined,
+      output: typeof step.output === "string" ? step.output : undefined,
+    })) : undefined,
+    manufacturingLeadMinutes: typeof data.manufacturingLeadMinutes === "number" ? data.manufacturingLeadMinutes : undefined,
+    manufacturingOutputQuantity: typeof data.manufacturingOutputQuantity === "number" ? data.manufacturingOutputQuantity : undefined,
+    manufacturingOutputUnit: typeof data.manufacturingOutputUnit === "string" ? data.manufacturingOutputUnit : undefined,
     price: typeof data.price === "number" ? data.price : 0,
     imageUrl: String(data.imageUrl ?? ""),
     categoryId: String(data.categoryId ?? ""),
@@ -132,14 +149,49 @@ export function normalizeProduct(id: string, data: FirestoreDocument): Product {
       typeof data.availableForPickup === "boolean"
         ? data.availableForPickup
         : undefined,
+    sku: typeof data.sku === "string" ? data.sku : undefined,
+    barcode: typeof data.barcode === "string" ? data.barcode : undefined,
     stock: typeof data.stock === "number" ? data.stock : undefined,
     isAvailable:
       typeof data.isAvailable === "boolean" ? data.isAvailable : undefined,
     sizeOptions: Array.isArray(data.sizeOptions)
-      ? (data.sizeOptions as Product["sizeOptions"])
+      ? (data.sizeOptions as FirestoreDocument[]).map((opt) => ({
+          id: String(opt.id ?? ""),
+          label: String(opt.label ?? ""),
+          priceAdjustment: typeof opt.priceAdjustment === "number" ? opt.priceAdjustment : 0,
+          servings: typeof opt.servings === "string" ? opt.servings : undefined,
+          description: typeof opt.description === "string" ? opt.description : undefined,
+          imageUrl: typeof opt.imageUrl === "string" ? opt.imageUrl : undefined,
+          badge: typeof opt.badge === "string" ? opt.badge : undefined,
+          sku: typeof opt.sku === "string" ? opt.sku : undefined,
+          barcode: typeof opt.barcode === "string" ? opt.barcode : undefined,
+          stock: typeof opt.stock === "number" ? opt.stock : undefined,
+        }))
+      : undefined,
+    variantCombinations: Array.isArray(data.variantCombinations)
+      ? (data.variantCombinations as FirestoreDocument[]).map((option) => ({
+          id: String(option.id ?? ""),
+          sizeOptionId: String(option.sizeOptionId ?? ""),
+          flavorOptionId: String(option.flavorOptionId ?? ""),
+          priceAdjustment: typeof option.priceAdjustment === "number" ? option.priceAdjustment : undefined,
+          sku: typeof option.sku === "string" ? option.sku : undefined,
+          barcode: typeof option.barcode === "string" ? option.barcode : undefined,
+          stock: typeof option.stock === "number" ? option.stock : undefined,
+          isAvailable: typeof option.isAvailable === "boolean" ? option.isAvailable : undefined,
+        }))
       : undefined,
     flavorOptions: Array.isArray(data.flavorOptions)
-      ? (data.flavorOptions as Product["flavorOptions"])
+      ? (data.flavorOptions as FirestoreDocument[]).map((opt) => ({
+          id: String(opt.id ?? ""),
+          label: String(opt.label ?? ""),
+          description: typeof opt.description === "string" ? opt.description : undefined,
+          imageUrl: typeof opt.imageUrl === "string" ? opt.imageUrl : undefined,
+          badge: typeof opt.badge === "string" ? opt.badge : undefined,
+          sku: typeof opt.sku === "string" ? opt.sku : undefined,
+          barcode: typeof opt.barcode === "string" ? opt.barcode : undefined,
+          stock: typeof opt.stock === "number" ? opt.stock : undefined,
+          priceAdjustment: typeof opt.priceAdjustment === "number" ? opt.priceAdjustment : undefined,
+        }))
       : undefined,
     requiresMessage:
       typeof data.requiresMessage === "boolean"
@@ -179,6 +231,29 @@ export function normalizeProduct(id: string, data: FirestoreDocument): Product {
       typeof data.preparationTimeMinutes === "number"
         ? data.preparationTimeMinutes
         : undefined,
+    availableStoreIds: Array.isArray(data.availableStoreIds)
+      ? (data.availableStoreIds as string[])
+      : undefined,
+    dailyStock:
+      typeof data.dailyStock === "number" ? data.dailyStock : undefined,
+    availableFrom:
+      typeof data.availableFrom === "string" ? data.availableFrom : undefined,
+    availableUntil:
+      typeof data.availableUntil === "string" ? data.availableUntil : undefined,
+    sweetnessLevel:
+      data.sweetnessLevel === "low" ||
+      data.sweetnessLevel === "medium" ||
+      data.sweetnessLevel === "high"
+        ? data.sweetnessLevel
+        : undefined,
+    servingSize:
+      typeof data.servingSize === "string" ? data.servingSize : undefined,
+    rankingBoost:
+      typeof data.rankingBoost === "number" ? data.rankingBoost : undefined,
+    feedMetrics:
+      data.feedMetrics && typeof data.feedMetrics === "object"
+        ? (data.feedMetrics as Product["feedMetrics"])
+        : undefined,
     requiresPreorder:
       typeof data.requiresPreorder === "boolean"
         ? data.requiresPreorder
@@ -215,6 +290,10 @@ export function normalizeOrder(id: string, data: FirestoreDocument): Order {
   return {
     id,
     orderNumber: String(data.orderNumber ?? ""),
+    idempotencyKey:
+      typeof data.idempotencyKey === "string" ? data.idempotencyKey : undefined,
+    customerId:
+      typeof data.customerId === "string" ? data.customerId : undefined,
     customerName: String(data.customerName ?? ""),
     customerPhone: String(data.customerPhone ?? ""),
     customerEmail:
@@ -284,6 +363,12 @@ export function normalizeOrder(id: string, data: FirestoreDocument): Order {
       typeof data.estimatedCostOfGoods === "number"
         ? data.estimatedCostOfGoods
         : undefined,
+    cashReceived:
+      typeof data.cashReceived === "number" ? data.cashReceived : undefined,
+    changeDue: typeof data.changeDue === "number" ? data.changeDue : undefined,
+    refundedAt: toDate(data.refundedAt as FirestoreDateValue),
+    refundReason:
+      typeof data.refundReason === "string" ? data.refundReason : undefined,
     actualCostOfGoods:
       typeof data.actualCostOfGoods === "number"
         ? data.actualCostOfGoods
@@ -298,6 +383,13 @@ export function normalizeOrder(id: string, data: FirestoreDocument): Order {
     loyaltyPointsEarned:
       typeof data.loyaltyPointsEarned === "number"
         ? data.loyaltyPointsEarned
+        : undefined,
+    posFulfilledAt: toDate(data.posFulfilledAt as FirestoreDateValue),
+    inventoryReservationStatus:
+      data.inventoryReservationStatus === "reserved" ||
+      data.inventoryReservationStatus === "consumed" ||
+      data.inventoryReservationStatus === "released"
+        ? data.inventoryReservationStatus
         : undefined,
     voucherCode:
       typeof data.voucherCode === "string" ? data.voucherCode : undefined,

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAllCustomers, getAllOrders } from "@/lib/firebase";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 function normalizeQuery(value: string) {
   return value.replace(/\s+/g, "").trim().toLowerCase();
@@ -23,6 +24,9 @@ function getDateTime(value: unknown) {
 }
 
 export async function GET(request: Request) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const url = new URL(request.url);
     const query = url.searchParams.get("q") ?? "";

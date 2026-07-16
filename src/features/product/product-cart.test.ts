@@ -17,9 +17,17 @@ const product: Product = {
   imageUrl: "/cake.jpg",
   sizeOptions: [
     { id: "small", label: "16cm", priceAdjustment: 0 },
-    { id: "large", label: "20cm", priceAdjustment: 100_000 },
+    {
+      id: "large",
+      label: "20cm",
+      priceAdjustment: 100_000,
+      imageUrl: "/large.jpg",
+      sku: "CAKE-20CM",
+    },
   ],
-  flavorOptions: [{ id: "vanilla", label: "Vanilla" }],
+  flavorOptions: [
+    { id: "vanilla", label: "Vanilla", imageUrl: "/vanilla.jpg", sku: "VANILLA" },
+  ],
 };
 
 describe("product cart helpers", () => {
@@ -44,11 +52,13 @@ describe("product cart helpers", () => {
       productName: "Bánh sinh nhật",
       quantity: 2,
       price: 400_000,
-      imageUrl: "/cake.jpg",
+      imageUrl: "/vanilla.jpg",
       selectedSize: "large",
       selectedSizeLabel: "20cm",
+      selectedSizeSku: "CAKE-20CM",
       selectedFlavor: "vanilla",
       selectedFlavorLabel: "Vanilla",
+      selectedFlavorSku: "VANILLA",
       customMessage: "Chúc mừng",
       candles: undefined,
     });

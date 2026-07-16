@@ -1,5 +1,5 @@
 import { FormEvent, useState } from "react";
-import { CheckCircle2, Loader2, Printer, UserCheck, X } from "lucide-react";
+import { CheckCircle2, Loader2, Printer, RotateCcw, UserCheck, X } from "lucide-react";
 import type {
   Order,
   OrderStatus,
@@ -20,6 +20,7 @@ type OrderDetailModalProps = {
   onClose: () => void;
   onUpdate: (order: Order, payload: Partial<Order>) => Promise<void>;
   onPrint: (order: Order) => void;
+  onRefund: (order: Order) => Promise<void>;
   isSaving: boolean;
 };
 
@@ -28,6 +29,7 @@ export function OrderDetailModal({
   onClose,
   onUpdate,
   onPrint,
+  onRefund,
   isSaving,
 }: OrderDetailModalProps) {
   const [internalNotes, setInternalNotes] = useState(order.internalNotes ?? "");
@@ -67,6 +69,16 @@ export function OrderDetailModal({
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {order.salesChannel === "pos" && order.paymentStatus === "paid" && (
+              <button
+                onClick={() => void onRefund(order)}
+                disabled={isSaving}
+                className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Hoàn tiền
+              </button>
+            )}
             <button
               onClick={() => onPrint(order)}
               className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"

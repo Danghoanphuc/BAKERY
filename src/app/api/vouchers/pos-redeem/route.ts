@@ -8,8 +8,12 @@ import {
 } from "@/lib/firebase";
 import { getVoucherByCodeFromCampaigns } from "@/lib/vouchers";
 import { validateVoucherRedemption } from "@/lib/voucher-redemption-policy";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 export async function POST(request: Request) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const { code, phone, name, birthday, gender, subtotal } =
       await request.json();

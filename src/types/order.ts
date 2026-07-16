@@ -17,6 +17,7 @@ export interface OrderStatusHistoryItem {
 export interface Order {
   id: string;
   orderNumber: string;
+  idempotencyKey?: string;
   customerId?: string;
   customerName: string;
   customerPhone: string;
@@ -27,6 +28,10 @@ export interface Order {
   status: OrderStatus;
   paymentStatus?: PaymentStatus;
   paymentMethod?: PaymentMethod;
+  cashReceived?: number;
+  changeDue?: number;
+  refundedAt?: Date;
+  refundReason?: string;
   paidAt?: Date;
   payosOrderCode?: number;
   payosPaymentLinkId?: string;
@@ -50,6 +55,8 @@ export interface Order {
   estimatedGrossProfit?: number;
   itemFinancialSnapshots?: OrderItemFinancialSnapshot[];
   loyaltyPointsEarned?: number;
+  posFulfilledAt?: Date;
+  inventoryReservationStatus?: "reserved" | "consumed" | "released";
   voucherCode?: string;
   voucherId?: string;
   voucherUseMode?: VoucherUseMode;

@@ -3,6 +3,10 @@ import { Minus, Plus, ShoppingCart, X } from "lucide-react";
 import { clsx } from "clsx";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import type { Product } from "@/types";
+import {
+  getProductUnitPrice,
+  getProductVariantSelection,
+} from "@/features/product/product-cart";
 import { formatCurrency } from "../_lib/pos-utils";
 
 type Customization = {
@@ -41,12 +45,14 @@ export function PosProductCustomizerModal({
     setCandles(0);
   }, [isOpen, product]);
 
-  const unitPrice = useMemo(() => {
-    const sizeAdjustment =
-      product.sizeOptions?.find((size) => size.id === selectedSize)
-        ?.priceAdjustment ?? 0;
-    return product.price + sizeAdjustment;
-  }, [product.price, product.sizeOptions, selectedSize]);
+  const variant = useMemo(
+    () => getProductVariantSelection(product, selectedSize, selectedFlavor),
+    [product, selectedFlavor, selectedSize],
+  );
+  const unitPrice = useMemo(
+    () => getProductUnitPrice(product, selectedSize, selectedFlavor),
+    [product, selectedFlavor, selectedSize],
+  );
 
   if (!isOpen) return null;
 
@@ -76,7 +82,7 @@ export function PosProductCustomizerModal({
           <div className="grid gap-5 md:grid-cols-[180px_1fr]">
             <div className="aspect-square overflow-hidden rounded-2xl bg-[#fdf7f0]">
               <ProductImage
-                src={product.imageUrl}
+                src={variant.imageUrl}
                 alt={product.name}
                 className="h-full w-full object-cover"
               />

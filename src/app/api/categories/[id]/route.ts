@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { getCategoryById, updateCategory, deleteCategory } from "@/lib/db";
+import { requireAdmin } from "@/lib/auth/require-admin";
 
 export async function GET(
   _request: Request,
@@ -29,14 +30,17 @@ export async function PUT(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const { id } = await context.params;
     const data = await request.json();
     const category = await updateCategory(id, data);
 
-    // Revalidate pages that display categories
     revalidatePath("/");
     revalidatePath("/admin/categories");
+    revalidatePath("/category");
 
     return NextResponse.json(category);
   } catch (error) {
@@ -49,16 +53,19 @@ export async function PUT(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
+  const unauthorized = requireAdmin(request);
+  if (unauthorized) return unauthorized;
+
   try {
     const { id } = await context.params;
     await deleteCategory(id);
 
-    // Revalidate pages that display categories
     revalidatePath("/");
     revalidatePath("/admin/categories");
+    revalidatePath("/category");
 
     return NextResponse.json({ success: true });
   } catch (error) {

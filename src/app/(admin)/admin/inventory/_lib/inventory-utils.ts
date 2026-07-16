@@ -1,5 +1,10 @@
 import { AlertTriangle, PackageCheck, PackageX } from "lucide-react";
 import type { Category, Product } from "@/types";
+import {
+  getProductStockQty,
+  isProductListed,
+} from "@/lib/product-availability";
+import { findCategoryForProduct } from "@/lib/product-category";
 import type { ProductFilter, ProductFormData } from "./product-form";
 import { mergeCommaList, splitTags } from "./product-form";
 
@@ -41,18 +46,23 @@ export function getStockStatus(stock: number) {
   };
 }
 
-export function buildCategoryNameMap(categories: Category[]) {
-  return new Map(categories.map((category) => [category.id, category.name]));
+export function resolveInventoryCategoryName(
+  product: Product,
+  categories: Category[],
+) {
+  return findCategoryForProduct(product, categories)?.name ?? "";
 }
 
 export function getInventoryStats(products: Product[]) {
   return {
-    selling: products.filter((product) => product.isAvailable).length,
-    lowStock: products.filter(
-      (product) => (product.stock ?? 0) > 0 && (product.stock ?? 0) < 10,
-    ).length,
+    selling: products.filter(isProductListed).length,
+    lowStock: products.filter((product) => {
+      const stock = getProductStockQty(product);
+      return stock > 0 && stock < 10;
+    }).length,
     inventoryValue: products.reduce(
-      (total, product) => total + (product.price || 0) * (product.stock || 0),
+      (total, product) =>
+        total + (product.price || 0) * getProductStockQty(product),
       0,
     ),
   };
@@ -60,14 +70,14 @@ export function getInventoryStats(products: Product[]) {
 
 export function filterProducts(
   products: Product[],
-  categoryNameById: Map<string, string>,
+  categories: Category[],
   searchTerm: string,
   filter: ProductFilter,
 ) {
   const keyword = normalizeText(searchTerm);
 
   return products.filter((product) => {
-    const categoryName = categoryNameById.get(product.categoryId ?? "") ?? "";
+    const categoryName = resolveInventoryCategoryName(product, categories);
     const searchHaystack = normalizeText(
       [
         product.name,
@@ -77,13 +87,14 @@ export function filterProducts(
         ...(product.searchKeywords ?? []),
       ].join(" "),
     );
-    const stock = product.stock ?? 0;
+    const stock = getProductStockQty(product);
+    const listed = isProductListed(product);
 
     const matchesSearch = !keyword || searchHaystack.includes(keyword);
     const matchesFilter =
       filter === "all" ||
-      (filter === "selling" && product.isAvailable) ||
-      (filter === "hidden" && !product.isAvailable) ||
+      (filter === "selling" && listed) ||
+      (filter === "hidden" && !listed) ||
       (filter === "lowStock" && stock > 0 && stock < 10) ||
       (filter === "outOfStock" && stock <= 0);
 

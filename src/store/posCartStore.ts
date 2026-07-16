@@ -50,6 +50,8 @@ export const usePosCartStore = create<PosCartState>()(
             itemData.selectedFlavor,
             itemData.customMessage,
             itemData.candles,
+            itemData.selectedSizeSku,
+            itemData.selectedFlavorSku,
           );
           const existingItem = state.items.find(
             (item) => item.cartItemId === cartItemId,

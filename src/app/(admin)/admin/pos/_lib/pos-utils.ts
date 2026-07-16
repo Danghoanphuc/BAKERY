@@ -1,5 +1,6 @@
 import type { CartItem, Product } from "@/types";
 import type { SelectedVoucher } from "@/types/voucher";
+import { buildProductCartItem } from "@/features/product/product-cart";
 export { resolvePaymentQrImageSrc } from "@/lib/payment-qr";
 
 export type PosPaymentMethod =
@@ -52,6 +53,8 @@ export type PosCheckoutResult = {
   loyaltyPointsEarned: number;
   paymentStatus?: "unpaid" | "pending" | "paid" | "refunded";
   paymentMethod?: PosPaymentMethod;
+  cashReceived?: number;
+  changeDue?: number;
   payos?: {
     checkoutUrl: string;
     qrCode: string;
@@ -77,6 +80,27 @@ export function formatCurrency(value: number) {
   }).format(value);
 }
 
+export function formatDateTime(value: Date | string | { toDate(): Date }) {
+  let date: Date;
+  if (value instanceof Date) {
+    date = value;
+  } else if (typeof value === "string") {
+    date = new Date(value);
+  } else if (value && typeof value === "object" && "toDate" in value) {
+    date = value.toDate();
+  } else {
+    return "—";
+  }
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
 export function normalizePhone(phone: string) {
   return phone.replace(/\s+/g, "").trim();
 }
@@ -96,7 +120,7 @@ export function isProductSellableToday(product: Product) {
     product.availableForPickup !== false &&
     product.availableToday !== false &&
     !product.requiresPreorder &&
-    (product.stock ?? 1) > 0
+    (product.stock === undefined || product.stock > 0)
   );
 }
 
@@ -104,21 +128,25 @@ export function getProductStockLabel(product: Product) {
   if (product.isAvailable === false) return "Đang ẩn";
   if (product.availableForPickup === false) return "Không pickup";
   if (product.availableToday === false) return "Không bán hôm nay";
-  if ((product.stock ?? 1) <= 0) return "Hết hàng";
-  if ((product.stock ?? 0) > 0 && (product.stock ?? 0) <= 5) {
+  if (typeof product.stock === "number" && product.stock <= 0) return "Hết hàng";
+  if (typeof product.stock === "number" && product.stock <= 5) {
     return `Còn ${product.stock}`;
   }
   return null;
 }
 
-export function buildPosCartItem(product: Product, quantity = 1) {
-  return {
-    productId: product.id,
-    productName: product.name,
-    imageUrl: product.imageUrl,
-    price: product.price,
+export function buildPosCartItem(
+  product: Product,
+  quantity = 1,
+  options?: { selectedSize?: string; selectedFlavor?: string; customMessage?: string; candles?: number },
+) {
+  return buildProductCartItem(product, {
     quantity,
-  };
+    selectedSize: options?.selectedSize,
+    selectedFlavor: options?.selectedFlavor,
+    customMessage: options?.customMessage,
+    candles: options?.candles,
+  });
 }
 
 export function buildReceiptText({

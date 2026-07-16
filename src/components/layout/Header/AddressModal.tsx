@@ -47,6 +47,7 @@ type GoongMap = {
   on: (event: string, callback: (event: GoongMapEvent) => void) => void;
   flyTo: (options: { center: [number, number]; zoom?: number }) => void;
   remove: () => void;
+  resize: () => void;
 };
 
 type GoongMapEvent = {

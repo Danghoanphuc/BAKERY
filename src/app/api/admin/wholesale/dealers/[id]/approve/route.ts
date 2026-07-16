@@ -6,16 +6,17 @@ const db = getFirestore();
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
+  const { id } = await params;
 
   try {
     const body = await request.json();
     const { approved, rejectionReason, tier } = body;
 
-    const dealerRef = doc(db, "dealers", params.id);
+    const dealerRef = doc(db, "dealers", id);
     const dealerSnap = await getDoc(dealerRef);
 
     if (!dealerSnap.exists()) {

@@ -7,13 +7,14 @@ const db = getFirestore();
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
+  const { id } = await params;
 
   try {
-    const routeRef = doc(db, "delivery_routes", params.id);
+    const routeRef = doc(db, "delivery_routes", id);
     const routeSnap = await getDoc(routeRef);
 
     if (!routeSnap.exists()) {
@@ -50,15 +51,16 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
+  const { id } = await params;
 
   try {
     const body: Partial<DeliveryRouteInput> & { isActive?: boolean } = await request.json();
 
-    const routeRef = doc(db, "delivery_routes", params.id);
+    const routeRef = doc(db, "delivery_routes", id);
     const routeSnap = await getDoc(routeRef);
 
     if (!routeSnap.exists()) {
@@ -95,13 +97,14 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
+  const { id } = await params;
 
   try {
-    const routeRef = doc(db, "delivery_routes", params.id);
+    const routeRef = doc(db, "delivery_routes", id);
     const routeSnap = await getDoc(routeRef);
 
     if (!routeSnap.exists()) {

@@ -7,13 +7,14 @@ const db = getFirestore();
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
+  const { id } = await params;
 
   try {
-    const productRef = doc(db, "wholesale_products", params.id);
+    const productRef = doc(db, "wholesale_products", id);
     const productSnap = await getDoc(productRef);
 
     if (!productSnap.exists()) {
@@ -49,15 +50,16 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
+  const { id } = await params;
 
   try {
     const body: Partial<WholesaleProductInput> = await request.json();
 
-    const productRef = doc(db, "wholesale_products", params.id);
+    const productRef = doc(db, "wholesale_products", id);
     const productSnap = await getDoc(productRef);
 
     if (!productSnap.exists()) {
@@ -91,13 +93,14 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
+  const { id } = await params;
 
   try {
-    const productRef = doc(db, "wholesale_products", params.id);
+    const productRef = doc(db, "wholesale_products", id);
     const productSnap = await getDoc(productRef);
 
     if (!productSnap.exists()) {

@@ -197,7 +197,19 @@ export async function getInventoryBalances(filter?: InventoryReadFilter) {
   const snapshot = filter
     ? await getDocs(query(source, where("itemType", "==", filter.itemType), where("itemId", "==", filter.itemId)))
     : await getDocs(source);
-  return snapshot.docs.map((item) => ({ id: item.id, ...item.data() }));
+  return snapshot.docs.map((item) => {
+    const data = item.data();
+    const itemType = filter?.itemType ?? (
+      data.itemType === "ingredient" ? "ingredient" : "product"
+    );
+    const itemId = filter?.itemId ?? String(data.itemId ?? "");
+    const locationId = String(data.locationId ?? "");
+
+    return {
+      id: item.id,
+      ...balanceFromData(itemType, itemId, locationId, data),
+    };
+  });
 }
 
 export async function getInventoryMovements(filter?: InventoryReadFilter) {

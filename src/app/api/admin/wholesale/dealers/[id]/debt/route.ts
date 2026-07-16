@@ -6,17 +6,18 @@ const db = getFirestore();
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
+  const { id } = await params;
 
   try {
     // Get debt records for this dealer
     const debtRecordsRef = collection(db, "debt_records");
     const q = query(
       debtRecordsRef,
-      where("dealerId", "==", params.id),
+      where("dealerId", "==", id),
       orderBy("createdAt", "desc")
     );
     const snapshot = await getDocs(q);
@@ -47,7 +48,7 @@ export async function GET(
     const paymentRecordsRef = collection(db, "payment_records");
     const qPayments = query(
       paymentRecordsRef,
-      where("dealerId", "==", params.id),
+      where("dealerId", "==", id),
       orderBy("createdAt", "desc")
     );
     const paymentSnapshot = await getDocs(qPayments);
@@ -82,10 +83,11 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
+  const { id } = await params;
 
   try {
     const body = await request.json();
@@ -94,7 +96,7 @@ export async function POST(
     if (type === "payment") {
       // Record a payment
       const paymentData = {
-        dealerId: params.id,
+        dealerId: id,
         dealerName: body.dealerName,
         amount: amount,
         paymentMethod: paymentMethod || "cash",
@@ -107,7 +109,7 @@ export async function POST(
       const paymentRef = await addDoc(collection(db, "payment_records"), paymentData);
 
       // Update dealer's current debt
-      const dealerRef = doc(db, "dealers", params.id);
+      const dealerRef = doc(db, "dealers", id);
       const dealerSnap = await getDoc(dealerRef);
       if (dealerSnap.exists()) {
         const currentDebt = dealerSnap.data().currentDebt || 0;
@@ -121,7 +123,7 @@ export async function POST(
     } else if (type === "debt") {
       // Record a new debt (from order)
       const debtData = {
-        dealerId: params.id,
+        dealerId: id,
         dealerName: body.dealerName,
         orderId: orderId,
         orderNumber: orderNumber,
@@ -141,7 +143,7 @@ export async function POST(
       const debtRef = await addDoc(collection(db, "debt_records"), debtData);
 
       // Update dealer's current debt
-      const dealerRef = doc(db, "dealers", params.id);
+      const dealerRef = doc(db, "dealers", id);
       const dealerSnap = await getDoc(dealerRef);
       if (dealerSnap.exists()) {
         const currentDebt = dealerSnap.data().currentDebt || 0;

@@ -7,13 +7,14 @@ const db = getFirestore();
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
+  const { id } = await params;
 
   try {
-    const dealerRef = doc(db, "dealers", params.id);
+    const dealerRef = doc(db, "dealers", id);
     const dealerSnap = await getDoc(dealerRef);
 
     if (!dealerSnap.exists()) {
@@ -66,15 +67,16 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
+  const { id } = await params;
 
   try {
     const body: Partial<DealerInput> & { tier?: string; discountPercent?: number; creditLimit?: number; paymentTerms?: string } = await request.json();
 
-    const dealerRef = doc(db, "dealers", params.id);
+    const dealerRef = doc(db, "dealers", id);
     const dealerSnap = await getDoc(dealerRef);
 
     if (!dealerSnap.exists()) {
@@ -119,13 +121,14 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
+  const { id } = await params;
 
   try {
-    const dealerRef = doc(db, "dealers", params.id);
+    const dealerRef = doc(db, "dealers", id);
     const dealerSnap = await getDoc(dealerRef);
 
     if (!dealerSnap.exists()) {

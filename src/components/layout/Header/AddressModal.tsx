@@ -89,7 +89,10 @@ declare global {
         center: [number, number];
         zoom: number;
       }) => GoongMap;
-      Marker: new (options?: { draggable?: boolean; color?: string }) => GoongMarker;
+      Marker: new (options?: {
+        draggable?: boolean;
+        color?: string;
+      }) => GoongMarker;
       NavigationControl: new () => unknown;
     };
   }
@@ -102,7 +105,9 @@ export const AddressModal: React.FC<AddressModalProps> = ({
 }) => {
   const { config, setDeliveryAddress } = useOrderConfigStore();
   const [street, setStreet] = useState(config.deliveryAddress?.street || "");
-  const [district, setDistrict] = useState(config.deliveryAddress?.district || "");
+  const [district, setDistrict] = useState(
+    config.deliveryAddress?.district || "",
+  );
   const [city, setCity] = useState(config.deliveryAddress?.city || "Hà Nội");
   const [formattedAddress, setFormattedAddress] = useState(
     config.deliveryAddress?.formattedAddress || "",
@@ -163,7 +168,8 @@ export const AddressModal: React.FC<AddressModalProps> = ({
           error?: string;
         };
 
-        if (!response.ok) throw new Error(data.error || "Không thể tìm địa chỉ.");
+        if (!response.ok)
+          throw new Error(data.error || "Không thể tìm địa chỉ.");
         setPredictions(data.predictions ?? []);
       } catch (error) {
         console.error("Address autocomplete failed:", error);
@@ -200,8 +206,10 @@ export const AddressModal: React.FC<AddressModalProps> = ({
         map.on("error", (event) => {
           const message = event.error?.message || "";
           const isKnownGoongStyleWarning =
-            message.includes('Source layer "trees"') &&
-            message.includes('style layer "poi-tree"');
+            message.includes('Source layer "trees"') ||
+            message.includes("poi-tree") ||
+            message.toLowerCase().includes("missing image") ||
+            message.toLowerCase().includes("could not load");
 
           if (!isKnownGoongStyleWarning) {
             console.error("Goong map error:", event.error);
@@ -209,7 +217,7 @@ export const AddressModal: React.FC<AddressModalProps> = ({
         });
         const marker = new window.goongjs.Marker({
           draggable: true,
-          color: "#b84a39",
+          color: "#d94a34",
         })
           .setLngLat([coords.lng, coords.lat])
           .addTo(map);
@@ -228,7 +236,9 @@ export const AddressModal: React.FC<AddressModalProps> = ({
       })
       .catch((error) => {
         console.error("Failed to load Goong map:", error);
-        setMapError("Không thể tải bản đồ. Bạn vẫn có thể nhập địa chỉ thủ công.");
+        setMapError(
+          "Không thể tải bản đồ. Bạn vẫn có thể nhập địa chỉ thủ công.",
+        );
       });
 
     return () => {
@@ -267,7 +277,11 @@ export const AddressModal: React.FC<AddressModalProps> = ({
         throw new Error(data.error || "Không thể lấy địa chỉ.");
       }
 
-      applyGoongResult(data.result, prediction.description, prediction.place_id);
+      applyGoongResult(
+        data.result,
+        prediction.description,
+        prediction.place_id,
+      );
       setPredictions([]);
     } catch (error) {
       console.error("Place detail failed:", error);
@@ -276,7 +290,11 @@ export const AddressModal: React.FC<AddressModalProps> = ({
     }
   }
 
-  async function handleCoordinateChange(lat: number, lng: number, shouldReverse = false) {
+  async function handleCoordinateChange(
+    lat: number,
+    lng: number,
+    shouldReverse = false,
+  ) {
     setCoords({ lat, lng });
 
     if (!shouldReverse) return;
@@ -336,7 +354,9 @@ export const AddressModal: React.FC<AddressModalProps> = ({
       },
       (error) => {
         console.warn("Cannot get current position:", error);
-        setMapError("Không thể lấy vị trí hiện tại. Vui lòng cho phép định vị.");
+        setMapError(
+          "Không thể lấy vị trí hiện tại. Vui lòng cho phép định vị.",
+        );
         setIsLocating(false);
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
@@ -374,23 +394,32 @@ export const AddressModal: React.FC<AddressModalProps> = ({
 
   const searchHeader = (
     <div className="relative">
-      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9b8171]" />
+      <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
       <input
         id="address-search"
         value={searchTerm}
         onChange={(event) => setSearchTerm(event.target.value)}
         placeholder="Nhập số nhà, tên đường, quận..."
-        className="h-11 w-full rounded-[14px] border border-[#eadbcc] bg-white pl-10 pr-3 text-sm font-semibold outline-none focus:border-[#b84a39] focus:ring-2 focus:ring-[#b84a39]/15"
+        className="h-12 w-full rounded-xl border border-sand bg-bg-card pl-10 pr-3 text-sm font-semibold outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
       />
     </div>
   );
 
   const footer = (
     <div className="flex gap-3">
-      <button type="button" onClick={handleCancel} className="h-11 flex-1 rounded-[14px] border border-[#eadbcc] bg-white text-sm font-black text-[#3d2417]">
+      <button
+        type="button"
+        onClick={handleCancel}
+        className="h-12 flex-1 rounded-xl border border-sand bg-bg-card text-sm font-black text-navy"
+      >
         Hủy
       </button>
-      <button type="button" onClick={handleConfirm} disabled={!isFormValid} className="h-11 flex-1 rounded-[14px] bg-[#b84a39] text-sm font-black text-white shadow-[0_8px_18px_rgba(184,74,57,0.20)] disabled:cursor-not-allowed disabled:bg-[#d8c8bd]">
+      <button
+        type="button"
+        onClick={handleConfirm}
+        disabled={!isFormValid}
+        className="h-12 flex-1 rounded-xl bg-brand-500 text-sm font-black text-white shadow-[0_8px_18px_rgba(217,74,52,0.20)] disabled:cursor-not-allowed disabled:bg-neutral-300"
+      >
         Lưu địa chỉ
       </button>
     </div>
@@ -408,21 +437,21 @@ export const AddressModal: React.FC<AddressModalProps> = ({
       <div className="space-y-4">
         <div className="space-y-2">
           {predictions.length > 0 && (
-            <div className="max-h-48 overflow-y-auto rounded-[14px] border border-[#eadbcc] bg-white shadow-sm">
+            <div className="max-h-48 overflow-y-auto rounded-xl border border-sand bg-bg-card shadow-sm">
               {predictions.map((prediction) => (
                 <button
                   key={prediction.place_id}
                   type="button"
                   onClick={() => selectPrediction(prediction)}
-                  className="flex w-full gap-3 border-b border-[#f5eadf] px-3 py-3 text-left last:border-b-0 hover:bg-[#fff8ef]"
+                  className="flex w-full gap-3 border-b border-sand/50 px-3 py-3 text-left last:border-b-0 hover:bg-cream"
                 >
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#b84a39]" />
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />
                   <span className="min-w-0">
-                    <span className="block truncate text-sm font-black text-[#3d2417]">
+                    <span className="block truncate text-sm font-black text-navy">
                       {prediction.structured_formatting?.main_text ||
                         prediction.description}
                     </span>
-                    <span className="mt-0.5 block truncate text-xs font-semibold text-[#7b6254]">
+                    <span className="mt-0.5 block truncate text-xs font-semibold text-text-muted">
                       {prediction.structured_formatting?.secondary_text ||
                         prediction.description}
                     </span>
@@ -432,26 +461,28 @@ export const AddressModal: React.FC<AddressModalProps> = ({
             </div>
           )}
           {isSearching && (
-            <p className="text-xs font-bold text-[#9b8171]">Đang tìm địa chỉ...</p>
+            <p className="text-xs font-bold text-text-muted">
+              Đang tìm địa chỉ...
+            </p>
           )}
         </div>
 
-        <div className="overflow-hidden rounded-[18px] border border-[#eadbcc] bg-[#fffaf6]">
+        <div className="overflow-hidden rounded-2xl border border-sand bg-cream">
           <div ref={mapContainerRef} className="h-42 w-full" />
           {mapError && (
-            <div className="border-t border-[#eadbcc] px-3 py-2 text-xs font-bold text-amber-800">
+            <div className="border-t border-sand px-3 py-2 text-xs font-bold text-amber-800">
               {mapError}
             </div>
           )}
-          <div className="flex items-center justify-between gap-3 border-t border-[#eadbcc] bg-white px-3 py-2">
-            <p className="text-xs font-bold text-[#7b6254]">
+          <div className="flex items-center justify-between gap-3 border-t border-sand bg-bg-card px-3 py-2">
+            <p className="text-xs font-bold text-text-muted">
               Kéo pin hoặc chạm bản đồ để chỉnh vị trí.
             </p>
             <button
               type="button"
               onClick={useCurrentLocation}
               disabled={isLocating}
-              className="inline-flex min-h-9 shrink-0 animate-pulse items-center gap-1.5 rounded-[12px] bg-[#b84a39] px-3 py-2 text-[11px] font-black leading-tight text-white shadow-[0_0_0_4px_rgba(184,74,57,0.10)] disabled:opacity-60"
+              className="inline-flex min-h-9 shrink-0 animate-pulse items-center gap-1.5 rounded-xl bg-brand-500 px-3 py-2 text-[11px] font-black leading-tight text-white shadow-[0_0_0_4px_rgba(217,74,52,0.10)] disabled:opacity-60"
             >
               <LocateFixed className="h-4 w-4" />
               {isLocating ? "Đang tìm..." : "Nhấn nút để tìm vị trí ngay"}
@@ -460,12 +491,13 @@ export const AddressModal: React.FC<AddressModalProps> = ({
         </div>
 
         {formattedAddress && (
-          <div className="rounded-[14px] bg-[#fff8ef] px-3 py-2 text-xs font-bold leading-5 text-[#7a4b12] ring-1 ring-[#f5ddb0]">
-            <span className="mb-0.5 block text-[9px] uppercase tracking-[0.12em] text-[#a17864]">Vị trí đã ghim của bạn</span>
+          <div className="rounded-xl bg-cream px-3 py-2 text-xs font-bold leading-5 text-navy ring-1 ring-sand">
+            <span className="mb-0.5 block text-[9px] uppercase tracking-[0.12em] text-text-muted">
+              Vị trí đã ghim của bạn
+            </span>
             {formattedAddress}
           </div>
         )}
-
       </div>
     </Modal>
   );
@@ -483,7 +515,8 @@ function parseAddress(
   return {
     street: parts[0] || formattedAddress || "",
     district: compound?.district || parts[Math.max(0, parts.length - 2)] || "",
-    city: compound?.province || parts[Math.max(0, parts.length - 1)] || "Hà Nội",
+    city:
+      compound?.province || parts[Math.max(0, parts.length - 1)] || "Hà Nội",
   };
 }
 

@@ -58,10 +58,30 @@ export default function LoyaltyWorkspacePage() {
 
   if (!data || !draft) return <div className="grid min-h-[420px] place-items-center"><Loader2 className="h-7 w-7 animate-spin text-brand-600" /></div>;
   return <div className="space-y-5 pb-16">
-    <header className="overflow-hidden rounded-3xl bg-[linear-gradient(135deg,#3d2417,#8a4a28)] p-6 text-white shadow-xl">
-      <div className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[.18em] text-[#ffd7b8]">Loyalty operating system</p><h1 className="mt-2 text-3xl font-black">Tích điểm, giữ chân và tăng giá trị khách hàng</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-white/75">Thiết kế luật, hạng, phần thưởng và phân khúc; mô phỏng tác động trước khi xuất bản.</p></div><button onClick={createVersion} disabled={busy} className="inline-flex h-11 items-center gap-2 rounded-xl bg-[#ffc845] px-4 text-sm font-black text-[#5a2a16] disabled:opacity-60"><Save className="h-4 w-4" /> Lưu thành phiên bản</button></div>
+    <header className="rounded-xl border border-[#dfe5e8] bg-[#fffdf9] px-5 py-5 shadow-[0_8px_24px_rgba(18,62,102,0.06)] sm:px-6">
+      <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2.5">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#e3f1ee] text-[#2f8d88]">
+              <Gift className="h-[18px] w-[18px]" />
+            </span>
+            <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#2f8d88]">Marketing · Loyalty</p>
+          </div>
+          <h1 className="mt-3 text-2xl font-black tracking-[-0.025em] text-[#123e66] sm:text-3xl">Chương trình khách hàng thân thiết</h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-[#6f777b]">Quản lý luật tích điểm, hạng thành viên, phần thưởng và phiên bản đang áp dụng.</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="inline-flex h-11 items-center gap-2 rounded-lg border border-[#dfe5e8] bg-white px-3.5 text-sm text-[#5f686d]">
+            <Activity className="h-4 w-4 text-[#2f8d88]" />
+            <span><strong className="font-black text-[#123e66]">{format(data.stats.activeMembers)}</strong> đang hoạt động</span>
+          </div>
+          <button onClick={createVersion} disabled={busy} className="inline-flex h-11 items-center gap-2 rounded-lg bg-[#d94a34] px-4 text-sm font-black text-white shadow-sm transition hover:bg-[#c63f2d] disabled:cursor-not-allowed disabled:opacity-60">
+            <Save className="h-4 w-4" /> Lưu thành phiên bản
+          </button>
+        </div>
+      </div>
     </header>
-    <nav className="flex gap-1 overflow-x-auto rounded-2xl border border-neutral-200 bg-white p-1.5">{tabs.map(([id, label, Icon]) => <button key={id} onClick={() => setTab(id)} className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-sm font-black ${tab === id ? "bg-[#b84a39] text-white" : "text-neutral-600 hover:bg-neutral-50"}`}><Icon className="h-4 w-4" />{label}</button>)}</nav>
+    <nav className="flex gap-1 overflow-x-auto rounded-xl border border-[#dfe5e8] bg-[#fffdf9] p-1.5 shadow-sm">{tabs.map(([id, label, Icon]) => <button key={id} onClick={() => setTab(id)} className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-black transition ${tab === id ? "bg-[#123e66] text-white shadow-sm" : "text-[#647078] hover:bg-[#eaf3f1] hover:text-[#123e66]"}`}><Icon className="h-4 w-4" />{label}</button>)}</nav>
     {message && <p className="rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{message}</p>}
     {tab === "overview" && <Overview data={data} />}
     {tab === "rules" && <Rules rules={data.rules} onSave={(value) => saveEntity("rule", value)} busy={busy} />}

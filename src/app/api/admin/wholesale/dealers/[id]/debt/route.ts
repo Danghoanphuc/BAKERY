@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { getFirestore, collection, getDocs, getDoc, query, where, orderBy, addDoc, doc, updateDoc, Timestamp } from "firebase/firestore";
+import { collection, getDocs, getDoc, query, where, orderBy, addDoc, doc, updateDoc, Timestamp } from "firebase/firestore";
 import { requireAdmin } from "@/lib/auth/require-admin";
-
-const db = getFirestore();
+import { db } from "@/lib/firebase/app";
 
 export async function GET(
   request: Request,

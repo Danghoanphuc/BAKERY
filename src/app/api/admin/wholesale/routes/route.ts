@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { getFirestore, collection, getDocs, addDoc, Timestamp } from "firebase/firestore";
+import { collection, getDocs, addDoc, Timestamp } from "firebase/firestore";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import { db } from "@/lib/firebase/app";
 import type { DeliveryRoute, DeliveryRouteInput } from "@/types";
-
-const db = getFirestore();
 
 export async function GET(request: Request) {
   const unauthorized = requireAdmin(request);

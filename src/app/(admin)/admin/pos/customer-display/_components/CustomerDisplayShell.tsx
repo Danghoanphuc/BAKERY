@@ -1,20 +1,23 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type { CSSProperties } from "react";
 import {
   CheckCircle2,
-  Clock3,
   CreditCard,
-  Gift,
   Heart,
+  MonitorUp,
   ReceiptText,
   Sparkles,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import { getCartItemVariantDetails } from "@/types";
 import {
   emptyPosDisplaySnapshot,
+  PosDisplayConnectionState,
   PosDisplaySnapshot,
   subscribePosDisplaySnapshot,
 } from "@/store/posDisplayStore";
@@ -56,19 +59,66 @@ const paymentLabels: Record<string, string> = {
   other: "Phương thức khác",
 };
 
-export function CustomerDisplayShell() {
+const SUCCESS_DISPLAY_MS = 9_000;
+const CONFETTI_PIECES = [
+  { x: -90, y: -190, r: -220, color: "#b84a39", delay: 0 },
+  { x: -60, y: -270, r: 180, color: "#f1c86b", delay: 50 },
+  { x: -30, y: -150, r: -140, color: "#4f9554", delay: 110 },
+  { x: -80, y: -300, r: 260, color: "#d98c72", delay: 20 },
+  { x: -45, y: -210, r: -200, color: "#f8d78d", delay: 140 },
+  { x: -15, y: -330, r: 180, color: "#b84a39", delay: 80 },
+  { x: 20, y: -190, r: -260, color: "#6baa72", delay: 170 },
+  { x: 70, y: -340, r: 240, color: "#f1c86b", delay: 30 },
+  { x: 120, y: -210, r: -180, color: "#d98c72", delay: 120 },
+  { x: 170, y: -310, r: 280, color: "#4f9554", delay: 60 },
+  { x: 220, y: -170, r: -210, color: "#f8d78d", delay: 150 },
+  { x: 270, y: -280, r: 200, color: "#b84a39", delay: 10 },
+  { x: 320, y: -160, r: -260, color: "#6baa72", delay: 100 },
+  { x: 370, y: -230, r: 240, color: "#f1c86b", delay: 40 },
+  { x: -70, y: 90, r: 180, color: "#d98c72", delay: 75 },
+  { x: 0, y: 130, r: -240, color: "#4f9554", delay: 130 },
+  { x: 240, y: 120, r: 220, color: "#b84a39", delay: 90 },
+  { x: 340, y: 80, r: -180, color: "#f8d78d", delay: 160 },
+];
+
+export function CustomerDisplayShell({
+  sessionId,
+  displayToken,
+}: {
+  sessionId: string;
+  displayToken: string;
+}) {
   const [snapshot, setSnapshot] = useState<PosDisplaySnapshot>(
     emptyPosDisplaySnapshot,
   );
+  const [connection, setConnection] =
+    useState<PosDisplayConnectionState>("connecting");
 
-  useEffect(() => subscribePosDisplaySnapshot(setSnapshot), []);
+  useEffect(
+    () =>
+      subscribePosDisplaySnapshot(
+        sessionId,
+        displayToken,
+        setSnapshot,
+        setConnection,
+      ),
+    [displayToken, sessionId],
+  );
 
   const featuredItem = useMemo(
     () => snapshot.items[snapshot.items.length - 1] ?? snapshot.items[0],
     [snapshot.items],
   );
+
+  if (!sessionId || !displayToken || connection === "invalid") {
+    return <InvalidDisplaySession />;
+  }
   const copy = statusCopy[snapshot.status];
   const hasItems = snapshot.items.length > 0;
+  const isPaymentSuccess =
+    snapshot.status === "paid" || snapshot.status === "thank_you";
+  const orderFirstOnTablet =
+    snapshot.status === "editing" || snapshot.status === "awaiting_payment";
   const heroTitle =
     snapshot.status === "awaiting_payment" ||
     snapshot.status === "paid" ||
@@ -77,19 +127,348 @@ export function CustomerDisplayShell() {
       ? copy.title
       : featuredItem.productName;
 
+  if (isPaymentSuccess) {
+    return (
+      <PaymentSuccessTakeover snapshot={snapshot} connection={connection} />
+    );
+  }
+
   return (
-    <main className="fixed inset-0 z-[9999] overflow-hidden bg-[#3d2417] text-white">
-      <div className="grid min-h-screen lg:grid-cols-[1.05fr_0.95fr]">
+    <main className="fixed inset-0 z-[9999] overflow-y-auto bg-[#3d2417] text-white [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:overflow-hidden">
+      <div
+        className={clsx(
+          "grid min-h-full lg:h-full",
+          snapshot.status === "awaiting_payment"
+            ? "lg:grid-cols-[minmax(0,1.1fr)_minmax(360px,0.9fr)]"
+            : isPaymentSuccess
+              ? "lg:grid-cols-[minmax(420px,1fr)_minmax(0,1fr)]"
+              : "lg:grid-cols-[minmax(340px,0.78fr)_minmax(0,1.22fr)]",
+        )}
+      >
         <HeroPanel
           snapshot={snapshot}
           featuredItem={featuredItem}
           title={heroTitle}
           description={copy.description}
           hasItems={hasItems}
+          className={orderFirstOnTablet ? "order-2" : "order-1"}
         />
-        <OrderPanel snapshot={snapshot} statusLabel={copy.label} />
+        <OrderPanel
+          snapshot={snapshot}
+          statusLabel={copy.label}
+          connection={connection}
+          className={orderFirstOnTablet ? "order-1" : "order-2"}
+          fillViewport={orderFirstOnTablet}
+        />
       </div>
     </main>
+  );
+}
+
+function InvalidDisplaySession() {
+  return (
+    <main className="fixed inset-0 z-[9999] grid place-items-center overflow-y-auto bg-[#3d2417] p-6 text-white">
+      <div className="w-full max-w-xl rounded-[2rem] bg-white p-8 text-center text-[#3d2417] shadow-2xl">
+        <div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-[#fff1f0] text-[#b84a39]">
+          <MonitorUp className="h-10 w-10" />
+        </div>
+        <h1 className="mt-6 text-3xl font-black">Chưa ghép với quầy POS</h1>
+        <p className="mt-3 text-base font-semibold leading-relaxed text-[#7b6254]">
+          Hãy mở màn hình khách từ nút màn hình trên POS. Liên kết của mỗi quầy là
+          riêng biệt và tự hết hạn để bảo vệ dữ liệu đơn hàng.
+        </p>
+      </div>
+    </main>
+  );
+}
+
+function ConnectionBadge({ state }: { state: PosDisplayConnectionState }) {
+  const [visible, setVisible] = useState(true);
+
+  useEffect(() => {
+    setVisible(true);
+    if (state !== "connected") return;
+    const timer = window.setTimeout(() => setVisible(false), 2_500);
+    return () => window.clearTimeout(timer);
+  }, [state]);
+
+  if (!visible) return null;
+
+  const config = {
+    connecting: {
+      label: "Đang kết nối quầy",
+      className: "bg-amber-50 text-amber-800 ring-amber-200",
+      icon: <Wifi className="h-4 w-4 animate-pulse" />,
+    },
+    connected: {
+      label: "Đã kết nối quầy",
+      className: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+      icon: <Wifi className="h-4 w-4" />,
+    },
+    stale: {
+      label: "Dữ liệu đang chậm cập nhật",
+      className: "bg-amber-50 text-amber-800 ring-amber-200",
+      icon: <WifiOff className="h-4 w-4" />,
+    },
+    disconnected: {
+      label: "Mất kết nối với quầy · vui lòng báo nhân viên",
+      className: "bg-red-50 text-red-700 ring-red-200",
+      icon: <WifiOff className="h-4 w-4" />,
+    },
+    invalid: {
+      label: "Phiên không hợp lệ",
+      className: "bg-red-50 text-red-700 ring-red-200",
+      icon: <WifiOff className="h-4 w-4" />,
+    },
+  }[state];
+
+  return (
+    <div
+      className={clsx(
+        "flex max-w-full items-center gap-2 rounded-full px-3 py-2 text-xs font-black shadow-sm ring-1",
+        config.className,
+      )}
+    >
+      {config.icon}
+      {config.label}
+    </div>
+  );
+}
+
+function PaymentSuccessTakeover({
+  snapshot,
+  connection,
+}: {
+  snapshot: PosDisplaySnapshot;
+  connection: PosDisplayConnectionState;
+}) {
+  const [now, setNow] = useState(Date.now());
+  const completedAt = useMemo(() => {
+    const parsed = new Date(snapshot.updatedAt).getTime();
+    return Number.isFinite(parsed) ? parsed : Date.now();
+  }, [snapshot.updatedAt]);
+  const remainingMs = Math.max(0, completedAt + SUCCESS_DISPLAY_MS - now);
+  const remainingSeconds = Math.ceil(remainingMs / 1000);
+  const progress = Math.min(100, (remainingMs / SUCCESS_DISPLAY_MS) * 100);
+  const firstItem = snapshot.items[0];
+  const otherItemCount = Math.max(0, snapshot.items.length - 1);
+  const totalQuantity = snapshot.items.reduce(
+    (sum, item) => sum + item.quantity,
+    0,
+  );
+  const paymentLabel = snapshot.paymentMethod
+    ? paymentLabels[snapshot.paymentMethod] ?? "Thanh toán"
+    : "Thanh toán";
+  const itemDetails = firstItem
+    ? [
+        ...getCartItemVariantDetails(firstItem),
+        firstItem.customMessage ? `Chữ "${firstItem.customMessage}"` : null,
+        firstItem.candles ? `${firstItem.candles} nến` : null,
+      ].filter(Boolean)
+    : [];
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 250);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  return (
+    <main className="fixed inset-0 z-[9999] overflow-y-auto bg-[#fffaf2] text-[#203824] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_50%_38%,rgba(151,210,146,0.22),transparent_34%),linear-gradient(145deg,#fbfff5_0%,#fffaf1_54%,#fff4e8_100%)]" />
+      <div className="relative mx-auto flex min-h-full w-full max-w-6xl flex-col px-5 py-5 sm:px-8 sm:py-7 lg:px-10 lg:py-8">
+        <header className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-white text-lg font-black text-[#4f9554] shadow-sm ring-1 ring-[#dcebd8]">
+              B
+            </span>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-[#6a8a6d]">
+                Bakery POS
+              </p>
+              <p className="text-base font-black text-[#203824] sm:text-lg">
+                Tiệm bánh của bạn
+              </p>
+            </div>
+          </div>
+          <ConnectionBadge state={connection} />
+        </header>
+
+        <section className="flex flex-1 items-center justify-center py-4 sm:py-6">
+          <div className="w-full max-w-5xl rounded-[2rem] bg-white/88 p-5 shadow-[0_28px_90px_rgba(50,91,55,0.14)] ring-1 ring-[#dcebd8] backdrop-blur sm:p-7 lg:p-8 [@media(max-height:700px)]:p-5">
+            <div className="grid items-center gap-5 sm:grid-cols-[96px_minmax(0,1fr)] lg:gap-7">
+              <div className="success-check-ring relative mx-auto grid h-24 w-24 place-items-center rounded-full bg-[#4f9554] text-white shadow-[0_18px_42px_rgba(79,149,84,0.28)]">
+                <CelebrationBurst />
+                <span className="absolute inset-[-12px] rounded-full border border-[#87bf8a]/35" />
+                <CheckCircle2 className="success-check-icon h-14 w-14" />
+              </div>
+
+              <div className="min-w-0 text-center sm:text-left">
+                <p className="text-sm font-black uppercase tracking-[0.2em] text-[#4f9554]">
+                  Đã nhận thanh toán
+                </p>
+                <h1 className="mt-1 text-3xl font-black leading-tight text-[#203824] sm:text-4xl">
+                  Thanh toán thành công
+                </h1>
+                <p className="mt-2 text-5xl font-black leading-none tracking-tight text-[#9a6b18] sm:text-6xl lg:text-7xl [@media(max-height:700px)]:text-5xl">
+                  {formatCurrency(snapshot.totalAmount)}
+                </p>
+                <p className="mt-3 text-sm font-bold text-[#607463] sm:text-base">
+                  Cảm ơn bạn. Đơn hàng đang được nhân viên hoàn tất.
+                </p>
+                <div className="mt-3 flex flex-wrap justify-center gap-2 text-sm font-black sm:justify-start">
+                  {snapshot.orderNumber && (
+                    <span className="rounded-full bg-[#fff6df] px-3 py-2 text-[#81591a] ring-1 ring-[#efd9a5]">
+                      Mã đơn {snapshot.orderNumber}
+                    </span>
+                  )}
+                  <span className="rounded-full bg-[#eef8ec] px-3 py-2 text-[#3f7944] ring-1 ring-[#d4e8d1]">
+                    {paymentLabel}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {firstItem && (
+              <article className="mt-5 grid grid-cols-[64px_minmax(0,1fr)] items-center gap-3 rounded-2xl bg-[#fffaf5] p-3 text-[#3d2417] ring-1 ring-[#f0e1d2] sm:grid-cols-[72px_minmax(0,1fr)] sm:gap-4">
+                <div className="h-16 w-16 overflow-hidden rounded-xl bg-[#f7eee7] sm:h-[72px] sm:w-[72px]">
+                  <ProductImage
+                    src={firstItem.imageUrl}
+                    alt={firstItem.productName}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="break-words text-base font-black leading-snug sm:text-lg">
+                    {firstItem.productName}
+                  </h2>
+                  {itemDetails.length > 0 && (
+                    <p className="mt-0.5 break-words text-xs font-semibold text-[#7b6254] sm:text-sm">
+                      {itemDetails.join(" / ")}
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs font-black text-[#b84a39] sm:text-sm">
+                    {firstItem.quantity} × {formatCurrency(firstItem.price)}
+                    {otherItemCount > 0 ? ` · +${otherItemCount} món khác` : ""}
+                  </p>
+                </div>
+              </article>
+            )}
+
+            <div className="mt-4 flex flex-wrap justify-center gap-2 text-sm font-black">
+              <span className="rounded-full bg-white px-3 py-2 text-[#607463] ring-1 ring-[#dcebd8]">
+                {totalQuantity} món trong đơn
+              </span>
+              {snapshot.paymentMethod === "cash" &&
+                typeof snapshot.changeAmount === "number" &&
+                snapshot.changeAmount > 0 && (
+                  <span className="rounded-full bg-[#fff6df] px-3 py-2 text-[#81591a] ring-1 ring-[#efd9a5]">
+                    Tiền thừa {formatCurrency(snapshot.changeAmount)}
+                  </span>
+                )}
+              {Boolean(snapshot.loyaltyPointsEarned) && (
+                <span className="rounded-full bg-[#eef8ec] px-3 py-2 text-[#3f7944] ring-1 ring-[#d4e8d1]">
+                  +{snapshot.loyaltyPointsEarned} điểm thưởng
+                </span>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <footer className="mx-auto w-full max-w-3xl text-center">
+          <p className="text-sm font-bold text-[#607463]">
+            Sẵn sàng cho đơn tiếp theo sau {remainingSeconds} giây
+          </p>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#dfe9dc]">
+            <div
+              className="h-full rounded-full bg-[#4f9554] transition-[width] duration-300 ease-linear motion-reduce:transition-none"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </footer>
+      </div>
+    </main>
+  );
+}
+
+function CelebrationBurst() {
+  return (
+    <div className="pointer-events-none absolute inset-0 z-20 overflow-visible" aria-hidden="true">
+      {CONFETTI_PIECES.map((piece, index) => (
+        <span
+          key={`${piece.x}-${piece.y}-${index}`}
+          className="success-confetti absolute left-1/2 top-1/2 h-2 w-4 rounded-sm"
+          style={
+            {
+              "--confetti-x": `${piece.x}px`,
+              "--confetti-y": `${piece.y}px`,
+              "--confetti-r": `${piece.r}deg`,
+              backgroundColor: piece.color,
+              animationDelay: `${piece.delay}ms`,
+            } as CSSProperties
+          }
+        />
+      ))}
+      <style>{`
+        .success-confetti {
+          opacity: 0;
+          animation: success-confetti-burst 1050ms cubic-bezier(0.16, 0.82, 0.3, 1)
+            forwards;
+        }
+        .success-check-ring {
+          animation: success-ring-in 720ms cubic-bezier(0.2, 1.35, 0.35, 1) both;
+        }
+        .success-check-icon {
+          animation: success-check-in 520ms 180ms cubic-bezier(0.2, 1.4, 0.35, 1)
+            both;
+        }
+        @keyframes success-confetti-burst {
+          0% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.4) rotate(0deg);
+          }
+          12% {
+            opacity: 1;
+          }
+          100% {
+            opacity: 0;
+            transform: translate(
+                calc(-50% + var(--confetti-x)),
+                calc(-50% + var(--confetti-y))
+              )
+              scale(1) rotate(var(--confetti-r));
+          }
+        }
+        @keyframes success-ring-in {
+          0% {
+            opacity: 0;
+            transform: scale(0.55);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        @keyframes success-check-in {
+          0% {
+            opacity: 0;
+            transform: scale(0.45) rotate(-10deg);
+          }
+          100% {
+            opacity: 1;
+            transform: scale(1) rotate(0deg);
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .success-confetti {
+            display: none;
+          }
+          .success-check-ring,
+          .success-check-icon {
+            animation: none;
+          }
+        }
+      `}</style>
+    </div>
   );
 }
 
@@ -99,12 +478,14 @@ function HeroPanel({
   title,
   description,
   hasItems,
+  className,
 }: {
   snapshot: PosDisplaySnapshot;
   featuredItem?: PosDisplaySnapshot["items"][number];
   title: string;
   description: string;
   hasItems: boolean;
+  className?: string;
 }) {
   const isPaymentSuccess =
     snapshot.status === "paid" || snapshot.status === "thank_you";
@@ -112,7 +493,8 @@ function HeroPanel({
   return (
     <section
       className={clsx(
-        "relative flex min-h-[46vh] flex-col justify-between overflow-hidden p-8 lg:min-h-screen lg:p-12",
+        "relative flex min-h-[42vh] flex-col overflow-hidden p-6 lg:order-1 lg:h-full lg:min-h-0 lg:p-8 xl:p-10",
+        className,
         isPaymentSuccess ? "bg-[#f7fff4] text-[#18351f]" : "bg-[#4a2b1c]",
       )}
     >
@@ -138,7 +520,13 @@ function HeroPanel({
         <div className="absolute inset-0 bg-[linear-gradient(135deg,#4a2b1c_0%,#7a3f32_46%,#b84a39_100%)] opacity-80" />
       ) : null}
 
-      <div className="relative z-10 flex items-center justify-between gap-4">
+      <div
+        className={clsx(
+          "relative z-10 flex items-center justify-between gap-4",
+          (isPaymentSuccess || snapshot.status === "awaiting_payment") &&
+            "[@media(max-height:700px)]:hidden",
+        )}
+      >
         <div className="flex items-center gap-3">
           <span
             className={clsx(
@@ -178,10 +566,11 @@ function HeroPanel({
         </div>
       </div>
 
-      <div className="relative z-10 max-w-2xl py-10">
+      <div className="relative z-10 flex max-w-2xl flex-1 flex-col justify-center py-6 lg:py-3">
         <div
           className={clsx(
             "mb-5 inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-black backdrop-blur",
+            isPaymentSuccess && "[@media(max-height:700px)]:hidden",
             isPaymentSuccess
               ? "bg-white/75 text-[#2f6f3d] ring-1 ring-[#d9ebd5]"
               : "bg-white/14 text-white",
@@ -194,7 +583,9 @@ function HeroPanel({
           ) : (
             <Heart className="h-4 w-4 text-[#ffd4a8]" />
           )}
-          {hasItems ? `${snapshot.items.length} món trong đơn` : "Rất vui được phục vụ bạn"}
+          {hasItems
+            ? `${snapshot.items.reduce((sum, item) => sum + item.quantity, 0)} món trong đơn`
+            : "Rất vui được phục vụ bạn"}
         </div>
         {snapshot.status === "awaiting_payment" && snapshot.paymentQrCode ? (
           <HeroPaymentQr snapshot={snapshot} description={description} />
@@ -206,7 +597,7 @@ function HeroPanel({
           />
         ) : (
           <>
-            <h1 className="max-w-2xl text-5xl font-black leading-[0.95] tracking-normal text-white md:text-7xl">
+            <h1 className="max-w-2xl text-4xl font-black leading-[0.98] tracking-normal text-white sm:text-5xl 2xl:text-6xl">
               {title}
             </h1>
             <p className="mt-5 max-w-xl text-lg font-semibold leading-relaxed text-white/78 md:text-xl">
@@ -216,23 +607,6 @@ function HeroPanel({
         )}
       </div>
 
-      <div className="relative z-10 grid gap-3 sm:grid-cols-3">
-        <TrustBadge
-          icon={<ReceiptText className="h-5 w-5" />}
-          label="Kiểm đơn rõ ràng"
-          success={isPaymentSuccess}
-        />
-        <TrustBadge
-          icon={<Gift className="h-5 w-5" />}
-          label="Tích điểm & voucher"
-          success={isPaymentSuccess}
-        />
-        <TrustBadge
-          icon={<Clock3 className="h-5 w-5" />}
-          label="Thanh toán nhanh"
-          success={isPaymentSuccess}
-        />
-      </div>
     </section>
   );
 }
@@ -247,28 +621,28 @@ function HeroPaymentSuccess({
   description: string;
 }) {
   return (
-    <div className="max-w-2xl rounded-[2rem] bg-white/82 p-6 text-[#18351f] shadow-[0_26px_80px_rgba(47,111,61,0.18)] ring-1 ring-[#d9ebd5] backdrop-blur md:p-8">
+    <div className="max-w-2xl rounded-[2rem] bg-white/82 p-5 text-[#18351f] shadow-[0_26px_80px_rgba(47,111,61,0.18)] ring-1 ring-[#d9ebd5] backdrop-blur xl:p-7">
       <div className="flex items-start gap-5">
         <div className="relative shrink-0">
           <div className="absolute inset-0 animate-ping rounded-full bg-[#9de1aa]/45" />
-          <div className="relative grid h-20 w-20 place-items-center rounded-full bg-[#2f8a45] text-white shadow-[0_16px_34px_rgba(47,138,69,0.30)] md:h-24 md:w-24">
-            <CheckCircle2 className="h-12 w-12 md:h-14 md:w-14" />
+          <div className="relative grid h-16 w-16 place-items-center rounded-full bg-[#2f8a45] text-white shadow-[0_16px_34px_rgba(47,138,69,0.30)] xl:h-20 xl:w-20">
+            <CheckCircle2 className="h-10 w-10 xl:h-12 xl:w-12" />
           </div>
         </div>
         <div className="min-w-0">
           <p className="text-sm font-black uppercase tracking-[0.18em] text-[#2f8a45]">
             Đã nhận thanh toán
           </p>
-          <h1 className="mt-3 text-4xl font-black leading-[0.95] tracking-normal text-[#18351f] md:text-6xl">
+          <h1 className="mt-2 text-3xl font-black leading-none tracking-normal text-[#18351f] xl:text-5xl">
             {title}
           </h1>
-          <p className="mt-4 max-w-xl text-base font-semibold leading-relaxed text-[#55705b] md:text-xl">
+          <p className="mt-3 max-w-xl text-sm font-semibold leading-relaxed text-[#55705b] xl:text-lg">
             {description}
           </p>
         </div>
       </div>
 
-      <div className="mt-7 grid gap-3 sm:grid-cols-2">
+      <div className="mt-5 grid gap-3 2xl:grid-cols-2">
         <div className="rounded-3xl bg-[#18351f] px-5 py-4 text-white">
           <p className="text-xs font-black uppercase tracking-[0.16em] text-white/58">
             Tổng tiền đã thanh toán
@@ -297,6 +671,9 @@ function HeroPaymentSuccess({
           </p>
         </div>
       ) : null}
+      <p className="mt-4 text-center text-sm font-bold text-[#55705b]">
+        Màn hình sẽ tự sẵn sàng cho đơn tiếp theo.
+      </p>
     </div>
   );
 }
@@ -335,18 +712,43 @@ function HeroPaymentQr({
   snapshot: PosDisplaySnapshot;
   description: string;
 }) {
+  const [now, setNow] = useState(Date.now());
+  const [qrFailed, setQrFailed] = useState(false);
+  const remainingSeconds = snapshot.paymentDeadline
+    ? Math.max(0, Math.ceil((snapshot.paymentDeadline - now) / 1000))
+    : null;
+  const isExpired = remainingSeconds === 0;
+
+  useEffect(() => {
+    if (!snapshot.paymentDeadline) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [snapshot.paymentDeadline]);
+
+  useEffect(() => {
+    setQrFailed(false);
+    setNow(Date.now());
+  }, [snapshot.paymentQrCode]);
+
   return (
-    <div className="grid max-w-2xl items-center gap-6 rounded-[2rem] bg-white/94 p-5 text-[#3d2417] shadow-[0_24px_70px_rgba(0,0,0,0.24)] ring-1 ring-white/60 backdrop-blur sm:grid-cols-[minmax(0,1fr)_240px] md:p-6">
+    <div className="grid max-w-2xl items-center gap-4 rounded-[2rem] bg-white/94 p-5 text-[#3d2417] shadow-[0_24px_70px_rgba(0,0,0,0.24)] ring-1 ring-white/60 backdrop-blur lg:grid-cols-[minmax(0,1fr)_200px] xl:grid-cols-[minmax(0,1fr)_220px]">
       <div className="min-w-0">
         <p className="text-sm font-black uppercase tracking-[0.16em] text-[#b84a39]">
           Thanh toán QR / CK
         </p>
-        <h1 className="mt-3 text-4xl font-black leading-none tracking-normal text-[#3d2417] md:text-5xl">
+        <h1 className="mt-2 text-3xl font-black leading-none tracking-normal text-[#3d2417] xl:text-4xl">
           Quét mã QR để thanh toán
         </h1>
         <p className="mt-4 text-base font-semibold leading-relaxed text-[#7b6254] md:text-lg">
-          {description}
+          {isExpired
+            ? "Mã QR đã hết hạn. Vui lòng báo nhân viên để tạo mã mới."
+            : description}
         </p>
+        {remainingSeconds !== null && !isExpired && (
+          <p className="mt-3 inline-flex rounded-full bg-amber-50 px-3 py-2 text-sm font-black text-amber-800 ring-1 ring-amber-200">
+            Mã còn hiệu lực {Math.floor(remainingSeconds / 60)}:{String(remainingSeconds % 60).padStart(2, "0")}
+          </p>
+        )}
         <div className="mt-5 rounded-3xl bg-[#9f3f32] px-5 py-4 text-white">
           <p className="text-xs font-black uppercase tracking-[0.16em] text-white/64">
             Số tiền cần thanh toán
@@ -361,12 +763,25 @@ function HeroPaymentQr({
           )}
         </div>
       </div>
-      <div className="mx-auto w-full max-w-[240px] rounded-[1.75rem] bg-white p-3 shadow-inner ring-1 ring-[#f0e1d2]">
-        <img
-          src={snapshot.paymentQrCode}
-          alt="Mã QR thanh toán"
-          className="aspect-square w-full rounded-2xl object-contain"
-        />
+      <div className="mx-auto grid aspect-square w-full max-w-[220px] place-items-center rounded-[1.75rem] bg-white p-3 shadow-inner ring-1 ring-[#f0e1d2]">
+        {isExpired || qrFailed ? (
+          <div className="px-4 text-center">
+            <WifiOff className="mx-auto h-10 w-10 text-red-500" />
+            <p className="mt-3 text-sm font-black text-red-700">
+              {isExpired ? "QR đã hết hạn" : "Không tải được mã QR"}
+            </p>
+            <p className="mt-1 text-xs font-semibold text-[#7b6254]">
+              Vui lòng báo nhân viên tại quầy.
+            </p>
+          </div>
+        ) : (
+          <img
+            src={snapshot.paymentQrCode}
+            alt="Mã QR thanh toán"
+            onError={() => setQrFailed(true)}
+            className="aspect-square w-full rounded-2xl object-contain"
+          />
+        )}
       </div>
     </div>
   );
@@ -375,9 +790,15 @@ function HeroPaymentQr({
 function OrderPanel({
   snapshot,
   statusLabel,
+  connection,
+  className,
+  fillViewport,
 }: {
   snapshot: PosDisplaySnapshot;
   statusLabel: string;
+  connection: PosDisplayConnectionState;
+  className?: string;
+  fillViewport: boolean;
 }) {
   const hasItems = snapshot.items.length > 0;
   const paymentLabel = snapshot.paymentMethod
@@ -385,40 +806,44 @@ function OrderPanel({
     : "Chưa chọn";
 
   return (
-    <section className="flex min-h-screen flex-col bg-[#fffaf6] p-6 text-[#3d2417] lg:p-8">
+    <section
+      className={clsx(
+        "flex flex-col bg-[#fffaf6] p-5 text-[#3d2417] sm:p-6 lg:order-2 lg:h-full lg:min-h-0 lg:p-8",
+        fillViewport ? "h-screen min-h-0" : "min-h-[58vh]",
+        className,
+      )}
+    >
       <div className="flex items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <p className="text-sm font-black uppercase tracking-[0.16em] text-[#b84a39]">
             {statusLabel}
           </p>
           {snapshot.customerName ? (
-            <h2 className="mt-1 text-3xl font-black leading-tight">
-              Xin chào{" "}
-              <span className="font-dancing-script text-5xl uppercase leading-none text-[#b84a39]">
-                {snapshot.customerName.toUpperCase()}
-              </span>
+            <h2 className="mt-1 break-words text-2xl font-black leading-tight sm:text-3xl">
+              Xin chào <span className="text-[#b84a39]">{snapshot.customerName}</span>
             </h2>
           ) : (
             <h2 className="mt-1 text-3xl font-black">Đơn hàng của bạn</h2>
           )}
         </div>
-        <div className="rounded-2xl bg-white px-4 py-3 text-right shadow-sm ring-1 ring-[#f0e1d2]">
-          <p className="text-xs font-black text-[#9b8171]">Thanh toán</p>
-          <p className="mt-1 text-sm font-black text-[#3d2417]">{paymentLabel}</p>
+        <div className="flex shrink-0 flex-col items-end gap-2">
+          <ConnectionBadge state={connection} />
+          {hasItems && (
+            <div className="rounded-2xl bg-white px-4 py-2 text-right shadow-sm ring-1 ring-[#f0e1d2]">
+              <p className="text-[11px] font-black text-[#9b8171]">Thanh toán</p>
+              <p className="mt-0.5 text-sm font-black text-[#3d2417]">{paymentLabel}</p>
+            </div>
+          )}
         </div>
       </div>
 
-      <div className="mt-6 min-h-0 flex-1 overflow-hidden rounded-3xl bg-white shadow-[0_18px_46px_rgba(61,36,23,0.10)] ring-1 ring-[#f0e1d2]">
+      <div className="mt-4 min-h-0 flex-1 overflow-hidden rounded-3xl bg-white shadow-[0_18px_46px_rgba(61,36,23,0.10)] ring-1 ring-[#f0e1d2]">
         {hasItems ? (
           <div className="flex h-full flex-col">
-            <div className="min-h-0 flex-1 overflow-y-auto p-5">
+            <div className="min-h-0 flex-1 overflow-y-auto p-4 [@media(max-height:700px)]:p-3">
               <div className="space-y-3">
                 {snapshot.items.map((item) => (
-                  <DisplayLineItem
-                    key={item.cartItemId}
-                    item={item}
-                    paid={snapshot.status === "paid" || snapshot.status === "thank_you"}
-                  />
+                  <DisplayLineItem key={item.cartItemId} item={item} />
                 ))}
               </div>
             </div>
@@ -429,17 +854,15 @@ function OrderPanel({
         )}
       </div>
 
-      <BottomMessage snapshot={snapshot} />
+      {hasItems && <BottomMessage snapshot={snapshot} />}
     </section>
   );
 }
 
 function DisplayLineItem({
   item,
-  paid = false,
 }: {
   item: PosDisplaySnapshot["items"][number];
-  paid?: boolean;
 }) {
   const details = [
     ...getCartItemVariantDetails(item),
@@ -457,21 +880,11 @@ function DisplayLineItem({
         />
       </div>
       <div className="min-w-0 self-center">
-        <h3
-          className={clsx(
-            "truncate font-black",
-            paid ? "text-2xl text-[#2f8a45]" : "text-lg text-[#3d2417]",
-          )}
-        >
-          {paid ? "Thanh toán thành công" : item.productName}
+        <h3 className="break-words text-lg font-black leading-snug text-[#3d2417]">
+          {item.productName}
         </h3>
-        {paid && (
-          <p className="mt-1 truncate text-sm font-bold text-[#6f8068]">
-            {item.productName}
-          </p>
-        )}
         {details.length > 0 && (
-          <p className="mt-1 line-clamp-2 text-sm font-semibold text-[#7b6254]">
+          <p className="mt-1 break-words text-sm font-semibold text-[#7b6254]">
             {details.join(" / ")}
           </p>
         )}
@@ -495,8 +908,8 @@ function Totals({ snapshot }: { snapshot: PosDisplaySnapshot }) {
     snapshot.status === "paid" || snapshot.status === "thank_you";
 
   return (
-    <div className="border-t border-[#f0e1d2] bg-white p-5">
-      <div className="space-y-2 text-base font-bold text-[#7b6254]">
+    <div className="border-t border-[#f0e1d2] bg-white p-5 [@media(max-height:700px)]:p-3">
+      <div className="space-y-2 text-base font-bold text-[#7b6254] [@media(max-height:700px)]:space-y-1 [@media(max-height:700px)]:text-sm">
         <TotalRow label="Tạm tính" value={snapshot.subtotal} />
         {snapshot.discountAmount > 0 && (
           <>
@@ -508,6 +921,18 @@ function Totals({ snapshot }: { snapshot: PosDisplaySnapshot }) {
             )}
           </>
         )}
+        {snapshot.paymentMethod === "cash" &&
+          typeof snapshot.cashReceived === "number" &&
+          snapshot.cashReceived > 0 && (
+            <>
+              <TotalRow label="Khách đã đưa" value={snapshot.cashReceived} />
+              <TotalRow
+                label="Tiền thừa"
+                value={snapshot.changeAmount ?? 0}
+                accent
+              />
+            </>
+          )}
       </div>
       {isAwaitingQrPayment ? (
         <div className="mt-4 rounded-3xl bg-[#fff8ef] px-5 py-4 text-center text-[#7a4b12] ring-1 ring-[#f5ddb0]">
@@ -520,8 +945,24 @@ function Totals({ snapshot }: { snapshot: PosDisplaySnapshot }) {
             </p>
           )}
         </div>
-      ) : isPaymentSuccess ? null : (
-        <div className="mt-4 flex items-end justify-between gap-4 rounded-3xl bg-[#9f3f32] px-5 py-5 text-white shadow-[0_18px_34px_rgba(159,63,50,0.24)]">
+      ) : isPaymentSuccess ? (
+        <div className="mt-4 flex items-center justify-between gap-4 rounded-3xl bg-[#18351f] px-5 py-4 text-white shadow-[0_18px_34px_rgba(24,53,31,0.20)]">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.15em] text-white/60">
+              Đã thanh toán
+            </p>
+            {snapshot.orderNumber && (
+              <p className="mt-1 text-sm font-bold text-white/75">
+                Mã đơn {snapshot.orderNumber}
+              </p>
+            )}
+          </div>
+          <p className="text-3xl font-black text-[#f8d78d] sm:text-4xl">
+            {formatCurrency(snapshot.totalAmount)}
+          </p>
+        </div>
+      ) : (
+        <div className="mt-4 flex items-end justify-between gap-4 rounded-3xl bg-[#9f3f32] px-5 py-5 text-white shadow-[0_18px_34px_rgba(159,63,50,0.24)] [@media(max-height:700px)]:mt-2 [@media(max-height:700px)]:px-4 [@media(max-height:700px)]:py-3">
           <div>
             <p className="text-sm font-black uppercase tracking-[0.16em] text-white/58">
               Khách thanh toán
@@ -532,7 +973,7 @@ function Totals({ snapshot }: { snapshot: PosDisplaySnapshot }) {
               </p>
             )}
           </div>
-          <p className="text-4xl font-black text-[#ffd4a8] md:text-5xl">
+          <p className="text-4xl font-black text-[#ffd4a8] md:text-5xl [@media(max-height:700px)]:text-3xl">
             {formatCurrency(snapshot.totalAmount)}
           </p>
         </div>
@@ -582,13 +1023,7 @@ function IdleOrderCard() {
 
 function BottomMessage({ snapshot }: { snapshot: PosDisplaySnapshot }) {
   if (snapshot.status === "awaiting_payment" && snapshot.paymentQrCode) {
-    return (
-      <div className="mt-5 rounded-3xl bg-[#fff8ef] px-5 py-4 text-center text-[#7a4b12] ring-1 ring-[#f5ddb0]">
-        <p className="text-sm font-black">
-          Vui lòng quét mã QR và chờ xác nhận thanh toán.
-        </p>
-      </div>
-    );
+    return null;
   }
 
   if (snapshot.status === "paid" || snapshot.status === "thank_you") {
@@ -596,43 +1031,10 @@ function BottomMessage({ snapshot }: { snapshot: PosDisplaySnapshot }) {
   }
 
   return (
-    <div className="mt-5 rounded-3xl bg-white/70 px-5 py-4 text-center text-[#7b6254] ring-1 ring-[#f0e1d2]">
+    <div className="mt-5 rounded-3xl bg-white/70 px-5 py-4 text-center text-[#7b6254] ring-1 ring-[#f0e1d2] [@media(max-height:700px)]:hidden">
       <p className="text-sm font-black">
         Vui lòng kiểm tra lại món, số lượng và tổng tiền trước khi thanh toán.
       </p>
-    </div>
-  );
-}
-
-function TrustBadge({
-  icon,
-  label,
-  success = false,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  success?: boolean;
-}) {
-  return (
-    <div
-      className={clsx(
-        "flex items-center gap-3 rounded-3xl px-4 py-3 text-sm font-black backdrop-blur",
-        success
-          ? "bg-white/72 text-[#2f6f3d] ring-1 ring-[#d9ebd5]"
-          : "bg-white/12 text-white",
-      )}
-    >
-      <span
-        className={clsx(
-          "grid h-10 w-10 place-items-center rounded-2xl",
-          success
-            ? "bg-[#eef9ea] text-[#2f8a45]"
-            : "bg-white/14 text-[#ffd4a8]",
-        )}
-      >
-        {icon}
-      </span>
-      <span>{label}</span>
     </div>
   );
 }

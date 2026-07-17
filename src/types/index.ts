@@ -2,6 +2,7 @@ export * from "./product";
 export * from "./loyalty";
 export * from "./category";
 export * from "./cart";
+export * from "./pos-table";
 export * from "./order";
 export * from "./orderConfig";
 export * from "./customer";

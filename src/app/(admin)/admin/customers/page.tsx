@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
 import { getVietnamPhoneValidationError, normalizePhoneInput } from "@/lib/auth/phone";
 import { getAllOrders } from "@/lib/firebase";
@@ -113,10 +114,11 @@ export default function CustomersPage() {
 
       setIsCreateOpen(false);
       setNewCustomer(initialNewCustomerForm);
+      toast.success("Đã thêm khách hàng mới.");
       router.push(`/admin/customers/${data.id}`);
     } catch (createError) {
       console.error("Failed to create customer:", createError);
-      setError(
+      toast.error(
         createError instanceof Error
           ? createError.message
           : "Không thể tạo khách hàng",

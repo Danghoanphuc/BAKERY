@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import type { Category, Product } from "@/types";
 import type { ProductCostSummary } from "@/features/finance";
 import { findCategoryForProduct } from "@/lib/product-category";
@@ -155,11 +156,12 @@ export function ProductEditor({ mode, productId }: ProductEditorProps) {
         throw new Error(await response.text());
       }
 
+      toast.success(mode === "edit" ? "Đã cập nhật sản phẩm." : "Đã thêm sản phẩm mới.");
       router.push("/admin/inventory");
       router.refresh();
     } catch (saveError) {
       console.error("Failed to save product:", saveError);
-      setError("Không thể lưu sản phẩm. Kiểm tra lại thông tin rồi thử lại.");
+      toast.error("Không thể lưu sản phẩm. Kiểm tra lại thông tin rồi thử lại.");
     } finally {
       setIsSaving(false);
     }

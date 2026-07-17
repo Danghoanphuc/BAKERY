@@ -1,5 +1,6 @@
 import type { Order } from "@/types";
 import { DateFilter } from "./constants";
+import { getPrimaryOrderTransition } from "@/lib/orders/order-workflow";
 
 type DateLike =
   | Date
@@ -84,7 +85,12 @@ export function matchesDateFilter(order: Order, filter: DateFilter): boolean {
   if (filter === "overdue") return isOverdueOrder(order);
   if (filter === "upcoming") {
     const pickupDate = toDateSafe(order.pickupTime);
-    return pickupDate ? pickupDate.getTime() > Date.now() : false;
+    return pickupDate
+      ? pickupDate.getTime() > Date.now() &&
+          order.status !== "completed" &&
+          order.status !== "delivered" &&
+          order.status !== "cancelled"
+      : false;
   }
 
   return true;
@@ -93,16 +99,19 @@ export function matchesDateFilter(order: Order, filter: DateFilter): boolean {
 export function getQuickActions(
   order: Order,
 ): Array<{ status: Order["status"]; label: string }> {
-  const flow = {
-    pending: [{ status: "confirmed" as const, label: "Xác nhận" }],
-    confirmed: [{ status: "preparing" as const, label: "Bếp chuẩn bị" }],
-    preparing: [{ status: "ready" as const, label: "Sẵn sàng" }],
-    ready: [{ status: "completed" as const, label: "Hoàn thành" }],
-    processing: [{ status: "completed" as const, label: "Hoàn thành" }],
-    completed: [],
-    delivered: [],
-    cancelled: [],
+  const nextStatus = getPrimaryOrderTransition(order);
+  if (!nextStatus) return [];
+
+  const labels: Record<Order["status"], string> = {
+    pending: "Chờ xử lý",
+    confirmed: "Xác nhận",
+    preparing: "Bếp chuẩn bị",
+    ready: "Sẵn sàng",
+    processing: "Đang xử lý",
+    completed: "Hoàn thành",
+    delivered: "Đã giao",
+    cancelled: "Đã hủy",
   };
 
-  return flow[order.status] || [];
+  return [{ status: nextStatus, label: labels[nextStatus] }];
 }

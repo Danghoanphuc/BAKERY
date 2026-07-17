@@ -1,51 +1,51 @@
-@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&family=Dancing+Script:wght@700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&display=swap");
 @import "tailwindcss";
 
 @theme {
   /* Bakery Brand Color Palette */
   /* Backgrounds (Kem) */
   --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Dancing Script", cursive;
+  --font-display: Georgia, "Times New Roman", serif;
 
-  --color-bg-main: #f8f0e5;
-  --color-bg-soft: #f4ebdd;
-  --color-bg-card: #fffaf3;
-  --color-bg-surface: #ead8c5;
+  --color-bg-main: #fff6e8;
+  --color-bg-soft: #f2e8da;
+  --color-bg-card: #fffcf7;
+  --color-bg-surface: #e8d9c7;
 
   /* Typography (Nâu) */
-  --color-text-primary: #123e66;
-  --color-text-secondary: #2d2a28;
-  --color-text-muted: #75685f;
-  --color-text-light: #9a8a7e;
+  --color-text-primary: #1f2e4a;
+  --color-text-secondary: #51483f;
+  --color-text-muted: #7e6a59;
+  --color-text-light: #9b8877;
 
   /* Brand Colors (Cam Đất/Đỏ Gạch) */
-  --color-brand-50: #fff1ed;
-  --color-brand-100: #ffddd4;
-  --color-brand-200: #ffb9a8;
-  --color-brand-300: #f79279;
-  --color-brand-400: #ef6d50;
-  --color-brand-500: #d94a34;
-  --color-brand-600: #c33d29;
-  --color-brand-700: #a63022;
-  --color-brand-800: #84291f;
-  --color-brand-900: #6d251e;
+  --color-brand-50: #fff3ef;
+  --color-brand-100: #f7dbd1;
+  --color-brand-200: #edb7a8;
+  --color-brand-300: #df8d78;
+  --color-brand-400: #cf664f;
+  --color-brand-500: #c24a36;
+  --color-brand-600: #a93b2b;
+  --color-brand-700: #8b3025;
+  --color-brand-800: #702a22;
+  --color-brand-900: #5d271f;
 
-  --color-navy: #123e66;
-  --color-navy-soft: #e9f0f5;
-  --color-teal: #2f8d88;
-  --color-teal-soft: #e3f1ee;
-  --color-cream: #f4ebdd;
-  --color-sand: #e6d7c5;
-  --color-beige: #dcc8b4;
-  --color-coral: #f07a58;
-  --color-charcoal: #2d2a28;
+  --color-navy: #1f2e4a;
+  --color-navy-soft: #e9e8e5;
+  --color-teal: #8a6828;
+  --color-teal-soft: #f5ecd7;
+  --color-cream: #fff6e8;
+  --color-sand: #e8d9c7;
+  --color-beige: #b8a48f;
+  --color-coral: #d2986a;
+  --color-charcoal: #51483f;
 
   /* Accents */
-  --color-accent-star: #e8a22b;
-  --color-accent-healthy: #2f8d88;
-  --color-accent-healthy-light: #56aaa4;
-  --color-accent-pink: #d94a34;
-  --color-accent-gold: #f3cf99;
+  --color-accent-star: #f4b438;
+  --color-accent-healthy: #5f8063;
+  --color-accent-healthy-light: #83a485;
+  --color-accent-pink: #c24a36;
+  --color-accent-gold: #c9a24c;
 
   /* Neutral (from original, kept for compatibility) */
   --color-neutral-50: #fafafa;
@@ -103,12 +103,12 @@
   }
 
   ::selection {
-    background: #f07a58;
+    background: #c24a36;
     color: white;
   }
 
   :focus-visible {
-    outline: 3px solid rgba(47, 141, 136, 0.35);
+    outline: 3px solid rgba(201, 162, 76, 0.45);
     outline-offset: 2px;
   }
 }
@@ -182,20 +182,20 @@
   }
 
   .font-dancing-script {
-    font-family: "Dancing Script", cursive;
+    font-family: Georgia, "Times New Roman", serif;
   }
 
   .brand-page {
     @apply min-h-screen bg-bg-main text-charcoal;
     background-image:
-      radial-gradient(circle at 8% 0%, rgba(240, 122, 88, 0.1), transparent 26rem),
-      radial-gradient(circle at 95% 10%, rgba(47, 141, 136, 0.08), transparent 22rem);
+      radial-gradient(circle at 8% 0%, rgba(194, 74, 54, 0.1), transparent 26rem),
+      radial-gradient(circle at 95% 10%, rgba(201, 162, 76, 0.1), transparent 22rem);
   }
 
   .brand-card {
     @apply border border-sand/80 bg-bg-card;
     border-radius: 1rem;
-    box-shadow: 0 8px 24px rgba(18, 62, 102, 0.07);
+    box-shadow: 0 8px 24px rgba(91, 55, 31, 0.08);
   }
 
   .brand-eyebrow {
@@ -210,7 +210,7 @@
 
   .brand-button-primary {
     @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 text-sm font-extrabold text-white transition;
-    box-shadow: 0 8px 18px rgba(217, 74, 52, 0.2);
+    box-shadow: 0 8px 18px rgba(194, 74, 54, 0.22);
   }
 
   .brand-button-primary:hover {
@@ -227,39 +227,39 @@
 }
 
 .admin-ui-frame {
-  color: #2d2a28;
-  background: #f3f5f4;
+  color: #51483f;
+  background: #f8f3eb;
 }
 
 .admin-ui-frame h1,
 .admin-ui-frame h2,
 .admin-ui-frame h3 {
-  color: #123e66;
+  color: #1f2e4a;
   letter-spacing: -0.015em;
 }
 
 .admin-ui-frame :where(.bg-white) {
-  background-color: #fffdf9;
+  background-color: #fffcf7;
 }
 
 .admin-ui-frame :where(.bg-neutral-50) {
-  background-color: #f3f6f7;
+  background-color: #f2e8da;
 }
 
 .admin-ui-frame :where(.border-neutral-100, .border-neutral-200, .border-neutral-300) {
-  border-color: #dfe5e8;
+  border-color: #e8d9c7;
 }
 
 .admin-ui-frame :where(.text-neutral-950, .text-neutral-900) {
-  color: #123e66;
+  color: #1f2e4a;
 }
 
 .admin-ui-frame :where(.text-neutral-800, .text-neutral-700) {
-  color: #2d2a28;
+  color: #51483f;
 }
 
 .admin-ui-frame :where(.text-neutral-600, .text-neutral-500) {
-  color: #6f777b;
+  color: #7e6a59;
 }
 
 .admin-ui-frame :where(.rounded-lg) {
@@ -267,42 +267,42 @@
 }
 
 .admin-ui-frame :where(.shadow-sm) {
-  box-shadow: 0 8px 22px rgba(18, 62, 102, 0.06);
+  box-shadow: 0 8px 22px rgba(91, 55, 31, 0.07);
 }
 
 .admin-ui-frame :where(input, select, textarea) {
-  background-color: #fffdf9;
-  border-color: #d7e0e3;
-  color: #2d2a28;
+  background-color: #fffcf7;
+  border-color: #e2d2be;
+  color: #51483f;
 }
 
 .admin-ui-frame :where(input:focus, select:focus, textarea:focus) {
-  border-color: #2f8d88;
-  box-shadow: 0 0 0 3px rgba(47, 141, 136, 0.14);
+  border-color: #c9a24c;
+  box-shadow: 0 0 0 3px rgba(201, 162, 76, 0.18);
 }
 
 .admin-ui-frame :where(table) {
-  color: #2d2a28;
+  color: #51483f;
 }
 
 .admin-ui-frame :where(thead) {
-  background-color: #f3f6f7;
-  color: #123e66;
+  background-color: #f2e8da;
+  color: #1f2e4a;
 }
 
 .admin-ui-frame :where(th) {
-  color: #52656f;
+  color: #75614f;
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.04em;
 }
 
 .admin-ui-frame :where(tbody tr) {
-  border-color: #e5eaec;
+  border-color: #eadfD1;
 }
 
 .admin-ui-frame :where(tbody tr:hover) {
-  background-color: rgba(47, 141, 136, 0.045);
+  background-color: rgba(201, 162, 76, 0.07);
 }
 
 .admin-ui-frame .btn-primary,
@@ -320,14 +320,14 @@
 }
 
 .admin-ui-frame .btn-primary {
-  background: #d94a34;
+  background: #c24a36;
   color: white;
 }
 
 .admin-ui-frame .btn-secondary {
-  border: 1px solid #cad5da;
-  background: #fffdf9;
-  color: #123e66;
+  border: 1px solid #ddcdb9;
+  background: #fffcf7;
+  color: #1f2e4a;
 }
 
 .admin-ui-frame :where(.btn-primary, .btn-secondary):disabled {
@@ -345,14 +345,14 @@
 .admin-ui-frame :where([class~="border-[#eadbcc]"], [class~="border-[#f0e1d2]"]) { border-color: #dfe5e8; }
 
 .admin-surface {
-  border: 1px solid #dfe5e8;
+  border: 1px solid #e8d9c7;
   border-radius: 0.75rem;
-  background: #fffdf9;
-  box-shadow: 0 8px 22px rgba(18, 62, 102, 0.06);
+  background: #fffcf7;
+  box-shadow: 0 8px 22px rgba(91, 55, 31, 0.07);
 }
 
 .admin-eyebrow {
-  color: #2f8d88;
+  color: #8a6828;
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -360,7 +360,33 @@
 }
 
 .admin-title {
-  color: #123e66;
+  color: #1f2e4a;
   font-weight: 900;
   letter-spacing: -0.025em;
 }
+
+/* Khung nội dung dùng chung cho cẩm nang thương hiệu. */
+.guide-card {
+  border: 1px solid #e8d9c7;
+  border-radius: 1rem;
+  background: #fffcf7;
+  padding: 1.25rem;
+  box-shadow: 0 8px 24px rgba(91, 55, 31, 0.06);
+}
+
+@media (min-width: 640px) {
+  .guide-card { padding: 1.5rem; }
+}
+
+/* Cầu nối cho các màn hình cũ còn dùng mã màu trực tiếp. Các token mới ở
+   trên là nguồn chuẩn; lớp tương thích này giúp nhận diện phủ toàn hệ thống
+   trong lúc từng màn hình được chuyển dần sang utility ngữ nghĩa. */
+:where([class~="text-[#b84a39]"], [class~="text-[#d94a34]"]) { color: #c24a36; }
+:where([class~="bg-[#b84a39]"], [class~="bg-[#d94a34]"]) { background-color: #c24a36; }
+:where([class~="border-[#b84a39]"]) { border-color: #c24a36; }
+:where([class~="text-[#3d2417]"], [class~="text-[#123e66]"]) { color: #1f2e4a; }
+:where([class~="bg-[#123e66]"]) { background-color: #1f2e4a; }
+:where([class~="text-[#8a4a28]"], [class~="text-[#7b6254]"], [class~="text-[#6f777b]"]) { color: #7e6a59; }
+:where([class~="bg-[#fffaf6]"], [class~="bg-[#fffdf9]"]) { background-color: #fffcf7; }
+:where([class~="bg-[#fff1f0]"], [class~="bg-[#fff1ed]"]) { background-color: #fff3ef; }
+:where([class~="border-[#eadbcc]"], [class~="border-[#f0e1d2]"], [class~="border-[#dfe5e8]"]) { border-color: #e8d9c7; }

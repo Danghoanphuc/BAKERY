@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { CheckCircle2, Loader2, Printer, RotateCcw, UserCheck, X } from "lucide-react";
 import type {
   Order,
@@ -21,6 +21,7 @@ type OrderDetailModalProps = {
   onUpdate: (order: Order, payload: Partial<Order>) => Promise<void>;
   onPrint: (order: Order) => void;
   onRefund: (order: Order) => Promise<void>;
+  onReconcileFinancials: (order: Order) => Promise<void>;
   isSaving: boolean;
 };
 
@@ -30,6 +31,7 @@ export function OrderDetailModal({
   onUpdate,
   onPrint,
   onRefund,
+  onReconcileFinancials,
   isSaving,
 }: OrderDetailModalProps) {
   const [internalNotes, setInternalNotes] = useState(order.internalNotes ?? "");
@@ -38,15 +40,71 @@ export function OrderDetailModal({
     order.paymentStatus ?? "unpaid",
   );
   const [cancelReason, setCancelReason] = useState(order.cancelReason ?? "");
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useEffect(() => {
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButtonRef.current?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== "Tab" || !dialogRef.current) return;
+
+      const focusable = Array.from(
+        dialogRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+        ),
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previousFocus?.focus();
+    };
+  }, []);
 
   async function saveOperations(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (
+      paymentStatus !== (order.paymentStatus ?? "unpaid") &&
+      !isConfirmingPayment
+    ) {
+      setIsConfirmingPayment(true);
+      return;
+    }
+    await persistOperations();
+  }
+
+  async function persistOperations() {
     await onUpdate(order, {
       internalNotes,
       assignedTo,
       paymentStatus,
-      cancelReason,
     });
+    setIsConfirmingPayment(false);
   }
 
   async function changeStatus(status: OrderStatus) {
@@ -57,11 +115,22 @@ export function OrderDetailModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-xl bg-white shadow-xl">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-2 sm:p-4"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="order-detail-title"
+        className="max-h-[96vh] w-full max-w-5xl overflow-y-auto rounded-xl bg-white shadow-xl sm:max-h-[92vh]"
+      >
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-neutral-200 bg-white p-5">
           <div>
-            <h2 className="text-xl font-bold text-neutral-900">
+            <h2 id="order-detail-title" className="text-xl font-bold text-neutral-900">
               Đơn hàng {order.orderNumber}
             </h2>
             <p className="mt-1 text-sm text-neutral-500">
@@ -71,6 +140,7 @@ export function OrderDetailModal({
           <div className="flex items-center gap-2">
             {order.salesChannel === "pos" && order.paymentStatus === "paid" && (
               <button
+                type="button"
                 onClick={() => void onRefund(order)}
                 disabled={isSaving}
                 className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
@@ -80,6 +150,7 @@ export function OrderDetailModal({
               </button>
             )}
             <button
+              type="button"
               onClick={() => onPrint(order)}
               className="inline-flex items-center gap-2 rounded-lg border border-neutral-200 px-3 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
             >
@@ -87,7 +158,10 @@ export function OrderDetailModal({
               In phiếu
             </button>
             <button
+              ref={closeButtonRef}
+              type="button"
               onClick={onClose}
+              aria-label="Đóng chi tiết đơn hàng"
               className="rounded-md p-2 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-600"
             >
               <X className="h-5 w-5" />
@@ -110,8 +184,13 @@ export function OrderDetailModal({
               <div className="mt-4 flex flex-wrap gap-2">
                 {statusFlow[order.status].map((status) => (
                   <button
+                    type="button"
                     key={status}
-                    onClick={() => changeStatus(status)}
+                    onClick={() =>
+                      status === "cancelled"
+                        ? setIsCancelling(true)
+                        : void changeStatus(status)
+                    }
                     disabled={isSaving}
                     className={`rounded-lg px-3 py-2 text-sm font-semibold disabled:opacity-60 ${
                       status === "cancelled"
@@ -128,14 +207,47 @@ export function OrderDetailModal({
                   </span>
                 )}
               </div>
+              {isCancelling && (
+                <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3">
+                  <label className="block text-xs font-bold text-red-800">
+                    Lý do hủy đơn
+                    <textarea
+                      autoFocus
+                      value={cancelReason}
+                      onChange={(event) => setCancelReason(event.target.value)}
+                      rows={2}
+                      maxLength={2_000}
+                      className="mt-1 w-full resize-none rounded-lg border border-red-200 bg-white px-3 py-2 text-sm text-neutral-900 outline-none focus:border-red-500"
+                    />
+                  </label>
+                  <div className="mt-2 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsCancelling(false)}
+                      disabled={isSaving}
+                      className="rounded-md px-3 py-2 text-sm font-semibold text-neutral-600"
+                    >
+                      Quay lại
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void changeStatus("cancelled")}
+                      disabled={isSaving || !cancelReason.trim()}
+                      className="rounded-md bg-red-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                    >
+                      Xác nhận hủy đơn
+                    </button>
+                  </div>
+                </div>
+              )}
             </section>
 
             <section className="rounded-lg border border-neutral-200 p-4">
               <h3 className="mb-3 font-bold text-neutral-900">Sản phẩm</h3>
               <div className="divide-y divide-neutral-100 rounded-lg border border-neutral-100">
-                {order.items.map((item) => (
+                {order.items.map((item, index) => (
                   <div
-                    key={item.cartItemId}
+                    key={`${item.cartItemId || item.productId || "order-item"}-${index}`}
                     className="flex items-center gap-4 p-3"
                   >
                     <img
@@ -195,6 +307,19 @@ export function OrderDetailModal({
                 label="Loại đơn"
                 value={orderTypeLabel[order.orderType]}
               />
+              {order.financialSyncPending && (
+                <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                  <p className="font-bold">Dữ liệu tài chính đang chờ đồng bộ</p>
+                  <button
+                    type="button"
+                    onClick={() => void onReconcileFinancials(order)}
+                    disabled={isSaving}
+                    className="mt-2 rounded-md bg-amber-700 px-3 py-1.5 font-semibold text-white disabled:opacity-50"
+                  >
+                    Đồng bộ lại
+                  </button>
+                </div>
+              )}
               {order.deliveryAddress && (
                 <InfoLine label="Địa chỉ" value={order.deliveryAddress} />
               )}
@@ -231,6 +356,7 @@ export function OrderDetailModal({
                 </span>
                 <select
                   value={paymentStatus}
+                  disabled={order.paymentStatus === "refunded"}
                   onChange={(event) =>
                     setPaymentStatus(event.target.value as PaymentStatus)
                   }
@@ -239,7 +365,9 @@ export function OrderDetailModal({
                   <option value="unpaid">Chưa thanh toán</option>
                   <option value="pending">Chờ chuyển khoản</option>
                   <option value="paid">Đã thanh toán</option>
-                  <option value="refunded">Đã hoàn tiền</option>
+                  {order.paymentStatus === "refunded" && (
+                    <option value="refunded">Đã hoàn tiền</option>
+                  )}
                 </select>
               </label>
               <label className="block">
@@ -253,17 +381,29 @@ export function OrderDetailModal({
                   className="mt-1 w-full resize-none rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-brand-500"
                 />
               </label>
-              <label className="block">
-                <span className="text-xs font-bold text-neutral-600">
-                  Lý do hủy nếu có
-                </span>
-                <textarea
-                  value={cancelReason}
-                  onChange={(event) => setCancelReason(event.target.value)}
-                  rows={2}
-                  className="mt-1 w-full resize-none rounded-lg border border-neutral-200 px-3 py-2 text-sm outline-none focus:border-brand-500"
-                />
-              </label>
+              {isConfirmingPayment && (
+                <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                  <p className="font-bold">Xác nhận thay đổi trạng thái thanh toán</p>
+                  <p className="mt-1">Thao tác này sẽ được ghi vào lịch sử kiểm toán của đơn.</p>
+                  <div className="mt-2 flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsConfirmingPayment(false)}
+                      className="rounded-md px-3 py-1.5 font-semibold"
+                    >
+                      Quay lại
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void persistOperations()}
+                      disabled={isSaving}
+                      className="rounded-md bg-amber-700 px-3 py-1.5 font-semibold text-white disabled:opacity-50"
+                    >
+                      Xác nhận thanh toán
+                    </button>
+                  </div>
+                </div>
+              )}
               <button
                 type="submit"
                 disabled={isSaving}

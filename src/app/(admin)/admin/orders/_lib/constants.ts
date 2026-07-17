@@ -1,4 +1,5 @@
 import type { OrderStatus, OrderType, PaymentStatus } from "@/types";
+import { ORDER_STATUS_TRANSITIONS } from "@/lib/orders/order-workflow";
 
 export type TabFilter = "all" | OrderType;
 export type DateFilter = "all" | "today" | "upcoming" | "overdue";
@@ -35,19 +36,9 @@ export const paymentLabels: Record<PaymentStatus, string> = {
   refunded: "Đã hoàn tiền",
 };
 
-export const statusFlow: Record<OrderStatus, OrderStatus[]> = {
-  pending: ["confirmed", "cancelled"],
-  confirmed: ["preparing", "processing", "cancelled"],
-  preparing: ["ready", "cancelled"],
-  ready: ["delivered", "completed", "cancelled"],
-  processing: ["completed", "delivered", "cancelled"],
-  completed: [],
-  delivered: [],
-  cancelled: [],
-};
+export const statusFlow = ORDER_STATUS_TRANSITIONS;
 
 export const activeStatuses = new Set<OrderStatus>([
-  "pending",
   "confirmed",
   "preparing",
   "ready",

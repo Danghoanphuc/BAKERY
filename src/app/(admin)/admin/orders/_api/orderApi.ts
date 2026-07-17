@@ -30,24 +30,25 @@ export async function updateOrderApi(
 
 export async function bulkUpdateOrderStatusApi(
   orderIds: string[],
-  orders: Order[],
   status: OrderStatus,
-): Promise<{ failed: number; total: number }> {
-  const targets = orders.filter((order) => orderIds.includes(order.id));
+): Promise<{ total: number; financialSyncPending: number }> {
+  const response = await fetch("/api/admin/orders/bulk", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ orderIds, status }),
+  });
 
-  const results = await Promise.allSettled(
-    targets.map((order) =>
-      fetch(`/api/admin/orders/${order.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      }),
-    ),
-  );
+  const data = (await response.json()) as {
+    error?: string;
+    total?: number;
+    financialSyncPending?: number;
+  };
+  if (!response.ok) {
+    throw new Error(data.error || "Không thể cập nhật hàng loạt.");
+  }
 
-  const failed = results.filter(
-    (result) => result.status === "rejected" || !result.value.ok,
-  ).length;
-
-  return { failed, total: targets.length };
+  return {
+    total: data.total ?? orderIds.length,
+    financialSyncPending: data.financialSyncPending ?? 0,
+  };
 }

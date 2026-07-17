@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import type { Category, Product } from "@/types";
 import type { ProductCostSummary } from "@/features/finance";
 import { InventoryStats } from "./_components/InventoryStats";
@@ -106,9 +107,10 @@ export default function InventoryPage() {
       }
 
       await loadInventory();
+      toast.success(`Đã xóa sản phẩm “${product.name}”.`);
     } catch (err) {
       console.error("Failed to delete product:", err);
-      setError("Không thể xóa sản phẩm này.");
+      toast.error("Không thể xóa sản phẩm này.");
     }
   };
 
@@ -140,6 +142,7 @@ export default function InventoryPage() {
           currentProduct.id === savedProduct.id ? savedProduct : currentProduct,
         ),
       );
+      toast.success(nextIsAvailable ? "Đã bật trạng thái bán." : "Đã tạm ngừng bán sản phẩm.");
     } catch (err) {
       console.error("Failed to update product availability:", err);
       setProducts((currentProducts) =>
@@ -147,7 +150,7 @@ export default function InventoryPage() {
           currentProduct.id === product.id ? product : currentProduct,
         ),
       );
-      setError("Không thể cập nhật trạng thái bán.");
+      toast.error("Không thể cập nhật trạng thái bán.");
     } finally {
       setSavingProductId(null);
     }
@@ -159,9 +162,10 @@ export default function InventoryPage() {
       const response = await fetch("/api/admin/inventory/workspace-card-template", { method: "POST" });
       if (!response.ok) throw new Error(await response.text());
       await loadInventory({ showLoading: false });
+      toast.success("Đã đồng bộ minh hoạ thẻ sản phẩm.");
     } catch (syncError) {
       console.error("Failed to sync workspace card template:", syncError);
-      setError("Không thể đồng bộ ảnh minh hoạ thẻ. Hãy kiểm tra sản phẩm mẫu đã có đủ 5 ảnh.");
+      toast.error("Không thể đồng bộ ảnh minh hoạ thẻ. Hãy kiểm tra sản phẩm mẫu đã có đủ 5 ảnh.");
     } finally {
       setIsSyncingCardTemplate(false);
     }

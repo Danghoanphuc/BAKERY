@@ -13,6 +13,7 @@ import {
   TicketPercent,
   Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import type { MarketingCampaign } from "@/types";
 import {
   audienceLabels,
@@ -62,8 +63,9 @@ export default function AdminVoucherCampaignsPage() {
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "Không thể xóa campaign.");
       setCampaigns((current) => current.filter((item) => item.id !== campaign.id));
+      toast.success("Đã xóa bản nháp voucher.");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Không thể xóa campaign.");
+      toast.error(reason instanceof Error ? reason.message : "Không thể xóa campaign.");
     } finally { setDeletingId(null); }
   }
 
@@ -142,7 +144,7 @@ export default function AdminVoucherCampaignsPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Link
-            href="/admin/pos/vouchers/scan"
+            href="/admin/vouchers/scan"
             className="inline-flex h-10 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
           >
             <QrCode className="h-4 w-4" />

@@ -46,6 +46,9 @@ type PosCheckoutPayload = {
   paymentMethod?: PaymentMethod;
   cashReceived?: number;
   note?: string;
+  posServiceType?: "counter" | "takeaway" | "table";
+  tableId?: string;
+  tableName?: string;
 };
 
 function stripUndefinedDeep<T>(value: T): T {
@@ -251,6 +254,11 @@ export async function POST(request: Request) {
       totalAmount,
       orderType: "pickup",
       salesChannel: "pos",
+      posServiceType: payload.posServiceType ?? "counter",
+      tableId:
+        payload.posServiceType === "table" ? payload.tableId?.trim() : undefined,
+      tableName:
+        payload.posServiceType === "table" ? payload.tableName?.trim() : undefined,
       voucherUseMode: requestedVoucher ? "pos_pickup_now" : undefined,
       voucherCode: requestedVoucher?.code,
       voucherId: requestedVoucher?.id,

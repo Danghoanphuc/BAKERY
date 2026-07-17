@@ -6,12 +6,20 @@ import type { OrderItemFinancialSnapshot, PaymentMethod, SalesChannel } from "./
 export type OrderStatus = "pending" | "confirmed" | "preparing" | "ready" | "processing" | "completed" | "delivered" | "cancelled";
 export type OrderType = "delivery" | "pickup" | "preorder";
 export type PaymentStatus = "unpaid" | "pending" | "paid" | "refunded";
+export type PosServiceType = "counter" | "takeaway" | "table";
 
 export interface OrderStatusHistoryItem {
   status: OrderStatus;
   at: string;
   note?: string;
   actor?: string;
+}
+
+export interface PaymentStatusHistoryItem {
+  from: PaymentStatus;
+  to: PaymentStatus;
+  at: string;
+  actor: string;
 }
 
 export interface Order {
@@ -27,6 +35,9 @@ export interface Order {
   orderType: OrderType;
   status: OrderStatus;
   paymentStatus?: PaymentStatus;
+  paymentStatusHistory?: PaymentStatusHistoryItem[];
+  financialSyncPending?: boolean;
+  financialSyncError?: string;
   paymentMethod?: PaymentMethod;
   cashReceived?: number;
   changeDue?: number;
@@ -41,6 +52,9 @@ export interface Order {
   payosTransactionDateTime?: string;
   payosStockDeducted?: boolean;
   salesChannel?: SalesChannel;
+  posServiceType?: PosServiceType;
+  tableId?: string;
+  tableName?: string;
   deliveryAddress?: string;
   pickupTime?: string;
   notes?: string;

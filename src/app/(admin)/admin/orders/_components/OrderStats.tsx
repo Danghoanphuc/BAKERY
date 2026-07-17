@@ -45,7 +45,7 @@ export function OrderStats(props: StatsProps) {
       />
       <StatCard
         icon={<CheckCircle2 />}
-        label="Doanh thu hôm nay"
+        label="Doanh thu đã xác nhận"
         value={formatPrice(props.revenueToday)}
         wide
       />

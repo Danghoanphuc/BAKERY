@@ -1,51 +1,137 @@
-import { useCallback, useRef, useState } from "react";
-import type { Product, SizeOption, FlavorOption } from "@/types";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Product } from "@/types";
 import { parsePosVoucherToken } from "@/lib/pos-voucher-token";
 import { isProductSellableToday } from "../_lib/pos-utils";
 
-type ScannerAction =
+export type ScannerAction =
   | { type: "product"; product: Product; selectedSize?: string; selectedFlavor?: string }
   | { type: "voucher"; code: string; tokenData?: ReturnType<typeof parsePosVoucherToken> }
-  | { type: "customer"; phone: string }
+  | { type: "customer"; query: string }
   | { type: "unknown"; raw: string };
 
-const SCANNER_TIMEOUT_MS = 100;
-const PHONE_REGEX = /^(0[0-9]{9})$/;
+export type ScannerFeedback = {
+  status: "ready" | "success" | "error";
+  message: string;
+};
 
-function findProductByBarcode(products: Product[], raw: string): { product: Product; size?: SizeOption; flavor?: FlavorOption } | null {
+type ScannerCallbackResult = void | boolean | Promise<void | boolean>;
+
+const PHONE_REGEX = /^0[0-9]{9}$/;
+const SCAN_MAX_KEY_GAP_MS = 80;
+const SCAN_RESET_GAP_MS = 140;
+const SCAN_MIN_LENGTH = 3;
+
+type ScannerSequence = {
+  value: string;
+  startedAt: number;
+  lastAt: number;
+  maxGap: number;
+};
+
+function matchesIdentifier(value: string | undefined, normalized: string) {
+  return Boolean(value && value.trim().toLowerCase() === normalized);
+}
+
+function findProductByIdentifier(products: Product[], raw: string) {
   const normalized = raw.trim().toLowerCase();
+
   for (const product of products) {
     if (!isProductSellableToday(product)) continue;
 
-    // Check product-level barcode/SKU first
-    if (product.barcode && product.barcode.toLowerCase() === normalized) {
-      return { product };
+    for (const combination of product.variantCombinations ?? []) {
+      if (
+        matchesIdentifier(combination.barcode, normalized) ||
+        matchesIdentifier(combination.sku, normalized)
+      ) {
+        return {
+          product,
+          selectedSize: combination.sizeOptionId,
+          selectedFlavor: combination.flavorOptionId,
+        };
+      }
     }
-    if (product.sku && product.sku.toLowerCase() === normalized) {
+
+    if (
+      matchesIdentifier(product.barcode, normalized) ||
+      matchesIdentifier(product.sku, normalized)
+    ) {
       return { product };
     }
 
-    // Check size options
     for (const size of product.sizeOptions ?? []) {
-      if (size.barcode && size.barcode.toLowerCase() === normalized) {
-        return { product, size };
-      }
-      if (size.sku && size.sku.toLowerCase() === normalized) {
-        return { product, size };
+      if (
+        matchesIdentifier(size.barcode, normalized) ||
+        matchesIdentifier(size.sku, normalized)
+      ) {
+        return { product, selectedSize: size.id };
       }
     }
 
-    // Check flavor options
     for (const flavor of product.flavorOptions ?? []) {
-      if (flavor.barcode && flavor.barcode.toLowerCase() === normalized) {
-        return { product, flavor };
-      }
-      if (flavor.sku && flavor.sku.toLowerCase() === normalized) {
-        return { product, flavor };
+      if (
+        matchesIdentifier(flavor.barcode, normalized) ||
+        matchesIdentifier(flavor.sku, normalized)
+      ) {
+        return { product, selectedFlavor: flavor.id };
       }
     }
   }
+
   return null;
+}
+
+export function classifyScannerInput(products: Product[], raw: string): ScannerAction {
+  const trimmed = raw.trim();
+  if (!trimmed) return { type: "unknown", raw: trimmed };
+
+  const prefixMatch = trimmed.match(/^([PVC]):\s*(.+)$/i);
+  if (prefixMatch) {
+    const [, prefix, payload] = prefixMatch;
+    const value = payload.trim();
+
+    if (prefix.toUpperCase() === "V") {
+      const tokenData = parsePosVoucherToken(value);
+      return {
+        type: "voucher",
+        code: tokenData?.code ?? value,
+        tokenData: tokenData ?? undefined,
+      };
+    }
+
+    if (prefix.toUpperCase() === "C") {
+      return { type: "customer", query: value };
+    }
+
+    const productMatch = findProductByIdentifier(products, value);
+    return productMatch
+      ? { type: "product", ...productMatch }
+      : { type: "unknown", raw: trimmed };
+  }
+
+  const voucherToken = parsePosVoucherToken(trimmed);
+  if (voucherToken) {
+    return { type: "voucher", code: voucherToken.code, tokenData: voucherToken };
+  }
+
+  const productMatch = findProductByIdentifier(products, trimmed);
+  if (productMatch) return { type: "product", ...productMatch };
+
+  const compact = trimmed.replace(/\s+/g, "");
+  if (PHONE_REGEX.test(compact)) {
+    return { type: "customer", query: compact };
+  }
+
+  return { type: "unknown", raw: trimmed };
+}
+
+function isEditableTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false;
+  return (
+    target.isContentEditable ||
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement
+  );
 }
 
 export function usePosScanner({
@@ -55,135 +141,149 @@ export function usePosScanner({
   onScanCustomer,
 }: {
   products: Product[];
-  onAddProduct: (product: Product, options?: { selectedSize?: string; selectedFlavor?: string }) => void;
-  onScanVoucher: (code: string, tokenData?: ReturnType<typeof parsePosVoucherToken>) => void;
-  onScanCustomer: (phone: string) => void;
+  onAddProduct: (product: Product, options?: { selectedSize?: string; selectedFlavor?: string }) => ScannerCallbackResult;
+  onScanVoucher: (code: string, tokenData?: ReturnType<typeof parsePosVoucherToken>) => ScannerCallbackResult;
+  onScanCustomer: (query: string) => ScannerCallbackResult;
 }) {
   const [lastAction, setLastAction] = useState<ScannerAction | null>(null);
-  const bufferRef = useRef("");
-  const timeoutRef = useRef<number | null>(null);
+  const [feedback, setFeedback] = useState<ScannerFeedback>({
+    status: "ready",
+    message: "Scanner HID sẵn sàng · hậu tố Enter",
+  });
+  const sequenceRef = useRef<ScannerSequence | null>(null);
+  const feedbackTimerRef = useRef<number | null>(null);
 
-  const classifyInput = useCallback(
-    (raw: string): ScannerAction => {
-      const trimmed = raw.trim();
-      if (!trimmed) return { type: "unknown", raw: trimmed };
+  const showFeedback = useCallback((next: ScannerFeedback) => {
+    setFeedback(next);
+    if (feedbackTimerRef.current) window.clearTimeout(feedbackTimerRef.current);
+    feedbackTimerRef.current = window.setTimeout(() => {
+      setFeedback({ status: "ready", message: "Scanner HID sẵn sàng · hậu tố Enter" });
+      setLastAction(null);
+    }, 3500);
+  }, []);
 
-      const voucherToken = parsePosVoucherToken(trimmed);
-      if (voucherToken) {
-        return { type: "voucher", code: voucherToken.code, tokenData: voucherToken };
-      }
-
-      if (PHONE_REGEX.test(trimmed.replace(/\s+/g, ""))) {
-        return { type: "customer", phone: trimmed.replace(/\s+/g, "") };
-      }
-
-      // Try to match by variant barcode/SKU first
-      const variantMatch = findProductByBarcode(products, trimmed);
-      if (variantMatch) {
-        return {
-          type: "product",
-          product: variantMatch.product,
-          selectedSize: variantMatch.size?.id,
-          selectedFlavor: variantMatch.flavor?.id,
-        };
-      }
-
-      // Fallback to text search
-      const normalizedSearch = trimmed.toLowerCase();
-      const matchedProduct = products.find((product) => {
-        if (!isProductSellableToday(product)) return false;
-        const haystack = [
-          product.name,
-          product.description,
-          product.sku,
-          product.barcode,
-          ...(product.tags ?? []),
-          ...(product.searchKeywords ?? []),
-          ...(product.occasionTags ?? []),
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase();
-        return haystack.includes(normalizedSearch);
-      });
-
-      if (matchedProduct) {
-        return { type: "product", product: matchedProduct };
-      }
-
-      return { type: "unknown", raw: trimmed };
+  useEffect(
+    () => () => {
+      if (feedbackTimerRef.current) window.clearTimeout(feedbackTimerRef.current);
     },
-    [products],
+    [],
   );
+
+  const recordPrintableKey = useCallback((key: string, timestamp: number) => {
+    const previous = sequenceRef.current;
+    if (!previous || timestamp - previous.lastAt > SCAN_RESET_GAP_MS) {
+      sequenceRef.current = {
+        value: key,
+        startedAt: timestamp,
+        lastAt: timestamp,
+        maxGap: 0,
+      };
+      return;
+    }
+
+    const gap = timestamp - previous.lastAt;
+    sequenceRef.current = {
+      ...previous,
+      value: previous.value + key,
+      lastAt: timestamp,
+      maxGap: Math.max(previous.maxGap, gap),
+    };
+  }, []);
+
+  const consumeScannerSequence = useCallback((value: string, timestamp: number) => {
+    const sequence = sequenceRef.current;
+    sequenceRef.current = null;
+    if (!sequence) return false;
+
+    const normalizedValue = value.trim();
+    const elapsed = timestamp - sequence.startedAt;
+    const enterGap = timestamp - sequence.lastAt;
+    return (
+      normalizedValue.length >= SCAN_MIN_LENGTH &&
+      sequence.value.trim() === normalizedValue &&
+      sequence.maxGap <= SCAN_MAX_KEY_GAP_MS &&
+      enterGap <= SCAN_RESET_GAP_MS &&
+      elapsed <= Math.max(500, normalizedValue.length * SCAN_MAX_KEY_GAP_MS)
+    );
+  }, []);
 
   const processInput = useCallback(
-    (raw: string) => {
-      const action = classifyInput(raw);
+    async (raw: string) => {
+      const action = classifyScannerInput(products, raw);
       setLastAction(action);
 
-      switch (action.type) {
-        case "product":
-          onAddProduct(action.product, {
-            selectedSize: action.selectedSize,
-            selectedFlavor: action.selectedFlavor,
-          });
-          break;
-        case "voucher":
-          onScanVoucher(action.code, action.tokenData);
-          break;
-        case "customer":
-          onScanCustomer(action.phone);
-          break;
+      if (action.type === "unknown") {
+        showFeedback({ status: "error", message: `Không nhận diện mã: ${action.raw}` });
+        return false;
       }
 
-      window.setTimeout(() => setLastAction(null), 2000);
-    },
-    [classifyInput, onAddProduct, onScanVoucher, onScanCustomer],
-  );
-
-  const handleInput = useCallback(
-    (value: string, onChange: (value: string) => void) => {
-      onChange(value);
-
-      if (timeoutRef.current) {
-        window.clearTimeout(timeoutRef.current);
+      let result: void | boolean;
+      if (action.type === "product") {
+        result = await onAddProduct(action.product, {
+          selectedSize: action.selectedSize,
+          selectedFlavor: action.selectedFlavor,
+        });
+        showFeedback({
+          status: result === false ? "error" : "success",
+          message: result === false ? "Chưa thể thêm sản phẩm lúc này" : `Đã quét: ${action.product.name}`,
+        });
+      } else if (action.type === "voucher") {
+        result = await onScanVoucher(action.code, action.tokenData);
+        showFeedback({
+          status: result === false ? "error" : "success",
+          message: result === false ? `Voucher không hợp lệ: ${action.code}` : `Đã nhận voucher: ${action.code}`,
+        });
+      } else {
+        result = await onScanCustomer(action.query);
+        showFeedback({
+          status: result === false ? "error" : "success",
+          message: result === false ? `Không tìm thấy khách: ${action.query}` : `Đã nhận khách: ${action.query}`,
+        });
       }
 
-      bufferRef.current = value;
-
-      timeoutRef.current = window.setTimeout(() => {
-        const buffered = bufferRef.current.trim();
-        if (buffered) {
-          processInput(buffered);
-          onChange("");
-        }
-        bufferRef.current = "";
-      }, SCANNER_TIMEOUT_MS);
+      return result !== false;
     },
-    [processInput],
+    [onAddProduct, onScanCustomer, onScanVoucher, products, showFeedback],
   );
 
-  const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLInputElement>, value: string, onChange: (value: string) => void) => {
+  useEffect(() => {
+    function handleGlobalKeyDown(event: KeyboardEvent) {
+      if (event.ctrlKey || event.metaKey || event.altKey || event.repeat || event.isComposing) return;
+      if (isEditableTarget(event.target)) return;
+
       if (event.key === "Enter") {
-        event.preventDefault();
-        const trimmed = value.trim();
-        if (trimmed) {
-          processInput(trimmed);
+        const value = sequenceRef.current?.value ?? "";
+        if (consumeScannerSequence(value, event.timeStamp)) {
+          event.preventDefault();
+          void processInput(value);
+        }
+        return;
+      }
+
+      if (event.key.length === 1) recordPrintableKey(event.key, event.timeStamp);
+    }
+
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [consumeScannerSequence, processInput, recordPrintableKey]);
+
+  const handleSearchKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>, value: string, onChange: (value: string) => void) => {
+      if (event.ctrlKey || event.metaKey || event.altKey || event.repeat || event.nativeEvent.isComposing) return;
+
+      if (event.key === "Enter") {
+        if (consumeScannerSequence(value, event.timeStamp)) {
+          event.preventDefault();
+          void processInput(value);
           onChange("");
         }
-        bufferRef.current = "";
-        if (timeoutRef.current) {
-          window.clearTimeout(timeoutRef.current);
-        }
+        return;
       }
+
+      if (event.key.length === 1) recordPrintableKey(event.key, event.timeStamp);
     },
-    [processInput],
+    [consumeScannerSequence, processInput, recordPrintableKey],
   );
 
-  return {
-    lastAction,
-    handleInput,
-    handleKeyDown,
-  };
+  return { lastAction, feedback, handleSearchKeyDown };
 }

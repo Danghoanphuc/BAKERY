@@ -10,6 +10,7 @@ import {
   TrendingUp,
   WalletCards,
 } from "lucide-react";
+import { toast } from "sonner";
 import type {
   CostBehavior, CostCenter, CostFunction, CostTraceability, ExpenseCategory,
   ManagementAccountingSummary,
@@ -198,9 +199,10 @@ export default function FinancePage() {
       if (!response.ok) throw new Error("save_failed");
       setExpenseForm(createEmptyExpenseForm());
       await loadSummary();
+      toast.success("Đã lưu chi phí.");
     } catch (err) {
       console.error("Failed to create expense:", err);
-      setError("Không thể lưu chi phí.");
+      toast.error("Không thể lưu chi phí.");
     } finally {
       setIsSavingExpense(false);
     }

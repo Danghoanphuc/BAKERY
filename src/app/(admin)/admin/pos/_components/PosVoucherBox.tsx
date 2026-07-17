@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { BadgeCheck, Loader2, QrCode, ScanLine, TicketPercent, X } from "lucide-react";
+import { BadgeCheck, Loader2, TicketPercent, X } from "lucide-react";
+import { toast } from "sonner";
 import type { SelectedVoucher, VoucherPricing } from "@/types/voucher";
 import {
   formatCurrency,
@@ -43,18 +44,15 @@ export function PosVoucherBox({
   onClearVoucher,
   onCustomerDetected,
 }: PosVoucherBoxProps) {
-  const [scanInput, setScanInput] = useState("");
-  const [suggestions, setSuggestions] = useState<PosVoucherPreview[]>([]);
   const [bestVoucher, setBestVoucher] = useState<PosVoucherPreview | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const customerKey = customer.id ?? customer.phone;
+  const setMessage = (message: string) => toast.error(message);
 
   useEffect(() => {
     const controller = new AbortController();
     const timeout = window.setTimeout(async () => {
       if (subtotal <= 0) {
-        setSuggestions([]);
         setBestVoucher(null);
         return;
       }
@@ -75,7 +73,6 @@ export function PosVoucherBox({
           suggestions?: PosVoucherPreview[];
           best?: PosVoucherPreview | null;
         };
-        setSuggestions(data.suggestions ?? []);
         setBestVoucher(data.best ?? null);
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
@@ -104,7 +101,6 @@ export function PosVoucherBox({
 
     try {
       setIsLoading(true);
-      setMessage(null);
       const response = await fetch("/api/pos/vouchers/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -146,8 +142,7 @@ export function PosVoucherBox({
 
       onApplyVoucher(toSelectedVoucher(preview));
       onVoucherCodeChange(preview.voucher.code);
-      setScanInput("");
-      setMessage(null);
+      toast.success(`Đã áp voucher ${preview.voucher.code}.`);
     } catch (error) {
       console.error("POS voucher preview failed:", error);
       setMessage("Không thể kiểm tra voucher.");
@@ -168,6 +163,7 @@ export function PosVoucherBox({
             onClick={() => {
               onApplyVoucher(toSelectedVoucher(bestVoucher));
               onVoucherCodeChange(bestVoucher.voucher.code);
+              toast.success(`Đã áp voucher ${bestVoucher.voucher.code}.`);
             }}
             className="inline-flex items-center gap-1 rounded-full bg-[#fff1f0] px-2.5 py-1 text-xs font-black text-[#b84a39]"
           >
@@ -187,16 +183,16 @@ export function PosVoucherBox({
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
-                previewAndApply({ code: voucherCode });
+                previewAndApply({ scanInput: voucherCode });
               }
             }}
-            placeholder="Nhập mã"
+            placeholder="Nhập hoặc quét mã voucher"
             className="h-10 w-full rounded-xl border border-[#eadbcc] bg-[#fffaf6] pl-10 pr-3 text-sm font-bold text-[#3d2417] outline-none focus:border-[#b84a39]"
           />
         </label>
         <button
           type="button"
-          onClick={() => previewAndApply({ code: voucherCode })}
+          onClick={() => previewAndApply({ scanInput: voucherCode })}
           disabled={isLoading || subtotal <= 0}
           className="h-10 rounded-xl bg-[#b84a39] px-3 text-sm font-black text-white transition hover:bg-[#9e3e2f] disabled:opacity-50"
         >
@@ -204,28 +200,9 @@ export function PosVoucherBox({
         </button>
       </div>
 
-      <label className="relative block">
-        <ScanLine className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9b8171]" />
-        <input
-          type="text"
-          value={scanInput}
-          onChange={(event) => setScanInput(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              previewAndApply({ scanInput });
-            }
-          }}
-          placeholder="Quét QR voucher tại đây"
-          className="h-10 w-full rounded-xl border border-dashed border-[#e6b8ac] bg-white pl-10 pr-10 text-sm font-bold text-[#3d2417] outline-none focus:border-[#b84a39]"
-        />
-        <QrCode className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#b84a39]" />
-      </label>
-
-      {(selectedVoucher || message) && (
+      {selectedVoucher && (
         <div className="rounded-xl bg-[#fff1f0] px-3 py-2 text-xs font-semibold text-[#7b6254]">
-          {selectedVoucher ? (
-            <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="truncate font-black text-[#b84a39]">
                   {selectedVoucher.code}
@@ -241,41 +218,10 @@ export function PosVoucherBox({
               >
                 <X className="h-4 w-4" />
               </button>
-            </div>
-          ) : (
-            <p className="font-bold text-red-600">{message}</p>
-          )}
+          </div>
         </div>
       )}
 
-      {!selectedVoucher && suggestions.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {suggestions.slice(0, 3).map((preview) => (
-            <button
-              key={preview.voucher.id}
-              type="button"
-              onClick={() => {
-                if (preview.ok) {
-                  onApplyVoucher(toSelectedVoucher(preview));
-                  onVoucherCodeChange(preview.voucher.code);
-                } else {
-                  setMessage(preview.reason ?? "Voucher chưa đủ điều kiện.");
-                }
-              }}
-              className="min-w-[150px] rounded-xl border border-[#eadbcc] bg-white px-3 py-2 text-left transition hover:border-[#b84a39]/50"
-            >
-              <p className="truncate text-xs font-black text-[#b84a39]">
-                {preview.voucher.code}
-              </p>
-              <p className="mt-0.5 truncate text-xs font-bold text-[#3d2417]">
-                {preview.ok
-                  ? `Giảm ${formatCurrency(preview.estimatedDiscount)}`
-                  : preview.reason}
-              </p>
-            </button>
-          ))}
-        </div>
-      )}
     </section>
   );
 }

@@ -4,12 +4,14 @@ import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { clsx } from "clsx";
 import { AdminSidebar } from "@/features/admin/components/AdminSidebar";
+import { AdminToaster } from "@/features/admin/components/AdminToast";
 import { canAdminAccessPath, getAdminHomeForRole, type AdminPrincipal } from "@/lib/auth/admin-rbac";
 
 export function AdminFrame({ children, admin }: { children: React.ReactNode; admin: AdminPrincipal }) {
   const pathname = usePathname();
   const router = useRouter();
   const isPosRoute = pathname === "/admin/pos" || pathname.startsWith("/admin/pos/");
+  const isTableServiceRoute = pathname === "/admin/pos/tables" || pathname.startsWith("/admin/pos/tables/");
   const canAccess = canAdminAccessPath(admin.role, pathname);
 
   useEffect(() => {
@@ -22,18 +24,33 @@ export function AdminFrame({ children, admin }: { children: React.ReactNode; adm
     <div
       className={clsx(
         "flex h-screen overflow-hidden",
-        isPosRoute ? "bg-[#f3f5f4]" : "admin-ui-frame bg-[#f3f5f4]",
+        isPosRoute ? "bg-[#f8f3eb]" : "admin-ui-frame bg-[#f8f3eb]",
       )}
     >
-      <AdminSidebar admin={admin} />
+      <AdminToaster />
+      <div className={isTableServiceRoute ? "hidden sm:block" : undefined}>
+        <AdminSidebar admin={admin} />
+      </div>
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <main
           className={clsx(
             "flex-1 overflow-y-auto",
-            isPosRoute ? "p-6" : "px-5 py-5 lg:px-7 lg:py-6",
+            isTableServiceRoute
+              ? "p-0 sm:p-6"
+              : isPosRoute
+                ? "p-6"
+                : "px-5 py-5 lg:px-7 lg:py-6",
           )}
         >
-          <div className={isPosRoute ? "mx-auto max-w-7xl" : "mx-auto max-w-[1440px]"}>
+          <div
+            className={
+              isTableServiceRoute
+                ? "h-full"
+                : isPosRoute
+                  ? "mx-auto max-w-7xl"
+                  : "mx-auto max-w-[1440px]"
+            }
+          >
             {children}
           </div>
         </main>

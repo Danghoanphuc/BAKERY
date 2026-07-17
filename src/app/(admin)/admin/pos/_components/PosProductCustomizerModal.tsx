@@ -20,6 +20,8 @@ type Customization = {
 type PosProductCustomizerModalProps = {
   product: Product;
   isOpen: boolean;
+  initialSelectedSize?: string;
+  initialSelectedFlavor?: string;
   onClose: () => void;
   onAdd: (customization: Customization) => void;
 };
@@ -27,6 +29,8 @@ type PosProductCustomizerModalProps = {
 export function PosProductCustomizerModal({
   product,
   isOpen,
+  initialSelectedSize,
+  initialSelectedFlavor,
   onClose,
   onAdd,
 }: PosProductCustomizerModalProps) {
@@ -39,11 +43,19 @@ export function PosProductCustomizerModal({
   useEffect(() => {
     if (!isOpen) return;
     setQuantity(1);
-    setSelectedSize(product.sizeOptions?.[0]?.id);
-    setSelectedFlavor(product.flavorOptions?.[0]?.id);
+    setSelectedSize(
+      product.sizeOptions?.some((option) => option.id === initialSelectedSize)
+        ? initialSelectedSize
+        : product.sizeOptions?.[0]?.id,
+    );
+    setSelectedFlavor(
+      product.flavorOptions?.some((option) => option.id === initialSelectedFlavor)
+        ? initialSelectedFlavor
+        : product.flavorOptions?.[0]?.id,
+    );
     setCustomMessage("");
     setCandles(0);
-  }, [isOpen, product]);
+  }, [initialSelectedFlavor, initialSelectedSize, isOpen, product]);
 
   const variant = useMemo(
     () => getProductVariantSelection(product, selectedSize, selectedFlavor),

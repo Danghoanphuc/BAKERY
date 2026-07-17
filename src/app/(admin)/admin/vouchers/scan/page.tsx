@@ -6,8 +6,10 @@ import { ArrowLeft, ScanLine, TicketPercent } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 
 type RedeemResult = {
+  ok?: boolean;
+  reason?: string;
   voucher: { title: string; code: string };
-  customer: { name: string; phone: string };
+  customer?: { name: string; phone: string } | null;
   pricing: {
     subtotal: number;
     discountAmount: number;
@@ -31,20 +33,24 @@ export default function AdminVoucherScanPage() {
     setResult(null);
 
     try {
-      const response = await fetch("/api/vouchers/pos-redeem", {
+      const response = await fetch("/api/pos/vouchers/preview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           code,
           phone,
-          name,
           subtotal: Number(subtotal),
         }),
       });
-      const data = await response.json();
+      const data = (await response.json()) as RedeemResult & { error?: string };
 
       if (!response.ok) {
         setError(data.error || "Không thể áp voucher.");
+        return;
+      }
+
+      if (!data.ok || !data.pricing) {
+        setError(data.reason || "Voucher chưa đủ điều kiện áp dụng.");
         return;
       }
 
@@ -65,8 +71,8 @@ export default function AdminVoucherScanPage() {
           Quét voucher tại quầy
         </h1>
         <p className="mt-1 max-w-3xl text-sm text-neutral-600">
-          Nhân viên scan QR/barcode từ điện thoại khách, nhập số điện thoại và
-          tạm tính để màn hình phụ hiển thị giá trước/sau voucher.
+          Quét hoặc nhập mã từ điện thoại khách để kiểm tra ưu đãi trước khi
+          áp vào đơn. Thao tác này không tiêu hao lượt sử dụng voucher.
         </p>
       </div>
 
@@ -74,7 +80,13 @@ export default function AdminVoucherScanPage() {
         onSubmit={handleSubmit}
         className="grid gap-4 rounded-lg border border-neutral-200 bg-white p-5 lg:grid-cols-4"
       >
-        <Field label="Mã voucher" value={code} onChange={setCode} required />
+        <Field
+          label="Mã voucher"
+          value={code}
+          onChange={setCode}
+          required
+          autoFocus
+        />
         <Field
           label="Số điện thoại"
           value={phone}
@@ -95,7 +107,7 @@ export default function AdminVoucherScanPage() {
           className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:opacity-60 lg:col-span-4"
         >
           <ScanLine className="h-4 w-4" />
-          {isSubmitting ? "Đang áp voucher..." : "Áp voucher"}
+          {isSubmitting ? "Đang kiểm tra..." : "Kiểm tra voucher"}
         </button>
       </form>
 
@@ -116,7 +128,9 @@ export default function AdminVoucherScanPage() {
                 {result.voucher.title}
               </h2>
               <p className="text-sm text-neutral-600">
-                {result.customer.name} - {result.customer.phone}
+                {result.customer?.name
+                  ? `${result.customer.name} - ${result.customer.phone}`
+                  : name.trim() || phone}
               </p>
             </div>
           </div>
@@ -146,12 +160,14 @@ function Field({
   onChange,
   type = "text",
   required,
+  autoFocus,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: string;
   required?: boolean;
+  autoFocus?: boolean;
 }) {
   return (
     <label className="block">
@@ -162,6 +178,7 @@ function Field({
       <input
         type={type}
         required={required}
+        autoFocus={autoFocus}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="h-11 w-full rounded-lg border border-neutral-300 px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"

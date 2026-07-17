@@ -1,140 +1,204 @@
 "use client";
 
-import { useState } from "react";
+import type { LucideIcon } from "lucide-react";
 import {
-  Check,
+  CakeSlice,
   CheckCircle2,
   Clipboard,
+  Clock3,
+  Coffee,
+  Croissant,
   Download,
+  Gift,
   Heart,
   ImageIcon,
+  MapPin,
   MessageCircle,
   Palette,
   Shapes,
   ShieldCheck,
   Sparkles,
   Type,
+  Wheat,
   XCircle,
 } from "lucide-react";
+import { toast } from "sonner";
 import { BrandLogo } from "@/components/brand/BrandLogo";
-import { BRAND_ASSETS, BRAND_COLORS, BRAND_META, BRAND_TRAITS } from "@/lib/brand";
+import {
+  BRAND_ASSETS,
+  BRAND_COLORS,
+  BRAND_META,
+  BRAND_SUPPORT_COLORS,
+  BRAND_TRAITS,
+} from "@/lib/brand";
 
 const voiceExamples = [
-  { title: "Ấm áp", description: "Nói như một lời mời chân thành, gần gũi và có cảm xúc.", example: "Một chiếc bánh nhỏ, một niềm vui thật to." },
-  { title: "Vui tươi", description: "Tích cực, nhẹ nhàng; không khoa trương hoặc dùng quá nhiều dấu cảm thán.", example: "Hôm nay mình cùng ăn ngọt một chút nhé." },
-  { title: "Tinh tế", description: "Ngắn gọn, có chủ đích và tôn trọng chất lượng thủ công.", example: "Nướng mới mỗi ngày, chăm chút trong từng lớp bánh." },
+  {
+    title: "Ấm áp",
+    description: "Trò chuyện như một lời mời chân thành, gần gũi và giàu cảm xúc.",
+    example: "Một chiếc bánh nhỏ, một niềm vui thật to.",
+  },
+  {
+    title: "Thân thiện",
+    description: "Tích cực, tự nhiên, dễ hiểu; tránh khoa trương hoặc dùng quá nhiều dấu cảm thán.",
+    example: "Hôm nay mình cùng dành chút thời gian cho nhau nhé.",
+  },
+  {
+    title: "Thủ công",
+    description: "Nhấn vào sự chăm chút, nguyên liệu thật và chất lượng được làm nên mỗi ngày.",
+    example: "Nướng mới mỗi ngày, nâng niu trong từng lớp bánh.",
+  },
+] as const;
+
+const iconSet = [
+  { icon: Croissant, label: "Bánh mì" },
+  { icon: CakeSlice, label: "Bánh ngọt" },
+  { icon: Coffee, label: "Tách trà" },
+  { icon: Gift, label: "Quà tặng" },
+  { icon: MapPin, label: "Cửa hàng" },
+  { icon: Clock3, label: "Thời gian" },
+  { icon: Wheat, label: "Lúa mì" },
+  { icon: Heart, label: "Yêu thương" },
 ] as const;
 
 export default function BrandGuidelinesPage() {
-  const [copied, setCopied] = useState<string | null>(null);
-
   async function copyColor(hex: string) {
     try {
       await navigator.clipboard.writeText(hex);
-      setCopied(hex);
-      window.setTimeout(() => setCopied((current) => current === hex ? null : current), 1600);
+      toast.success(`Đã sao chép ${hex}`);
     } catch {
-      setCopied(null);
+      toast.error("Không thể sao chép mã màu.");
     }
   }
 
   return (
-    <div className="space-y-5 pb-16">
-      <header className="relative overflow-hidden rounded-xl border border-[#dfe5e8] bg-[#fffdf9] px-5 py-6 shadow-[0_8px_24px_rgba(18,62,102,0.06)] sm:px-7">
-        <div className="pointer-events-none absolute -right-8 -top-12 h-40 w-40 rounded-full bg-[#f07a58]/12" />
-        <div className="pointer-events-none absolute right-20 top-8 h-16 w-16 rounded-full bg-[#2f8d88]/10" />
-        <div className="relative flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <span className="grid h-9 w-9 place-items-center rounded-lg bg-[#e3f1ee] text-[#2f8d88]"><Palette className="h-[18px] w-[18px]" /></span>
-              <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-[#2f8d88]">Brand Guidelines · Version {BRAND_META.version}</p>
-            </div>
-            <h1 className="mt-4 text-3xl font-black tracking-[-0.03em] text-[#123e66] sm:text-4xl">SweetTime</h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-[#647078]">Thư viện tham chiếu nội bộ giúp mọi điểm chạm của thương hiệu luôn ấm áp, vui tươi và tinh tế.</p>
+    <div className="brand-guideline space-y-5 pb-16">
+      <header className="brand-guide-hero relative overflow-hidden rounded-2xl border border-[#E7D8C5] bg-[#FFF6E8] px-5 py-7 shadow-[0_12px_32px_rgba(91,55,31,0.08)] sm:px-8 sm:py-9">
+        <LeafCorner className="absolute -left-3 -top-3 rotate-[18deg] opacity-70" />
+        <LeafCorner className="absolute -right-3 -top-3 -rotate-[72deg] opacity-70" />
+        <div className="pointer-events-none absolute right-[18%] top-0 h-full border-l border-dashed border-[#C9A24C]/40" />
+        <div className="relative grid gap-7 xl:grid-cols-[1.05fr_0.95fr] xl:items-center">
+          <div className="xl:pr-8">
+            <BrandLogo className="w-full max-w-[560px]" />
           </div>
-          <div className="flex flex-wrap gap-2" aria-label="Tính cách thương hiệu">
-            {BRAND_TRAITS.map((trait) => <span key={trait} className="rounded-full border border-[#dfe5e8] bg-white px-3 py-1.5 text-xs font-black text-[#123e66]">{trait}</span>)}
+          <div className="xl:pl-5">
+            <p className="flex items-center gap-3 text-xs font-extrabold uppercase tracking-[0.18em] text-[#C9A24C]">
+              <span className="h-px w-10 bg-[#C9A24C]" />
+              Cẩm nang thương hiệu · Phiên bản {BRAND_META.version}
+            </p>
+            <h1 aria-label="SweetTime" className="mt-4 font-serif text-3xl font-bold tracking-[-0.02em] text-[#C24A36] sm:text-4xl">
+              {BRAND_META.tagline}
+            </h1>
+            <div className="mt-4 flex flex-wrap gap-4">
+              {BRAND_TRAITS.map((trait, index) => {
+                const Icon = [Heart, Wheat, Croissant][index];
+                return <span key={trait} className="inline-flex items-center gap-2 text-sm font-extrabold text-[#8A4B27]"><Icon className="h-5 w-5 text-[#C9A24C]" />{trait}</span>;
+              })}
+            </div>
+            <p className="mt-4 max-w-xl text-sm leading-6 text-[#51483F]">
+              SweetTime là tiệm bánh và trà ấm cúng, được tạo nên cho những khoảnh khắc đời thường đáng quý. Chúng ta làm bánh chỉn chu, pha trà dịu dàng và đưa mọi người lại gần nhau hơn — từng phút ngọt ngào một.
+            </p>
           </div>
         </div>
       </header>
 
-      <section className="rounded-xl border border-[#dfe5e8] bg-white p-5 shadow-sm sm:p-6" aria-labelledby="color-system-title">
-        <SectionHeading icon={Palette} eyebrow="01 · Color system" title="Bảng màu thương hiệu" description="Dùng màu chính để nhận diện, màu phụ để tạo chiều sâu. Nhấn vào một ô để sao chép mã HEX." id="color-system-title" />
-        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {BRAND_COLORS.map((color) => (
-            <button key={color.hex} type="button" onClick={() => copyColor(color.hex)} className="group overflow-hidden rounded-xl border border-[#dfe5e8] bg-[#fffdf9] text-left transition hover:-translate-y-0.5 hover:shadow-md" aria-label={`Sao chép màu ${color.name} ${color.hex}`}>
-              <span className={`flex h-24 items-end justify-between p-3 ${color.foreground === "light" ? "text-white" : "text-[#123e66]"}`} style={{ backgroundColor: color.hex }}>
-                <span className="text-xs font-black uppercase tracking-[0.08em]">{color.hex}</span>
-                <span className="grid h-7 w-7 place-items-center rounded-md bg-black/10 backdrop-blur-sm">{copied === color.hex ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}</span>
-              </span>
-              <span className="block p-3"><strong className="block text-sm text-[#123e66]">{color.name}</strong><span className="mt-1 block text-xs text-[#6f777b]">{color.role}</span></span>
+      <section className="guide-card" aria-labelledby="color-system-title">
+        <SectionHeading icon={Palette} eyebrow="01 · Hệ màu" title="Bảng màu thương hiệu" description="Màu chính tạo nhận diện; màu hỗ trợ mang lại chiều sâu và cảm giác thủ công. Chạm vào ô màu để sao chép mã HEX." id="color-system-title" />
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {BRAND_COLORS.map((color) => <ColorCard key={color.hex} color={color} onCopy={copyColor} />)}
+        </div>
+        <div className="mt-5 grid gap-3 border-t border-[#E8D9C7] pt-5 sm:grid-cols-2 lg:grid-cols-5">
+          {BRAND_SUPPORT_COLORS.map((color) => (
+            <button key={color.hex} type="button" onClick={() => copyColor(color.hex)} className="group flex items-center gap-3 rounded-xl border border-[#E8D9C7] bg-white/70 p-3 text-left transition hover:-translate-y-0.5 hover:border-[#C9A24C]" aria-label={`Sao chép màu ${color.name} ${color.hex}`}>
+              <span className="h-12 w-12 shrink-0 rounded-lg border border-black/5 shadow-inner" style={{ backgroundColor: color.hex }} />
+              <span className="min-w-0"><strong className="block text-xs text-[#1F2E4A]">{color.name}</strong><span className="mt-1 block text-[11px] font-bold uppercase tracking-wide text-[#8D7460]">{color.hex}</span></span>
             </button>
           ))}
         </div>
-        <p className="sr-only" aria-live="polite">{copied ? `Đã sao chép ${copied}` : ""}</p>
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
-        <section className="rounded-xl border border-[#dfe5e8] bg-white p-5 shadow-sm sm:p-6" aria-labelledby="type-title">
-          <SectionHeading icon={Type} eyebrow="02 · Typography" title="Hệ chữ" description="Ưu tiên rõ ràng trong vận hành, thêm chất thủ công ở những điểm nhấn có chủ đích." id="type-title" />
-          <div className="mt-5 space-y-3">
-            <TypeSample label="Display / Script" meta="Dancing Script · Bold" className="font-dancing-script text-4xl text-[#d94a34]" text="Sweet Moments" />
-            <TypeSample label="Heading" meta="Be Vietnam Pro · 800–900" className="text-2xl font-black tracking-[-0.025em] text-[#123e66]" text="Bake Joy, Share Time" />
-            <TypeSample label="Body" meta="Be Vietnam Pro · 400–600" className="text-sm leading-6 text-[#4f595f]" text="Bánh thủ công được nướng mới mỗi ngày, dành cho những khoảnh khắc sẻ chia." />
+      <div className="grid gap-5 xl:grid-cols-[1.12fr_0.88fr]">
+        <section className="guide-card" aria-labelledby="type-title">
+          <SectionHeading icon={Type} eyebrow="02 · Kiểu chữ" title="Hệ thống kiểu chữ" description="Kiểu chữ có chân mang chất thủ công cho điểm nhấn; kiểu chữ không chân bảo đảm rõ ràng trong giao diện." id="type-title" />
+          <div className="mt-6 space-y-3">
+            <TypeSample label="Kiểu chữ trưng bày" meta="Georgia · Đậm" className="font-serif text-4xl font-bold text-[#C24A36] sm:text-5xl" text="Khoảnh khắc ngọt ngào" />
+            <TypeSample label="Tiêu đề" meta="Be Vietnam Pro · 800–900" className="text-2xl font-black tracking-[-0.025em] text-[#1F2E4A]" text="Tươi mới mỗi ngày" />
+            <TypeSample label="Nội dung" meta="Be Vietnam Pro · 400–600" className="text-sm leading-6 text-[#51483F]" text="Tại SweetTime, những khoảnh khắc nhỏ luôn đáng được nâng niu. Bánh được làm mới mỗi ngày để sẻ chia cùng người bạn thương." />
           </div>
         </section>
 
-        <section className="rounded-xl border border-[#dfe5e8] bg-white p-5 shadow-sm sm:p-6" aria-labelledby="logo-title">
-          <SectionHeading icon={Heart} eyebrow="03 · Logo & wordmark" title="Dấu hiệu nhận diện" description="Giữ wordmark thoáng, tương phản tốt và không thêm hiệu ứng trang trí." id="logo-title" />
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <div className="grid min-h-36 place-items-center rounded-xl bg-[#f4ebdd] p-5"><BrandLogo className="w-full max-w-[330px]" /></div>
-            <div className="grid min-h-36 place-items-center rounded-xl bg-[#123e66] p-5"><BrandLogo variant="reverse" className="w-full max-w-[330px]" /></div>
+        <section className="guide-card" aria-labelledby="logo-title">
+          <SectionHeading icon={Heart} eyebrow="03 · Logo" title="Dấu hiệu nhận diện" description="Luôn giữ logo thoáng, đúng tỷ lệ và đủ tương phản trên mọi bề mặt." id="logo-title" />
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <div className="grid min-h-40 place-items-center rounded-xl border border-[#E8D9C7] bg-[#FFF6E8] p-5"><BrandLogo className="w-full max-w-[340px]" /></div>
+            <div className="grid min-h-40 place-items-center rounded-xl bg-[#1F2E4A] p-5"><BrandLogo variant="reverse" className="w-full max-w-[340px]" /></div>
           </div>
-          <div className="mt-3 flex items-start gap-2 rounded-lg bg-[#f3f6f7] p-3 text-xs leading-5 text-[#5f686d]"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#2f8d88]" /><p>Khoảng trống an toàn tối thiểu bằng chiều cao chữ “S”. Không kéo giãn, xoay hoặc đổi màu ngoài bảng màu chuẩn.</p></div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">{BRAND_ASSETS.map((asset) => <a key={asset.href} href={asset.href} download={asset.fileName} className="inline-flex h-10 items-center justify-between rounded-lg border border-[#dfe5e8] bg-white px-3 text-xs font-black text-[#123e66] transition hover:border-[#2f8d88] hover:bg-[#f3f8f7]"><span>{asset.label}</span><Download className="h-4 w-4 text-[#2f8d88]" /></a>)}</div>
+          <div className="mt-3 flex items-start gap-2 rounded-xl bg-[#F2E8DA] p-3 text-xs leading-5 text-[#665647]"><ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#C24A36]" /><p>Khoảng trống an toàn tối thiểu bằng chiều cao chữ “S”. Không kéo giãn, xoay, thêm bóng hoặc đổi màu ngoài bảng màu chuẩn.</p></div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">{BRAND_ASSETS.map((asset) => <a key={asset.href} href={asset.href} download={asset.fileName} className="inline-flex min-h-11 items-center justify-between rounded-xl border border-[#E8D9C7] bg-white px-3 text-xs font-black text-[#1F2E4A] transition hover:border-[#C9A24C] hover:bg-[#FFF6E8]"><span>{asset.label}</span><Download className="h-4 w-4 text-[#C24A36]" /></a>)}</div>
         </section>
       </div>
 
-      <section className="rounded-xl border border-[#dfe5e8] bg-white p-5 shadow-sm sm:p-6" aria-labelledby="voice-title">
-        <SectionHeading icon={MessageCircle} eyebrow="04 · Tone of voice" title="Giọng điệu thương hiệu" description="Viết như một người làm bánh tận tâm đang trò chuyện với khách quen." id="voice-title" />
-        <div className="mt-5 grid gap-3 lg:grid-cols-3">
-          {voiceExamples.map((item, index) => <article key={item.title} className="rounded-xl border border-[#dfe5e8] bg-[#fffdf9] p-4"><span className="grid h-8 w-8 place-items-center rounded-lg bg-[#fff1ed] text-sm font-black text-[#d94a34]">0{index + 1}</span><h3 className="mt-4 font-black text-[#123e66]">{item.title}</h3><p className="mt-2 text-sm leading-6 text-[#647078]">{item.description}</p><p className="mt-4 border-l-2 border-[#f07a58] pl-3 text-sm font-bold italic text-[#2d2a28]">“{item.example}”</p></article>)}
+      <section className="guide-card" aria-labelledby="voice-title">
+        <SectionHeading icon={MessageCircle} eyebrow="04 · Ngôn từ" title="Giọng điệu thương hiệu" description="Viết như một người làm bánh tận tâm đang trò chuyện với vị khách quen." id="voice-title" />
+        <div className="mt-6 grid gap-3 lg:grid-cols-3">
+          {voiceExamples.map((item, index) => (
+            <article key={item.title} className="rounded-xl border border-[#E8D9C7] bg-[#FFFCF7] p-5">
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-[#F7DBD1] font-serif text-sm font-bold text-[#C24A36]">0{index + 1}</span>
+              <h3 className="mt-4 font-serif text-xl font-bold text-[#C24A36]">{item.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-[#665647]">{item.description}</p>
+              <p className="mt-4 border-l-2 border-[#C9A24C] pl-3 text-sm font-semibold italic text-[#1F2E4A]">“{item.example}”</p>
+            </article>
+          ))}
         </div>
       </section>
 
       <div className="grid gap-5 lg:grid-cols-2">
-        <section className="rounded-xl border border-[#dfe5e8] bg-white p-5 shadow-sm sm:p-6" aria-labelledby="imagery-title">
-          <SectionHeading icon={ImageIcon} eyebrow="05 · Imagery" title="Định hướng hình ảnh" description="Để sản phẩm và khoảnh khắc thật dẫn dắt câu chuyện." id="imagery-title" />
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[{ icon: "🍰", label: "Bánh & tráng miệng" }, { icon: "🥐", label: "Bánh nướng mới" }, { icon: "☕", label: "Trà & cà phê" }, { icon: "🤝", label: "Khoảnh khắc sẻ chia" }].map((item) => <div key={item.label} className="rounded-xl bg-[#f4ebdd] p-4 text-center"><span className="text-3xl" aria-hidden="true">{item.icon}</span><p className="mt-3 text-xs font-black leading-5 text-[#123e66]">{item.label}</p></div>)}
+        <section className="guide-card" aria-labelledby="imagery-title">
+          <SectionHeading icon={ImageIcon} eyebrow="05 · Hình ảnh" title="Định hướng hình ảnh" description="Để sản phẩm thật và những khoảnh khắc sẻ chia dẫn dắt câu chuyện." id="imagery-title" />
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[{ icon: Croissant, label: "Mộc mạc & nguyên bản" }, { icon: CakeSlice, label: "Ngon mắt & tinh tế" }, { icon: Coffee, label: "Nghi thức thưởng trà" }, { icon: Heart, label: "Gắn kết & vui vẻ" }].map((item) => <div key={item.label} className="rounded-xl bg-[#F2E8DA] p-4 text-center"><item.icon className="mx-auto h-8 w-8 text-[#C9A24C]" /><p className="mt-3 text-xs font-black leading-5 text-[#1F2E4A]">{item.label}</p></div>)}
           </div>
-          <p className="mt-4 text-sm leading-6 text-[#647078]">Ưu tiên ánh sáng tự nhiên, màu thực phẩm chân thật, bề mặt thủ công và cảm giác ấm. Tránh ảnh quá bóng, tương phản gắt hoặc bố cục mang tính công nghiệp.</p>
+          <p className="mt-4 text-sm leading-6 text-[#665647]">Ưu tiên ánh sáng tự nhiên, sắc bánh chân thật, chất liệu gỗ, giấy và gốm. Khung hình nên ấm, có khoảng thở và gợi cảm giác đang được mời vào bàn trà.</p>
         </section>
 
-        <section className="rounded-xl border border-[#dfe5e8] bg-white p-5 shadow-sm sm:p-6" aria-labelledby="motif-title">
-          <SectionHeading icon={Shapes} eyebrow="06 · Motif & usage" title="Motif và nguyên tắc dùng" description="Dùng điểm nhấn tiết chế để thương hiệu luôn có nhịp thở." id="motif-title" />
-          <div className="mt-5 flex h-20 items-center justify-center gap-4 overflow-hidden rounded-xl bg-[#fff7f0]">
-            <Heart className="h-8 w-8 fill-[#d94a34] text-[#d94a34]" /><Sparkles className="h-7 w-7 text-[#2f8d88]" /><span className="h-6 w-20 rounded-[50%_20%_50%_20%] bg-[#f07a58]" /><span className="h-6 w-14 rounded-full bg-[#123e66]" /><Heart className="h-5 w-5 fill-[#d94a34] text-[#d94a34]" />
+        <section className="guide-card" aria-labelledby="motif-title">
+          <SectionHeading icon={Shapes} eyebrow="06 · Ứng dụng" title="Motif và nguyên tắc dùng" description="Dùng chi tiết trang trí tiết chế để thương hiệu luôn có nhịp thở." id="motif-title" />
+          <div className="mt-6 grid grid-cols-4 gap-2 sm:grid-cols-8">
+            {iconSet.map(({ icon: Icon, label }) => <div key={label} className="grid min-h-20 place-items-center rounded-xl border border-[#E8D9C7] bg-[#FFFCF7] p-2 text-center"><Icon className="h-6 w-6 text-[#C9A24C]" /><span className="mt-1 text-[10px] font-bold text-[#665647]">{label}</span></div>)}
           </div>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <UsageList title="Nên" icon={CheckCircle2} tone="good" items={["Dùng nền kem để tạo độ ấm", "Giữ tương phản chữ dễ đọc", "Chỉ dùng 1–2 motif mỗi khung"]} />
-            <UsageList title="Không nên" icon={XCircle} tone="bad" items={["Phủ quá nhiều màu nhấn", "Biến dạng logo hoặc wordmark", "Dùng motif thay cho nội dung chính"]} />
+            <UsageList title="Nên dùng" icon={CheckCircle2} tone="good" items={["Dùng nền kem để tạo độ ấm", "Giữ tương phản chữ dễ đọc", "Chỉ dùng 1–2 motif mỗi khung"]} />
+            <UsageList title="Không nên" icon={XCircle} tone="bad" items={["Phủ quá nhiều màu nhấn", "Biến dạng logo hoặc wordmark", "Dùng motif thay nội dung chính"]} />
           </div>
         </section>
       </div>
+
+      <section className="relative overflow-hidden rounded-2xl border border-[#D8BD82] bg-[#FFF6E8] px-5 py-7 text-center sm:px-8">
+        <Sparkles className="mx-auto h-6 w-6 text-[#C9A24C]" />
+        <p className="mt-2 font-serif text-2xl font-bold text-[#C24A36]">Lời hứa của SweetTime</p>
+        <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-[#51483F]">Nguyên liệu chất lượng, sự phục vụ chân thành và những khoảnh khắc đáng sẻ chia. Cảm ơn bạn đã đồng hành và gìn giữ hình ảnh SweetTime.</p>
+      </section>
     </div>
   );
 }
 
-function SectionHeading({ icon: Icon, eyebrow, title, description, id }: { icon: typeof Palette; eyebrow: string; title: string; description: string; id: string }) {
-  return <div className="flex items-start gap-3"><span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[#e3f1ee] text-[#2f8d88]"><Icon className="h-[18px] w-[18px]" /></span><div><p className="text-[11px] font-black uppercase tracking-[0.12em] text-[#d94a34]">{eyebrow}</p><h2 id={id} className="mt-1 text-xl font-black tracking-[-0.02em] text-[#123e66]">{title}</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-[#6f777b]">{description}</p></div></div>;
+function ColorCard({ color, onCopy }: { color: (typeof BRAND_COLORS)[number]; onCopy: (hex: string) => void }) {
+  return <button type="button" onClick={() => onCopy(color.hex)} className="group overflow-hidden rounded-xl border border-[#E8D9C7] bg-[#FFFCF7] text-left transition hover:-translate-y-0.5 hover:shadow-md" aria-label={`Sao chép màu ${color.name} ${color.hex}`}><span className={`flex h-28 items-end justify-between p-3 ${color.foreground === "light" ? "text-white" : "text-[#1F2E4A]"}`} style={{ backgroundColor: color.hex }}><span className="text-xs font-black uppercase tracking-[0.08em]">{color.hex}</span><span className="grid h-8 w-8 place-items-center rounded-lg bg-black/10 backdrop-blur-sm"><Clipboard className="h-4 w-4" /></span></span><span className="block p-4"><strong className="block text-sm text-[#1F2E4A]">{color.name}</strong><span className="mt-1 block text-xs leading-5 text-[#7E6A59]">{color.role}</span></span></button>;
+}
+
+function SectionHeading({ icon: Icon, eyebrow, title, description, id }: { icon: LucideIcon; eyebrow: string; title: string; description: string; id: string }) {
+  return <div className="flex items-start gap-3"><span className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#F2E8DA] text-[#C9A24C]"><Icon className="h-5 w-5" /></span><div><p className="text-[11px] font-black uppercase tracking-[0.14em] text-[#C24A36]">{eyebrow}</p><h2 id={id} className="mt-1 font-serif text-2xl font-bold tracking-[-0.02em] text-[#1F2E4A]">{title}</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-[#7E6A59]">{description}</p></div></div>;
 }
 
 function TypeSample({ label, meta, className, text }: { label: string; meta: string; className: string; text: string }) {
-  return <div className="rounded-xl border border-[#dfe5e8] bg-[#fffdf9] p-4"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[11px] font-black uppercase tracking-[0.1em] text-[#2f8d88]">{label}</p><span className="text-[11px] font-bold text-[#8a9499]">{meta}</span></div><p className={`mt-3 ${className}`}>{text}</p></div>;
+  return <div className="rounded-xl border border-[#E8D9C7] bg-[#FFFCF7] p-4"><div className="flex flex-wrap items-center justify-between gap-2"><p className="text-[11px] font-black uppercase tracking-[0.12em] text-[#C9A24C]">{label}</p><span className="text-[11px] font-bold text-[#9B8877]">{meta}</span></div><p className={`mt-3 ${className}`}>{text}</p></div>;
 }
 
-function UsageList({ title, icon: Icon, tone, items }: { title: string; icon: typeof CheckCircle2; tone: "good" | "bad"; items: string[] }) {
-  const styles = tone === "good" ? "bg-[#f3f8f7] text-[#2f8d88]" : "bg-[#fff5f2] text-[#d94a34]";
-  return <div className={`rounded-xl p-4 ${styles}`}><div className="flex items-center gap-2"><Icon className="h-5 w-5" /><h3 className="font-black text-[#123e66]">{title}</h3></div><ul className="mt-3 space-y-2 text-xs leading-5 text-[#566168]">{items.map((item) => <li key={item} className="flex gap-2"><span aria-hidden="true">•</span><span>{item}</span></li>)}</ul></div>;
+function UsageList({ title, icon: Icon, tone, items }: { title: string; icon: LucideIcon; tone: "good" | "bad"; items: string[] }) {
+  const styles = tone === "good" ? "bg-[#F2E8DA] text-[#8A6828]" : "bg-[#F7DBD1]/70 text-[#C24A36]";
+  return <div className={`rounded-xl p-4 ${styles}`}><div className="flex items-center gap-2"><Icon className="h-5 w-5" /><h3 className="font-black text-[#1F2E4A]">{title}</h3></div><ul className="mt-3 space-y-2 text-xs leading-5 text-[#665647]">{items.map((item) => <li key={item} className="flex gap-2"><span aria-hidden="true">•</span><span>{item}</span></li>)}</ul></div>;
+}
+
+function LeafCorner({ className }: { className?: string }) {
+  return <Wheat className={`h-16 w-16 text-[#C9A24C] ${className ?? ""}`} aria-hidden="true" />;
 }

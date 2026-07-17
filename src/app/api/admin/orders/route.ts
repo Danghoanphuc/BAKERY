@@ -1,18 +1,21 @@
 import { NextResponse } from "next/server";
-import { getOrders } from "@/lib/db";
-import { expireUnpaidBankTransferOrder } from "@/lib/payment-expiry";
+import { getOrdersPage } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth/require-admin";
 
 export async function GET(request: Request) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
   try {
-    const orders = await Promise.all(
-      (await getOrders()).map((order) => expireUnpaidBankTransferOrder(order)),
-    );
-    return NextResponse.json(orders);
+    const url = new URL(request.url);
+    const pageSize = Number(url.searchParams.get("limit") ?? 100);
+    const cursor = url.searchParams.get("cursor") ?? undefined;
+    const page = await getOrdersPage(pageSize, cursor);
+    return NextResponse.json(page);
   } catch (error) {
     console.error("Error fetching admin orders:", error);
+    if (error instanceof Error && error.message === "INVALID_ORDER_CURSOR") {
+      return NextResponse.json({ error: "Invalid cursor" }, { status: 400 });
+    }
     return NextResponse.json(
       { error: "Failed to fetch orders" },
       { status: 500 },

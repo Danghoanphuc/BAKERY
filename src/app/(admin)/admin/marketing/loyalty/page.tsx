@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Activity, BadgeDollarSign, BarChart3, FlaskConical, Gift, Layers3, Loader2, Plus, RefreshCw, Save, Sparkles, Target, Users } from "lucide-react";
+import { toast } from "sonner";
 import { AdminImageUploader } from "@/components/admin/AdminImageUploader";
 import type { LoyaltyAuditEntry, LoyaltyPointLedgerEntry, LoyaltyProgramVersion, LoyaltyReward, LoyaltyRule, LoyaltySegment, MarketingSettings, TierSetting } from "@/types";
 
@@ -28,7 +29,6 @@ export default function LoyaltyWorkspacePage() {
   const [draft, setDraft] = useState<MarketingSettings | null>(null);
   const [tab, setTab] = useState<(typeof tabs)[number][0]>("overview");
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const response = await fetch("/api/admin/loyalty", { cache: "no-store" });
@@ -40,20 +40,20 @@ export default function LoyaltyWorkspacePage() {
 
   async function saveSettings() {
     if (!draft) return;
-    setBusy(true); setMessage(null);
+    setBusy(true);
     const response = await fetch("/api/admin/loyalty", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(draft) });
-    setMessage(response.ok ? "Đã lưu cấu hình loyalty." : "Không thể lưu cấu hình.");
+    response.ok ? toast.success("Đã lưu cấu hình loyalty.") : toast.error("Không thể lưu cấu hình.");
     if (response.ok) await load(); setBusy(false);
   }
   async function saveEntity(kind: "rule" | "reward" | "segment", value: Record<string, unknown>) {
-    setBusy(true); await fetch("/api/admin/loyalty", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "save_entity", kind, value }) }); await load(); setBusy(false);
+    setBusy(true); const response = await fetch("/api/admin/loyalty", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "save_entity", kind, value }) }); response.ok ? toast.success("Đã lưu cấu hình loyalty.") : toast.error("Không thể lưu cấu hình loyalty."); if (response.ok) await load(); setBusy(false);
   }
   async function createVersion() {
     if (!draft || !data) return;
-    setBusy(true); await fetch("/api/admin/loyalty", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "create_version", name: `Loyalty ${new Date().toLocaleDateString("vi-VN")}`, snapshot: { settings: draft, rules: data.rules, rewards: data.rewards, segments: data.segments } }) }); await load(); setTab("versions"); setBusy(false);
+    setBusy(true); const response = await fetch("/api/admin/loyalty", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "create_version", name: `Loyalty ${new Date().toLocaleDateString("vi-VN")}`, snapshot: { settings: draft, rules: data.rules, rewards: data.rewards, segments: data.segments } }) }); response.ok ? toast.success("Đã tạo phiên bản loyalty mới.") : toast.error("Không thể tạo phiên bản loyalty."); if (response.ok) { await load(); setTab("versions"); } setBusy(false);
   }
   async function activateVersion(id: string) {
-    setBusy(true); await fetch("/api/admin/loyalty", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "activate_version", id }) }); await load(); setBusy(false);
+    setBusy(true); const response = await fetch("/api/admin/loyalty", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "activate_version", id }) }); response.ok ? toast.success("Đã kích hoạt phiên bản loyalty.") : toast.error("Không thể kích hoạt phiên bản loyalty."); if (response.ok) await load(); setBusy(false);
   }
 
   if (!data || !draft) return <div className="grid min-h-[420px] place-items-center"><Loader2 className="h-7 w-7 animate-spin text-brand-600" /></div>;
@@ -82,7 +82,6 @@ export default function LoyaltyWorkspacePage() {
       </div>
     </header>
     <nav className="flex gap-1 overflow-x-auto rounded-xl border border-[#dfe5e8] bg-[#fffdf9] p-1.5 shadow-sm">{tabs.map(([id, label, Icon]) => <button key={id} onClick={() => setTab(id)} className={`inline-flex h-10 shrink-0 items-center gap-2 rounded-lg px-3 text-sm font-black transition ${tab === id ? "bg-[#123e66] text-white shadow-sm" : "text-[#647078] hover:bg-[#eaf3f1] hover:text-[#123e66]"}`}><Icon className="h-4 w-4" />{label}</button>)}</nav>
-    {message && <p className="rounded-xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{message}</p>}
     {tab === "overview" && <Overview data={data} />}
     {tab === "rules" && <Rules rules={data.rules} onSave={(value) => saveEntity("rule", value)} busy={busy} />}
     {tab === "tiers" && <TierStudio settings={draft} onChange={setDraft} onSave={saveSettings} busy={busy} distribution={data.stats.tierDistribution} />}

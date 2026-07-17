@@ -3,6 +3,7 @@ import type { CartItem } from "@/types";
 import type { SelectedVoucher } from "@/types/voucher";
 import {
   publishPosDisplaySnapshot,
+  startPosDisplayHeartbeat,
   type PosDisplaySnapshot,
 } from "@/store/posDisplayStore";
 import {
@@ -13,6 +14,59 @@ import {
 } from "../_lib/pos-utils";
 
 const PAYMENT_TIMEOUT_MS = 5 * 60 * 1000;
+const PENDING_PAYMENT_STORAGE_KEY = "bakery-pos-pending-payment";
+
+type PendingPaymentRecord = {
+  order: PosCheckoutResult;
+  snapshot: Omit<PosDisplaySnapshot, "updatedAt">;
+  deadline: number;
+};
+
+export function readPendingPosPayment(): PendingPaymentRecord | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(PENDING_PAYMENT_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PendingPaymentRecord>;
+    const valid =
+      parsed.order !== null &&
+      typeof parsed.order === "object" &&
+      typeof parsed.order.id === "string" &&
+      typeof parsed.order.orderNumber === "string" &&
+      parsed.snapshot !== null &&
+      typeof parsed.snapshot === "object" &&
+      parsed.snapshot.status === "awaiting_payment" &&
+      Array.isArray(parsed.snapshot.items) &&
+      typeof parsed.snapshot.paymentQrCode === "string" &&
+      Number.isFinite(parsed.deadline);
+    if (valid) return parsed as PendingPaymentRecord;
+    sessionStorage.removeItem(PENDING_PAYMENT_STORAGE_KEY);
+    return null;
+  } catch {
+    try {
+      sessionStorage.removeItem(PENDING_PAYMENT_STORAGE_KEY);
+    } catch {
+      // Ignore unavailable storage; there is no recoverable record in that case.
+    }
+    return null;
+  }
+}
+
+function savePendingPosPayment(record: PendingPaymentRecord) {
+  try {
+    sessionStorage.setItem(PENDING_PAYMENT_STORAGE_KEY, JSON.stringify(record));
+  } catch (error) {
+    console.error("Failed to persist pending POS payment:", error);
+  }
+}
+
+function clearPendingPosPayment() {
+  try {
+    sessionStorage.removeItem(PENDING_PAYMENT_STORAGE_KEY);
+  } catch {
+    // The in-memory payment flow still works when session storage is blocked.
+  }
+}
 
 type PosPaymentState = {
   paymentMethod: PosPaymentMethod;
@@ -35,6 +89,7 @@ export function usePosPayment({
   selectedVoucher,
   voucherPricing,
   onReloadCatalog,
+  onSaleCompleted,
 }: {
   items: CartItem[];
   totalPrice: number;
@@ -47,6 +102,7 @@ export function usePosPayment({
     isEligible: boolean;
   };
   onReloadCatalog: () => Promise<void>;
+  onSaleCompleted: () => void;
 }) {
   const [state, setState] = useState<PosPaymentState>({
     paymentMethod: "cash",
@@ -81,11 +137,38 @@ export function usePosPayment({
   }, []);
 
   useEffect(() => {
+    return startPosDisplayHeartbeat();
+  }, []);
+
+  useEffect(() => {
     return () => {
       if (paymentPollingTimerRef.current) {
         window.clearTimeout(paymentPollingTimerRef.current);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    const pending = readPendingPosPayment();
+    if (!pending) return;
+    if (pending.deadline <= Date.now()) {
+      clearPendingPosPayment();
+      void fetch(`/api/pos/checkout/${pending.order.id}/cancel`, {
+        method: "POST",
+      });
+      return;
+    }
+
+    paymentDeadlineRef.current = pending.deadline;
+    setState((previous) => ({
+      ...previous,
+      paymentMethod: "bank_transfer",
+      awaitingOrderId: pending.order.id,
+      awaitingPaymentDisplay: pending.snapshot,
+      paymentDeadline: pending.deadline,
+      message: `Đã khôi phục đơn ${pending.order.orderNumber} đang chờ thanh toán.`,
+    }));
+    pollOrderPayment(pending.order);
   }, []);
 
   useEffect(() => {
@@ -122,12 +205,18 @@ export function usePosPayment({
       customerPhone: customer.phone.trim() || undefined,
       voucher: selectedVoucher,
       paymentMethod: state.paymentMethod,
+      cashReceived: state.paymentMethod === "cash" ? state.cashReceived : undefined,
+      changeAmount:
+        state.paymentMethod === "cash"
+          ? Math.max(0, state.cashReceived - Math.max(0, totalPrice - discountAmount))
+          : undefined,
       loyaltyPointsEarned: 0,
     });
   }, [
     state.completedDisplay,
     state.awaitingPaymentDisplay,
     state.paymentMethod,
+    state.cashReceived,
     customer.name,
     customer.phone,
     items,
@@ -138,6 +227,7 @@ export function usePosPayment({
   ]);
 
   function cancelAwaitingPayment(note?: string) {
+    clearPendingPosPayment();
     setState((previous) => ({
       ...previous,
       awaitingPaymentDisplay: null,
@@ -192,11 +282,13 @@ export function usePosPayment({
       paymentMethod: "bank_transfer",
       paymentQrCode: qrImageSrc,
       paymentCheckoutUrl: order.payos?.checkoutUrl,
+      paymentDeadline: deadline,
       orderNumber: order.orderNumber,
       loyaltyPointsEarned: 0,
     };
 
     paymentDeadlineRef.current = deadline;
+    savePendingPosPayment({ order, snapshot, deadline });
     setState((previous) => ({
       ...previous,
       paymentDeadline: deadline,
@@ -277,6 +369,7 @@ export function usePosPayment({
     order: PosCheckoutResult,
     options: { shouldPrintReceipt?: boolean } = {},
   ) {
+    clearPendingPosPayment();
     cancelAwaitingPayment();
 
     const paidDiscount =
@@ -296,6 +389,12 @@ export function usePosPayment({
         customerPhone: customer.phone.trim() || undefined,
         voucher: selectedVoucher,
         paymentMethod: state.paymentMethod,
+        cashReceived:
+          state.paymentMethod === "cash" ? state.cashReceived : undefined,
+        changeAmount:
+          state.paymentMethod === "cash"
+            ? Math.max(0, state.cashReceived - order.totalAmount)
+            : undefined,
         orderNumber: order.orderNumber,
         loyaltyPointsEarned: order.loyaltyPointsEarned,
       },
@@ -307,12 +406,15 @@ export function usePosPayment({
 
     checkoutIdempotencyKeyRef.current = crypto.randomUUID();
     await onReloadCatalog();
+    onSaleCompleted();
     window.setTimeout(() => {
       setState((previous) => ({ ...previous, completedDisplay: null }));
     }, 9000);
     setState((previous) => ({
       ...previous,
       message: `Đã tạo đơn ${order.orderNumber}.`,
+      paymentMethod: "cash",
+      cashReceived: 0,
     }));
   }
 
@@ -326,10 +428,12 @@ export function usePosPayment({
     const printWindow = window.open("", "_blank", "width=420,height=680");
     if (!printWindow) return;
 
-    printWindow.document.write(
-      `<pre style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.5; white-space: pre-wrap;">${receipt}</pre>`,
-    );
-    printWindow.document.close();
+    printWindow.document.title = `Hoá đơn ${order.orderNumber}`;
+    const receiptElement = printWindow.document.createElement("pre");
+    receiptElement.style.cssText =
+      "font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;line-height:1.5;white-space:pre-wrap";
+    receiptElement.textContent = receipt;
+    printWindow.document.body.replaceChildren(receiptElement);
     printWindow.focus();
     printWindow.print();
   }

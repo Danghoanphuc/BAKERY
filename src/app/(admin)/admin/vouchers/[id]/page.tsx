@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { use, useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Archive, Loader2, Pause, PencilLine, Play, Square } from "lucide-react";
+import { toast } from "sonner";
 import type { MarketingCampaign } from "@/types";
 import {
   audienceLabels,
@@ -116,7 +117,8 @@ export default function VoucherCampaignDetailPage({
       setCampaign((current) => current ? { ...current, status } : current);
       const lifecycle = await fetch(`/api/admin/vouchers/${campaign.id}/lifecycle`, { cache: "no-store" }).then((item) => item.json());
       setAuditLog(lifecycle.auditLog ?? []); setVersions(lifecycle.versions ?? []);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "Không thể đổi trạng thái."); }
+      toast.success("Đã cập nhật trạng thái voucher.");
+    } catch (reason) { toast.error(reason instanceof Error ? reason.message : "Không thể đổi trạng thái."); }
     finally { setIsMutating(false); }
   }
 

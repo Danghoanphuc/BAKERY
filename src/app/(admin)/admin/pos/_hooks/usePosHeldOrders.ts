@@ -12,11 +12,13 @@ type UsePosHeldOrdersReturn = {
     items: CartItem[];
     customer: PosCustomer;
     voucher?: SelectedVoucher;
+    note?: string;
   }) => void;
   restoreHeldOrder: (order: HeldPosOrder) => {
     items: CartItem[];
     customer: PosCustomer;
     voucher?: SelectedVoucher;
+    note?: string;
   } | null;
   removeHeldOrder: (orderId: string) => void;
 };
@@ -51,10 +53,12 @@ export function usePosHeldOrders(): UsePosHeldOrdersReturn {
       items,
       customer,
       voucher,
+      note,
     }: {
       items: CartItem[];
       customer: PosCustomer;
       voucher?: SelectedVoucher;
+      note?: string;
     }) => {
       if (items.length === 0) return;
 
@@ -64,6 +68,7 @@ export function usePosHeldOrders(): UsePosHeldOrdersReturn {
           items,
           customer,
           voucher,
+          note,
           createdAt: new Date().toISOString(),
         },
         ...current,
@@ -79,6 +84,7 @@ export function usePosHeldOrders(): UsePosHeldOrdersReturn {
         items: order.items,
         customer: order.customer,
         voucher: order.voucher,
+        note: order.note,
       };
     },
     [],

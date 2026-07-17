@@ -14,30 +14,19 @@ import {
   Timestamp,
   waitForPendingWrites,
   writeBatch,
+  runTransaction,
+  limit as firestoreLimit,
+  startAfter,
+  documentId,
+  type QueryConstraint,
 } from "firebase/firestore";
 
-function stripUndefined(obj: any): any {
-  if (obj === null || obj === undefined) {
-    return obj;
-  }
-  if (Array.isArray(obj)) {
-    return obj.map((item) => stripUndefined(item));
-  }
-  if (typeof obj === "object") {
-    const newObj: any = {};
-    for (const key in obj) {
-      const value = stripUndefined(obj[key]);
-      if (value !== undefined) {
-        newObj[key] = value;
-      } else {
-        console.log("Removing undefined field:", key, "from object:", obj);
-      }
-    }
-    return newObj;
-  }
-  return obj;
-}
 import { db } from "./app";
+import { stripUndefined } from "./strip-undefined";
+import {
+  canTransitionOrder,
+  getPrimaryOrderTransition,
+} from "@/lib/orders/order-workflow";
 import type { Category, Product, Order } from "@/types";
 import { isProductListed } from "@/lib/product-availability";
 import {
@@ -380,8 +369,45 @@ export async function getOrders(): Promise<Order[]> {
     return mapOrdersSorted(snapshot.docs);
   } catch (error) {
     console.error("Error fetching orders:", error);
-    return [];
+    throw error;
   }
+}
+
+export async function getOrdersPage(
+  pageSize = 100,
+  cursor?: string,
+): Promise<{ orders: Order[]; nextCursor: string | null }> {
+  const safePageSize = Math.min(Math.max(pageSize, 1), 100);
+  const constraints: QueryConstraint[] = [
+    orderBy("createdAt", "desc"),
+    orderBy(documentId(), "desc"),
+  ];
+
+  if (cursor) {
+    const separator = cursor.indexOf(":");
+    const timestamp = Number(cursor.slice(0, separator));
+    const id = cursor.slice(separator + 1);
+    if (separator < 1 || !Number.isFinite(timestamp) || !id) {
+      throw new Error("INVALID_ORDER_CURSOR");
+    }
+    constraints.push(startAfter(Timestamp.fromMillis(timestamp), id));
+  }
+
+  constraints.push(firestoreLimit(safePageSize + 1));
+  const snapshot = await getDocs(query(collection(db, "orders"), ...constraints));
+  const hasMore = snapshot.docs.length > safePageSize;
+  const pageDocs = snapshot.docs.slice(0, safePageSize);
+  const last = pageDocs[pageDocs.length - 1];
+  const createdAt = last?.data().createdAt;
+  const createdAtMs =
+    createdAt && typeof createdAt.toMillis === "function"
+      ? createdAt.toMillis()
+      : getOrderTimestamp(createdAt);
+
+  return {
+    orders: mapOrdersSorted(pageDocs),
+    nextCursor: hasMore && last ? `${createdAtMs}:${last.id}` : null,
+  };
 }
 
 export async function getOrdersByCustomer(
@@ -502,8 +528,120 @@ export async function updateOrder(
 ): Promise<void> {
   const docRef = doc(db, "orders", id);
   await updateDoc(docRef, {
-    ...data,
+    ...stripUndefined(data),
     updatedAt: Timestamp.now(),
+  });
+}
+
+export async function transitionOrderAtomically(
+  id: string,
+  status: Order["status"],
+  metadata?: { note?: string; actor?: string },
+): Promise<void> {
+  await runTransaction(db, async (transaction) => {
+    const reference = doc(db, "orders", id);
+    const snapshot = await transaction.get(reference);
+    if (!snapshot.exists()) throw new Error("ORDER_NOT_FOUND");
+
+    const current = snapshot.data() as Order;
+    if (!canTransitionOrder(current.status, status)) {
+      throw new Error("INVALID_STATUS_TRANSITION");
+    }
+
+    transaction.update(
+      reference,
+      stripUndefined({
+        status,
+        statusHistory: [
+          ...(current.statusHistory ?? []),
+          {
+            status,
+            at: new Date().toISOString(),
+            actor: metadata?.actor ?? "admin",
+            ...(metadata?.note ? { note: metadata.note } : {}),
+          },
+        ],
+        financialSyncPending: true,
+        financialSyncError: "",
+        updatedAt: Timestamp.now(),
+      }),
+    );
+  });
+}
+
+export async function transitionOrdersAtomically(
+  ids: string[],
+  status: Order["status"],
+): Promise<void> {
+  await runTransaction(db, async (transaction) => {
+    const references = ids.map((id) => doc(db, "orders", id));
+    const snapshots = await Promise.all(
+      references.map((reference) => transaction.get(reference)),
+    );
+
+    for (const snapshot of snapshots) {
+      if (!snapshot.exists()) throw new Error("ORDER_NOT_FOUND");
+      const current = snapshot.data() as Order;
+      if (
+        !canTransitionOrder(current.status, status) ||
+        getPrimaryOrderTransition(current) !== status
+      ) {
+        throw new Error("INVALID_STATUS_TRANSITION");
+      }
+    }
+
+    const changedAt = new Date().toISOString();
+    snapshots.forEach((snapshot, index) => {
+      const current = snapshot.data() as Order;
+      transaction.update(references[index], {
+        status,
+        statusHistory: [
+          ...(current.statusHistory ?? []),
+          { status, at: changedAt, actor: "admin" },
+        ],
+        financialSyncPending: true,
+        financialSyncError: "",
+        updatedAt: Timestamp.now(),
+      });
+    });
+  });
+}
+
+export async function updateOrderOperationsAtomically(
+  id: string,
+  data: Pick<
+    Partial<Order>,
+    "assignedTo" | "internalNotes" | "paymentStatus" | "cancelReason"
+  >,
+): Promise<void> {
+  await runTransaction(db, async (transaction) => {
+    const reference = doc(db, "orders", id);
+    const snapshot = await transaction.get(reference);
+    if (!snapshot.exists()) throw new Error("ORDER_NOT_FOUND");
+
+    const current = snapshot.data() as Order;
+    const update: Partial<Order> = { ...data };
+    if (
+      data.paymentStatus &&
+      data.paymentStatus !== (current.paymentStatus ?? "unpaid")
+    ) {
+      update.paymentStatusHistory = [
+        ...(current.paymentStatusHistory ?? []),
+        {
+          from: current.paymentStatus ?? "unpaid",
+          to: data.paymentStatus,
+          at: new Date().toISOString(),
+          actor: "admin",
+        },
+      ];
+      update.financialSyncPending = true;
+      update.financialSyncError = "";
+    }
+
+    transaction.update(reference, {
+      ...stripUndefined(update),
+      updatedAt: Timestamp.now(),
+    });
   });
 }
 

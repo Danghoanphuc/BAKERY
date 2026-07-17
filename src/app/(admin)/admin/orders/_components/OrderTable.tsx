@@ -18,13 +18,40 @@ type OrderTableProps = {
   onToggleSelect: (orderId: string) => void;
   onViewDetails: (order: Order) => void;
   onUpdateStatus: (order: Order, status: OrderStatus) => void;
-  isSaving: boolean;
+  savingOrderIds: Set<string>;
 };
 
 export function OrderTable(props: OrderTableProps) {
   return (
-    <div className="overflow-hidden rounded-lg border border-neutral-200 bg-white">
-      <div className="overflow-x-auto">
+    <div className="space-y-3">
+      <div className="space-y-3 md:hidden">
+        {props.isLoading && (
+          <div className="rounded-lg border border-neutral-200 bg-white p-8 text-center text-sm text-neutral-500">
+            <Loader2 className="mx-auto mb-2 h-5 w-5 animate-spin" />
+            Đang tải đơn hàng...
+          </div>
+        )}
+        {!props.isLoading && props.orders.length === 0 && (
+          <div className="rounded-lg border border-neutral-200 bg-white p-8 text-center text-sm text-neutral-500">
+            Không có đơn hàng phù hợp.
+          </div>
+        )}
+        {!props.isLoading &&
+          props.orders.map((order) => (
+            <MobileOrderCard
+              key={order.id}
+              order={order}
+              isSelected={props.selectedIds.includes(order.id)}
+              onToggleSelect={() => props.onToggleSelect(order.id)}
+              onViewDetails={() => props.onViewDetails(order)}
+              onUpdateStatus={(status) => props.onUpdateStatus(order, status)}
+              isSaving={props.savingOrderIds.has(order.id)}
+            />
+          ))}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-lg border border-neutral-200 bg-white md:block">
+        <div className="overflow-x-auto">
         <table className="min-w-[1180px] w-full divide-y divide-neutral-200">
           <thead className="bg-neutral-50">
             <tr>
@@ -33,6 +60,7 @@ export function OrderTable(props: OrderTableProps) {
                   type="checkbox"
                   checked={props.allSelected}
                   onChange={props.onToggleSelectAll}
+                  aria-label="Chọn tất cả đơn trên trang"
                   className="h-4 w-4"
                 />
               </th>
@@ -70,7 +98,7 @@ export function OrderTable(props: OrderTableProps) {
                   onUpdateStatus={(status) =>
                     props.onUpdateStatus(order, status)
                   }
-                  isSaving={props.isSaving}
+                  isSaving={props.savingOrderIds.has(order.id)}
                 />
               ))}
 
@@ -86,6 +114,7 @@ export function OrderTable(props: OrderTableProps) {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );
@@ -128,6 +157,7 @@ function OrderRow({
           type="checkbox"
           checked={isSelected}
           onChange={onToggleSelect}
+          aria-label={`Chọn đơn ${order.orderNumber}`}
           className="h-4 w-4"
         />
       </td>
@@ -147,9 +177,11 @@ function OrderRow({
       </td>
       <td className="px-4 py-4">
         <div className="text-sm font-medium text-neutral-900">
-          {order.customerName}
+          {order.customerName || "Khách lẻ"}
         </div>
-        <div className="text-sm text-neutral-500">{order.customerPhone}</div>
+        <div className="text-sm text-neutral-500">
+          {order.customerPhone || "Chưa có số điện thoại"}
+        </div>
       </td>
       <td className="px-4 py-4 text-sm font-semibold text-neutral-900">
         {formatPrice(order.totalAmount)}
@@ -172,27 +204,112 @@ function OrderRow({
         )}
       </td>
       <td className="px-4 py-4">
-        <div className="flex flex-wrap gap-2">
-          {quickActions.map((action) => (
-            <button
-              key={action.status}
-              onClick={() => onUpdateStatus(action.status)}
-              disabled={isSaving}
-              className="rounded-md border border-neutral-200 px-2.5 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 disabled:opacity-60"
-            >
-              {action.label}
-            </button>
-          ))}
-          <button
-            onClick={onViewDetails}
-            className="inline-flex items-center gap-1 rounded-md border border-brand-200 px-2.5 py-1.5 text-xs font-semibold text-brand-600 hover:bg-brand-50"
-          >
-            <Eye className="h-3.5 w-3.5" />
-            Xem
-          </button>
-        </div>
+        <OrderActions
+          quickActions={quickActions}
+          onUpdateStatus={onUpdateStatus}
+          onViewDetails={onViewDetails}
+          isSaving={isSaving}
+        />
       </td>
     </tr>
+  );
+}
+
+function MobileOrderCard({
+  order,
+  isSelected,
+  onToggleSelect,
+  onViewDetails,
+  onUpdateStatus,
+  isSaving,
+}: {
+  order: Order;
+  isSelected: boolean;
+  onToggleSelect: () => void;
+  onViewDetails: () => void;
+  onUpdateStatus: (status: OrderStatus) => void;
+  isSaving: boolean;
+}) {
+  const quickActions = getQuickActions(order);
+  const overdue = isOverdueOrder(order);
+
+  return (
+    <article className={`rounded-lg border bg-white p-4 ${overdue ? "border-red-200 bg-red-50/40" : "border-neutral-200"}`}>
+      <div className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={onToggleSelect}
+          aria-label={`Chọn đơn ${order.orderNumber}`}
+          className="mt-1 h-4 w-4"
+        />
+        <div className="min-w-0 flex-1">
+          <button
+            type="button"
+            onClick={onViewDetails}
+            className="font-bold text-neutral-900 hover:text-brand-600"
+          >
+            {order.orderNumber}
+          </button>
+          <p className="mt-1 truncate text-sm text-neutral-600">
+            {order.customerName || "Khách lẻ"} · {order.customerPhone || "Chưa có SĐT"}
+          </p>
+        </div>
+        <p className="shrink-0 text-sm font-bold text-neutral-900">
+          {formatPrice(order.totalAmount)}
+        </p>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <StatusBadge status={order.status} />
+        <PaymentBadge status={order.paymentStatus ?? "unpaid"} />
+        <span className="text-xs text-neutral-500">{orderTypeLabel[order.orderType]}</span>
+      </div>
+      <div className="mt-3 flex items-center justify-between gap-3 border-t border-neutral-100 pt-3">
+        <span className="text-xs text-neutral-500">{formatDateTime(order.createdAt)}</span>
+        <OrderActions
+          quickActions={quickActions}
+          onUpdateStatus={onUpdateStatus}
+          onViewDetails={onViewDetails}
+          isSaving={isSaving}
+        />
+      </div>
+    </article>
+  );
+}
+
+function OrderActions({
+  quickActions,
+  onUpdateStatus,
+  onViewDetails,
+  isSaving,
+}: {
+  quickActions: ReturnType<typeof getQuickActions>;
+  onUpdateStatus: (status: OrderStatus) => void;
+  onViewDetails: () => void;
+  isSaving: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap justify-end gap-2">
+      {quickActions.map((action) => (
+        <button
+          type="button"
+          key={action.status}
+          onClick={() => onUpdateStatus(action.status)}
+          disabled={isSaving}
+          className="rounded-md border border-neutral-200 px-2.5 py-1.5 text-xs font-semibold text-neutral-700 hover:bg-neutral-100 disabled:opacity-60"
+        >
+          {action.label}
+        </button>
+      ))}
+      <button
+        type="button"
+        onClick={onViewDetails}
+        className="inline-flex items-center gap-1 rounded-md border border-brand-200 px-2.5 py-1.5 text-xs font-semibold text-brand-600 hover:bg-brand-50"
+      >
+        <Eye className="h-3.5 w-3.5" />
+        Xem
+      </button>
+    </div>
   );
 }
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 import type { Order, OrderStatus } from "@/types";
 
 // Hooks
@@ -10,6 +11,7 @@ import {
   useOrderFilters,
   useOrderStats,
   useOrderSelection,
+  useOrderPagination,
 } from "./_hooks/useOrders";
 
 // Components
@@ -18,6 +20,7 @@ import { OrderFilters } from "./_components/OrderFilters";
 import { BulkActions } from "./_components/BulkActions";
 import { OrderTable } from "./_components/OrderTable";
 import { OrderDetailModal } from "./_components/OrderDetailModal";
+import { OrderPagination } from "./_components/OrderPagination";
 
 // API
 import { updateOrderApi, bulkUpdateOrderStatusApi } from "./_api/orderApi";
@@ -40,12 +43,24 @@ export default function OrdersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Loading & message states
-  const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [savingOrderIds, setSavingOrderIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [isBulkSaving, setIsBulkSaving] = useState(false);
 
   // Custom hooks
-  const { orders, setOrders, isLoading, error, setError, loadOrders } =
-    useOrders();
+  const {
+    orders,
+    setOrders,
+    isLoading,
+    isRefreshing,
+    error,
+    setError,
+    loadOrders,
+    hasMore,
+    isLoadingMore,
+    loadMoreOrders,
+  } = useOrders();
   const filteredOrders = useOrderFilters(
     orders,
     activeTab,
@@ -54,19 +69,21 @@ export default function OrdersPage() {
     query,
   );
   const stats = useOrderStats(orders);
+  const pagination = useOrderPagination(filteredOrders);
   const {
     selectedIds,
     allFilteredSelected,
     toggleSelectAll,
     toggleSelectOrder,
     clearSelection,
-  } = useOrderSelection(filteredOrders);
+  } = useOrderSelection(pagination.paginatedOrders);
+  const selectedOrders = pagination.paginatedOrders.filter((order) =>
+    selectedIds.includes(order.id),
+  );
 
   async function updateOrder(order: Order, payload: Partial<Order>) {
-    setIsSaving(true);
+    setSavingOrderIds((current) => new Set(current).add(order.id));
     setError(null);
-    setMessage(null);
-
     try {
       const updatedOrder = await updateOrderApi(order.id, payload);
 
@@ -76,14 +93,22 @@ export default function OrdersPage() {
       setSelectedOrder((current) =>
         current?.id === order.id ? updatedOrder : current,
       );
-      setMessage("Đã cập nhật đơn hàng.");
+      toast.success(
+        updatedOrder.financialSyncPending
+          ? "Đơn đã cập nhật; dữ liệu tài chính đang chờ đồng bộ lại."
+          : "Đã cập nhật đơn hàng.",
+      );
     } catch (err) {
       console.error("Failed to update order:", err);
-      setError(
+      toast.error(
         err instanceof Error ? err.message : "Không thể cập nhật đơn hàng.",
       );
     } finally {
-      setIsSaving(false);
+      setSavingOrderIds((current) => {
+        const next = new Set(current);
+        next.delete(order.id);
+        return next;
+      });
     }
   }
 
@@ -96,28 +121,27 @@ export default function OrdersPage() {
   }
 
   async function bulkUpdateStatus(status: OrderStatus) {
-    setIsSaving(true);
+    setIsBulkSaving(true);
     setError(null);
-    setMessage(null);
 
     try {
-      const { failed, total } = await bulkUpdateOrderStatusApi(
-        selectedIds,
-        orders,
-        status,
-      );
+      const { total, financialSyncPending } =
+        await bulkUpdateOrderStatusApi(selectedIds, status);
 
       await loadOrders();
-      setMessage(
-        failed
-          ? `Đã xử lý một phần, ${failed} đơn không hợp lệ.`
-          : `Đã cập nhật ${total} đơn.`,
+      clearSelection();
+      toast.success(
+        financialSyncPending
+          ? `Đã cập nhật ${total} đơn; ${financialSyncPending} đơn đang chờ đồng bộ tài chính.`
+          : `Đã cập nhật an toàn ${total} đơn.`,
       );
     } catch (err) {
       console.error("Failed to bulk update orders:", err);
-      setError("Không thể cập nhật hàng loạt.");
+      toast.error(
+        err instanceof Error ? err.message : "Không thể cập nhật hàng loạt.",
+      );
     } finally {
-      setIsSaving(false);
+      setIsBulkSaving(false);
     }
   }
 
@@ -149,7 +173,7 @@ export default function OrdersPage() {
       window.confirm("Xác nhận bạn đã hoàn tiền chuyển khoản cho khách?");
     if (!settlementConfirmed) return;
 
-    setIsSaving(true);
+    setSavingOrderIds((current) => new Set(current).add(order.id));
     setError(null);
     try {
       const response = await fetch(`/api/pos/checkout/${order.id}/refund`, {
@@ -161,13 +185,46 @@ export default function OrdersPage() {
       if (!response.ok) throw new Error(data.error || "Không thể hoàn tiền.");
       await loadOrders();
       closeModal();
-      setMessage(`Đã hoàn tiền đơn ${order.orderNumber}.`);
+      toast.success(`Đã hoàn tiền đơn ${order.orderNumber}.`);
     } catch (refundError) {
-      setError(
+      toast.error(
         refundError instanceof Error ? refundError.message : "Không thể hoàn tiền.",
       );
     } finally {
-      setIsSaving(false);
+      setSavingOrderIds((current) => {
+        const next = new Set(current);
+        next.delete(order.id);
+        return next;
+      });
+    }
+  }
+
+  async function reconcileFinancials(order: Order) {
+    setSavingOrderIds((current) => new Set(current).add(order.id));
+    try {
+      const response = await fetch(
+        `/api/admin/orders/${order.id}/reconcile-financials`,
+        { method: "POST" },
+      );
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(data.error || "Không thể đồng bộ tài chính.");
+      await loadOrders();
+      setSelectedOrder((current) =>
+        current?.id === order.id
+          ? { ...current, financialSyncPending: false, financialSyncError: "" }
+          : current,
+      );
+      toast.success("Đã đồng bộ dữ liệu tài chính.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Không thể đồng bộ tài chính.",
+      );
+    } finally {
+      setSavingOrderIds((current) => {
+        const next = new Set(current);
+        next.delete(order.id);
+        return next;
+      });
     }
   }
 
@@ -185,24 +242,25 @@ export default function OrdersPage() {
           </p>
         </div>
         <button
-          onClick={loadOrders}
-          className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50"
+          type="button"
+          onClick={() => void loadOrders()}
+          disabled={isLoading || isRefreshing}
+          className="flex items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-700 hover:bg-neutral-50 disabled:opacity-60"
         >
-          <RefreshCw className="h-4 w-4" />
-          Làm mới
+          <RefreshCw
+            className={`h-4 w-4 ${isLoading || isRefreshing ? "animate-spin" : ""}`}
+          />
+          {isLoading ? "Đang tải…" : isRefreshing ? "Đang làm mới…" : "Làm mới"}
         </button>
       </div>
 
       {/* Alert messages */}
-      {(error || message) && (
+      {error && (
         <div
-          className={`rounded-lg border px-4 py-3 text-sm font-medium ${
-            error
-              ? "border-red-200 bg-red-50 text-red-700"
-              : "border-green-200 bg-green-50 text-green-700"
-          }`}
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
         >
-          {error || message}
+          {error}
         </div>
       )}
 
@@ -224,15 +282,15 @@ export default function OrdersPage() {
 
       {/* Bulk actions */}
       <BulkActions
-        selectedCount={selectedIds.length}
+        selectedOrders={selectedOrders}
         onBulkUpdate={bulkUpdateStatus}
         onClearSelection={clearSelection}
-        isSaving={isSaving}
+        isSaving={isBulkSaving}
       />
 
       {/* Orders table */}
       <OrderTable
-        orders={filteredOrders}
+        orders={pagination.paginatedOrders}
         isLoading={isLoading}
         selectedIds={selectedIds}
         allSelected={allFilteredSelected}
@@ -240,7 +298,18 @@ export default function OrdersPage() {
         onToggleSelect={toggleSelectOrder}
         onViewDetails={openDetails}
         onUpdateStatus={updateStatus}
-        isSaving={isSaving}
+        savingOrderIds={savingOrderIds}
+      />
+
+      <OrderPagination
+        page={pagination.page}
+        pageCount={pagination.pageCount}
+        pageSize={pagination.pageSize}
+        total={filteredOrders.length}
+        onPageChange={pagination.setPage}
+        hasMore={hasMore}
+        isLoadingMore={isLoadingMore}
+        onLoadMore={loadMoreOrders}
       />
 
       {/* Order detail modal */}
@@ -251,7 +320,8 @@ export default function OrdersPage() {
           onUpdate={updateOrder}
           onPrint={printOrder}
           onRefund={refundOrder}
-          isSaving={isSaving}
+          onReconcileFinancials={reconcileFinancials}
+          isSaving={savingOrderIds.has(selectedOrder.id)}
         />
       )}
     </div>

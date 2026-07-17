@@ -28,6 +28,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 import type { Category } from "@/types";
 import { CategoryMap } from "./_components/CategoryMap";
 
@@ -53,7 +54,6 @@ export default function CategoriesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState<CategoryFormData>(emptyForm);
@@ -166,7 +166,6 @@ export default function CategoriesPage() {
     event.preventDefault();
     setIsSaving(true);
     setError(null);
-    setMessage(null);
 
     if (!formData.name.trim()) {
       setIsSaving(false);
@@ -199,7 +198,7 @@ export default function CategoriesPage() {
       if (!response.ok) throw new Error("save_failed");
 
       setIsModalOpen(false);
-      setMessage(editingCategory ? "Đã cập nhật danh mục." : "Đã thêm danh mục.");
+      toast.success(editingCategory ? "Đã cập nhật danh mục." : "Đã thêm danh mục.");
       await loadData();
     } catch (err) {
       console.error("Failed to save category:", err);
@@ -212,7 +211,6 @@ export default function CategoriesPage() {
   async function toggleVisibility(category: Category) {
     setIsSaving(true);
     setError(null);
-    setMessage(null);
 
     try {
       const response = await fetch(`/api/categories/${category.id}`, {
@@ -232,10 +230,10 @@ export default function CategoriesPage() {
             : item,
         ),
       );
-      setMessage("Đã cập nhật trạng thái hiển thị.");
+      toast.success("Đã cập nhật trạng thái hiển thị.");
     } catch (err) {
       console.error("Failed to update category visibility:", err);
-      setError("Không thể cập nhật trạng thái hiển thị.");
+      toast.error("Không thể cập nhật trạng thái hiển thị.");
     } finally {
       setIsSaving(false);
     }
@@ -269,7 +267,6 @@ export default function CategoriesPage() {
     draggingIdRef.current = categoryId;
     setDraggingId(categoryId);
     setError(null);
-    setMessage(null);
   }
 
   function moveDraggedCategory(event: DragEvent<HTMLDivElement>, overId: string) {
@@ -299,7 +296,6 @@ export default function CategoriesPage() {
   ) {
     setIsSaving(true);
     setError(null);
-    if (!silent) setMessage(null);
 
     try {
       const response = await fetch("/api/categories/reorder", {
@@ -315,7 +311,7 @@ export default function CategoriesPage() {
 
       if (!response.ok) throw new Error("reorder_failed");
       setHasUnsavedOrder(false);
-      setMessage(
+      toast.success(
         silent
           ? "Đã tự lưu thứ tự hiển thị."
           : "Đã lưu thứ tự hiển thị.",
@@ -323,7 +319,7 @@ export default function CategoriesPage() {
       await loadData();
     } catch (err) {
       console.error("Failed to reorder categories:", err);
-      setError("Không thể lưu thứ tự danh mục.");
+      toast.error("Không thể lưu thứ tự danh mục.");
       // Resync UI with server so local drag order does not drift.
       await loadData();
     } finally {
@@ -334,7 +330,6 @@ export default function CategoriesPage() {
   async function deleteCategory(category: Category) {
     setIsSaving(true);
     setError(null);
-    setMessage(null);
 
     try {
       const response = await fetch(`/api/categories/${category.id}`, {
@@ -351,11 +346,11 @@ export default function CategoriesPage() {
 
       if (!response.ok) throw new Error("delete_failed");
 
-      setMessage("Đã xóa danh mục.");
+      toast.success("Đã xóa danh mục.");
       await loadData();
     } catch (err) {
       console.error("Failed to delete category:", err);
-      setError("Không thể xóa danh mục.");
+      toast.error("Không thể xóa danh mục.");
     } finally {
       setIsSaving(false);
     }
@@ -366,7 +361,6 @@ export default function CategoriesPage() {
 
     setIsSaving(true);
     setError(null);
-    setMessage(null);
 
     try {
       const moveResponse = await fetch(
@@ -386,11 +380,11 @@ export default function CategoriesPage() {
 
       setDeleteCandidate(null);
       setMoveTargetId("");
-      setMessage("Đã chuyển sản phẩm và xóa danh mục.");
+      toast.success("Đã chuyển sản phẩm và xóa danh mục.");
       await loadData();
     } catch (err) {
       console.error("Failed to move products and delete category:", err);
-      setError("Không thể chuyển sản phẩm hoặc xóa danh mục.");
+      toast.error("Không thể chuyển sản phẩm hoặc xóa danh mục.");
     } finally {
       setIsSaving(false);
     }
@@ -432,17 +426,7 @@ export default function CategoriesPage() {
         </div>
       </div>
 
-      {(error || message) && (
-        <div
-          className={`rounded-lg border px-4 py-3 text-sm font-medium ${
-            error
-              ? "border-red-200 bg-red-50 text-red-700"
-              : "border-green-200 bg-green-50 text-green-700"
-          }`}
-        >
-          {error || message}
-        </div>
-      )}
+      {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">{error}</div>}
 
       <div className="grid gap-4 md:grid-cols-4">
         <StatCard label="Danh mục" value={stats.total.toString()} />

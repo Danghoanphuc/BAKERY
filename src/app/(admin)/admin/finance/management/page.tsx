@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { ChartNoAxesCombined, CircleDollarSign, Loader2, Network, Plus, Target } from "lucide-react";
+import { toast } from "sonner";
 import type {
   AllocationPolicyVersion, BudgetLine, CostCenter, ExpenseCategory,
   ManagementAccountingSummary, MonthlyBudget,
@@ -22,7 +23,6 @@ export default function ManagementPage() {
   const [budgets, setBudgets] = useState<MonthlyBudget[]>([]);
   const [summary, setSummary] = useState<ManagementAccountingSummary | null>(null);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [centerForm, setCenterForm] = useState({ code: "", name: "", type: "production", channel: "" });
   const [budgetLines, setBudgetLines] = useState<BudgetLine[]>([
     { id: "revenue", metric: "net_revenue", plannedAmount: 0 },
@@ -56,7 +56,7 @@ export default function ManagementPage() {
       ...centerForm, isActive: true,
       ...(centerForm.channel ? { channel: centerForm.channel } : {}),
     });
-    setMessage(response.ok ? "Đã tạo trung tâm chi phí." : "Không thể tạo trung tâm chi phí.");
+    notifyResponse(response, "Đã tạo trung tâm chi phí.", "Không thể tạo trung tâm chi phí.");
     if (response.ok) { setCenterForm({ code: "", name: "", type: "production", channel: "" }); await load(); }
     setSaving(false);
   }
@@ -66,13 +66,13 @@ export default function ManagementPage() {
     const response = await post("/api/admin/finance/budgets", {
       period, lines: budgetLines, createdBy: "admin",
     });
-    setMessage(response.ok ? "Đã tạo ngân sách nháp. Hãy duyệt để đưa vào variance." : "Ngân sách chưa hợp lệ.");
+    notifyResponse(response, "Đã tạo ngân sách nháp. Hãy duyệt để đưa vào variance.", "Ngân sách chưa hợp lệ.");
     await load(); setSaving(false);
   }
 
   async function approveBudget(id: string) {
     setSaving(true); const response = await fetch(`/api/admin/finance/budgets/${id}/approve`, { method: "POST" });
-    setMessage(response.ok ? "Đã duyệt ngân sách tháng." : "Không thể duyệt ngân sách."); await load(); setSaving(false);
+    notifyResponse(response, "Đã duyệt ngân sách tháng.", "Không thể duyệt ngân sách."); await load(); setSaving(false);
   }
 
   async function createPolicy(event: FormEvent) {
@@ -88,13 +88,13 @@ export default function ManagementPage() {
       driver: "manual_weight", targets,
       effectiveFrom: new Date(policyForm.effectiveFrom),
     });
-    setMessage(response.ok ? "Đã tạo chính sách nháp." : "Chính sách phân bổ chưa hợp lệ.");
+    notifyResponse(response, "Đã tạo chính sách nháp.", "Chính sách phân bổ chưa hợp lệ.");
     await load(); setSaving(false);
   }
 
   async function activatePolicy(id: string) {
     setSaving(true); const response = await fetch(`/api/admin/finance/allocation-policies/${id}/activate`, { method: "POST" });
-    setMessage(response.ok ? "Đã kích hoạt chính sách phân bổ." : "Không thể kích hoạt chính sách."); await load(); setSaving(false);
+    notifyResponse(response, "Đã kích hoạt chính sách phân bổ.", "Không thể kích hoạt chính sách."); await load(); setSaving(false);
   }
 
   async function runSimulation(event: FormEvent) {
@@ -122,7 +122,6 @@ export default function ManagementPage() {
         <Kpi label="Hòa vốn" value={summary?.breakEvenRevenue ? formatMoney(summary.breakEvenRevenue) : "Chưa đủ dữ liệu"} detail="Theo lãi góp tháng" icon={<Target />} />
         <Kpi label="Lợi nhuận quản trị" value={formatMoney(summary?.operatingProfit ?? 0)} detail={approvedBudget ? "Có ngân sách đối chiếu" : "Chưa có budget duyệt"} icon={<ChartNoAxesCombined />} />
       </div>
-      {message && <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm font-bold text-brand-800">{message}</div>}
       <div className="flex flex-wrap gap-2">
         {([[
           "centers", "Trung tâm chi phí",
@@ -152,6 +151,7 @@ function ScenarioSlider({ label, value, onChange }: { label: string; value: numb
 function Result({ label, value, baseline }: { label: string; value: number; baseline?: number }) { const change = baseline ? Math.round((value - baseline) / Math.abs(baseline) * 1000) / 10 : null; return <div className="rounded-xl bg-neutral-50 p-4"><p className="text-xs font-bold uppercase text-neutral-400">{label}</p><p className="mt-2 text-xl font-black">{formatMoney(value)}</p>{change != null && <p className={`mt-1 text-xs font-bold ${change >= 0 ? "text-emerald-600" : "text-red-600"}`}>{change > 0 ? "+" : ""}{change}% so với hiện tại</p>}</div>; }
 function centerOption(center: CostCenter): [string, string] { return [center.id, `${center.code} · ${center.name}`]; }
 function post(url: string, body: unknown) { return fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); }
+function notifyResponse(response: Response, successMessage: string, errorMessage: string) { response.ok ? toast.success(successMessage) : toast.error(errorMessage); }
 function cryptoId() { return typeof crypto !== "undefined" ? crypto.randomUUID() : Math.random().toString(36).slice(2); }
 function today() { return new Date().toISOString().slice(0, 10); }
 function formatMoney(value: number) { return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(value); }

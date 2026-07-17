@@ -11,6 +11,7 @@ import {
   Trash2,
   UserRound,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import type { Customer } from "@/types";
 
@@ -91,9 +92,10 @@ export default function CustomerDetailPage({
       }
 
       await loadCustomer(customerId);
+      toast.success("Đã xác minh số điện thoại khách hàng.");
     } catch (saveError) {
       console.error("Failed to verify phone:", saveError);
-      setError(
+      toast.error(
         saveError instanceof Error
           ? saveError.message
           : "Không thể xác minh số điện thoại",
@@ -125,10 +127,11 @@ export default function CustomerDetailPage({
         throw new Error(data.error ?? "Không thể xoá khách hàng");
       }
 
+      toast.success(`Đã xoá khách hàng “${customer.name}”.`);
       router.push("/admin/customers");
     } catch (deleteError) {
       console.error("Failed to delete customer:", deleteError);
-      setError(
+      toast.error(
         deleteError instanceof Error
           ? deleteError.message
           : "Không thể xoá khách hàng",

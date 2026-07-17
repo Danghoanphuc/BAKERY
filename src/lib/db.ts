@@ -20,12 +20,16 @@ export {
   deleteProduct,
   // Orders
   getOrders,
+  getOrdersPage,
   getOrdersByCustomer,
   getOrdersByPhone,
   getOrderById,
   getOrderByPayOSOrderCode,
   createOrder,
   updateOrder,
+  transitionOrderAtomically,
+  transitionOrdersAtomically,
+  updateOrderOperationsAtomically,
   updateOrderStatus,
   generateOrderNumber,
 } from "./firebase/config";

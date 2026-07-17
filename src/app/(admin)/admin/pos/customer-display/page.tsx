@@ -1,5 +1,5 @@
-import { CustomerDisplayShell } from "./_components/CustomerDisplayShell";
+import { redirect } from "next/navigation";
 
 export default function POSCustomerDisplayPage() {
-  return <CustomerDisplayShell />;
+  redirect("/pos/customer-display");
 }

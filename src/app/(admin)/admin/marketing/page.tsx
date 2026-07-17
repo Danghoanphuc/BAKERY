@@ -13,6 +13,7 @@ import {
   TicketPercent,
   X,
 } from "lucide-react";
+import { toast } from "sonner";
 import type { MarketingCampaign, MarketingSettings } from "@/types";
 import { audienceLabels, channelLabels, discountTypeLabels, formatCurrency, formatNumber, getVoucherMetrics } from "../vouchers/_lib/voucher-admin";
 
@@ -44,8 +45,6 @@ export default function MarketingPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
 
   async function loadMarketing() {
     try {
@@ -56,10 +55,9 @@ export default function MarketingPage() {
       setCampaigns(payload.campaigns.filter((campaign) => campaign.type === "voucher"));
       setSettings(payload.settings);
       setSettingsDraft(payload.settings);
-      setError(null);
     } catch (err) {
       console.error("Failed to load marketing:", err);
-      setError("Không thể tải dữ liệu marketing.");
+      toast.error("Không thể tải dữ liệu marketing.");
     } finally {
       setIsLoading(false);
     }
@@ -91,8 +89,6 @@ export default function MarketingPage() {
   function openSettings() {
     setSettingsDraft(settings);
     setIsSettingsOpen(true);
-    setMessage(null);
-    setError(null);
   }
 
   async function saveSettings(event: FormEvent<HTMLFormElement>) {
@@ -100,8 +96,6 @@ export default function MarketingPage() {
     if (!settingsDraft) return;
 
     setIsSaving(true);
-    setMessage(null);
-    setError(null);
 
     try {
       const response = await fetch("/api/marketing/settings", {
@@ -113,11 +107,11 @@ export default function MarketingPage() {
       if (!response.ok) throw new Error("settings_failed");
       setSettings(settingsDraft);
       setIsSettingsOpen(false);
-      setMessage("Đã cập nhật cấu hình điểm.");
+      toast.success("Đã cập nhật cấu hình điểm.");
       await loadMarketing();
     } catch (err) {
       console.error("Failed to save reward settings:", err);
-      setError("Chưa lưu được cấu hình điểm.");
+      toast.error("Chưa lưu được cấu hình điểm.");
     } finally {
       setIsSaving(false);
     }
@@ -161,18 +155,6 @@ export default function MarketingPage() {
           </Link>
         </div>
       </div>
-
-      {(message || error) && (
-        <div
-          className={`rounded-lg border px-4 py-3 text-sm font-semibold ${
-            error
-              ? "border-red-200 bg-red-50 text-red-700"
-              : "border-emerald-200 bg-emerald-50 text-emerald-700"
-          }`}
-        >
-          {error || message}
-        </div>
-      )}
 
       <div className="grid gap-3 md:grid-cols-4">
         <SummaryCard icon={<TicketPercent className="h-5 w-5" />} label="Chương trình" value={formatNumber(campaigns.length)} />

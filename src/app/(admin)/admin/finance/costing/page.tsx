@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Wheat,
 } from "lucide-react";
+import { toast } from "sonner";
 import type { FinanceIngredient, Product, RecipeVersion } from "@/types";
 import { calculateCostPerBaseUnitMicros } from "@/features/finance/domain/unit-conversion";
 
@@ -100,7 +101,6 @@ export default function CostingPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [ingredientForm, setIngredientForm] = useState(emptyIngredient);
   const [recipeForm, setRecipeForm] = useState<RecipeFormState>(() =>
     emptyRecipeForm(requestedProductId),
@@ -238,21 +238,20 @@ export default function CostingPage() {
     const source = pickRecipeForProduct(recipes, productId);
     if (source) {
       applyRecipe(source);
-      setMessage(
+      toast.info(
         `Đã tải BOM ${source.status === "active" ? "active" : "mới nhất"} v${source.version} vào form. Lưu sẽ tạo phiên bản nháp mới.`,
       );
     } else {
       setRecipeForm(emptyRecipeForm(productId));
       setRecipeLines([{ ingredientId: "", quantity: 0 }]);
       clearLoadedSource();
-      setMessage("Sản phẩm chưa có BOM — điền định lượng rồi lưu nháp.");
+      toast.info("Sản phẩm chưa có BOM — điền định lượng rồi lưu nháp.");
     }
   }
 
   async function createIngredient(event: FormEvent) {
     event.preventDefault();
     setSaving(true);
-    setMessage(null);
     try {
       const unitCost = calculateCostPerBaseUnitMicros({
         purchaseAmount: ingredientForm.purchaseAmount,
@@ -272,10 +271,10 @@ export default function CostingPage() {
       });
       if (!response.ok) throw new Error("create_failed");
       setIngredientForm(emptyIngredient);
-      setMessage("Đã thêm nguyên liệu và ghi nhận giá mua ban đầu.");
+      toast.success("Đã thêm nguyên liệu và ghi nhận giá mua ban đầu.");
       await load();
     } catch {
-      setMessage("Không thể tạo nguyên liệu. Kiểm tra quy cách mua và số tiền.");
+      toast.error("Không thể tạo nguyên liệu. Kiểm tra quy cách mua và số tiền.");
     } finally {
       setSaving(false);
     }
@@ -284,7 +283,6 @@ export default function CostingPage() {
   async function createRecipe(event: FormEvent) {
     event.preventDefault();
     setSaving(true);
-    setMessage(null);
     const response = await fetch("/api/admin/finance/recipes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -296,12 +294,12 @@ export default function CostingPage() {
       }),
     });
     if (response.ok) {
-      setMessage(
+      toast.success(
         "Đã tạo phiên bản BOM nháp. Kiểm tra và kích hoạt khi sẵn sàng.",
       );
       await load();
     } else {
-      setMessage(
+      toast.error(
         "Không thể tạo BOM. Mỗi dòng cần nguyên liệu và định lượng hợp lệ.",
       );
     }
@@ -314,22 +312,15 @@ export default function CostingPage() {
       `/api/admin/finance/recipes/${id}/activate`,
       { method: "POST" },
     );
-    setMessage(
-      response.ok
-        ? "Đã kích hoạt BOM; phiên bản cũ được lưu lịch sử."
-        : "Không thể kích hoạt BOM.",
-    );
+    response.ok
+      ? toast.success("Đã kích hoạt BOM; phiên bản cũ được lưu lịch sử.")
+      : toast.error("Không thể kích hoạt BOM.");
     await load();
     setSaving(false);
   }
 
   return (
     <div className="space-y-5">
-      {message && (
-        <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-800">
-          {message}
-        </div>
-      )}
       <div className="grid gap-5 2xl:grid-cols-[0.8fr_1.2fr]">
         <section className="space-y-5">
           <Panel
@@ -691,7 +682,7 @@ export default function CostingPage() {
                         onClick={() => {
                           applyRecipe(recipe);
                           setFilterVersionsByProduct(true);
-                          setMessage(
+                          toast.info(
                             `Đã tải BOM v${recipe.version} vào form. Chỉnh sửa rồi lưu nháp mới.`,
                           );
                         }}

@@ -2,6 +2,7 @@ import { ChangeEvent, Dispatch, SetStateAction, useEffect, useState } from "reac
 import Link from "next/link";
 import { Bot, ImagePlus, Loader2, Plus, RefreshCw, Star, Trash2, X } from "lucide-react";
 import { clsx } from "clsx";
+import { toast } from "sonner";
 import type { Category, FinanceIngredient, FlavorOption, InventoryBalance, InventoryMovement, ProductVariantCombination, ProductWorkspaceCardConfig, ProductWorkspaceCardId, ProductionStep, RecipeVersion, SizeOption } from "@/types";
 import type { ProductCostSummary } from "@/features/finance";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
@@ -1469,7 +1470,6 @@ export function ProductionBomEditor({ productId }: { productId: string }) {
   const [lines, setLines] = useState<BomDraftLine[]>([{ ingredientId: "", quantity: 0 }]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -1503,11 +1503,10 @@ export function ProductionBomEditor({ productId }: { productId: string }) {
   const saveDraft = async () => {
     const validLines = lines.filter((line) => line.ingredientId && Number(line.quantity) > 0);
     if (!validLines.length || draft.yieldQuantity < 1) {
-      setMessage("Cần có ít nhất một nguyên liệu và sản lượng mẻ hợp lệ.");
+      toast.warning("Cần có ít nhất một nguyên liệu và sản lượng mẻ hợp lệ.");
       return;
     }
     setIsSaving(true);
-    setMessage(null);
     try {
       const response = await fetch("/api/admin/finance/recipes", {
         method: "POST",
@@ -1518,9 +1517,9 @@ export function ProductionBomEditor({ productId }: { productId: string }) {
       if (!response.ok || !("id" in created)) throw new Error("Không thể lưu BOM nháp.");
       setDraftRecipeId(created.id);
       setDraftRecipe(created);
-      setMessage(`Đã lưu BOM v${created.version} ở trạng thái nháp. Kích hoạt khi sẵn sàng áp dụng.`);
+      toast.success(`Đã lưu BOM v${created.version} ở trạng thái nháp. Kích hoạt khi sẵn sàng áp dụng.`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Không thể lưu BOM nháp.");
+      toast.error(error instanceof Error ? error.message : "Không thể lưu BOM nháp.");
     } finally {
       setIsSaving(false);
     }
@@ -1532,12 +1531,12 @@ export function ProductionBomEditor({ productId }: { productId: string }) {
     try {
       const response = await fetch(`/api/admin/finance/recipes/${draftRecipeId}/activate`, { method: "POST" });
       if (!response.ok) throw new Error("Không thể kích hoạt BOM.");
-      setMessage("BOM đã được kích hoạt; phiên bản cũ vẫn được lưu trong lịch sử.");
+      toast.success("BOM đã được kích hoạt; phiên bản cũ vẫn được lưu trong lịch sử.");
       setActiveRecipe({ ...(draftRecipe ?? activeRecipe ?? { id: draftRecipeId, productId, version: 0, status: "active", effectiveFrom: new Date(), yieldQuantity: draft.yieldQuantity, ingredients: [], packagingCostPerBatch: 0, directLaborCostPerBatch: 0, overheadCostPerBatch: 0, wasteBasisPoints: 0 }), id: draftRecipeId, status: "active" });
       setDraftRecipeId(null);
       setDraftRecipe(null);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Không thể kích hoạt BOM.");
+      toast.error(error instanceof Error ? error.message : "Không thể kích hoạt BOM.");
     } finally {
       setIsSaving(false);
     }
@@ -1546,7 +1545,7 @@ export function ProductionBomEditor({ productId }: { productId: string }) {
   return (
     <FormSection title="Công thức & định mức (BOM)">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3 rounded-xl border border-amber-100 bg-amber-50/60 p-3"><div><p className="text-sm font-black text-amber-950">{activeRecipe?.status === "active" ? `Đang áp dụng BOM v${activeRecipe.version}` : "Chưa có BOM đang áp dụng"}</p><p className="mt-1 text-xs leading-5 text-amber-900/80">Lưu sẽ tạo một phiên bản nháp mới; kích hoạt mới làm giá thành và nghiệp vụ dùng công thức đó.</p></div>{draftRecipeId && <button type="button" onClick={activateDraft} disabled={isSaving} className="h-9 rounded-lg bg-amber-600 px-3 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-50">Kích hoạt BOM nháp</button>}</div>
-      {isLoading ? <div className="flex h-32 items-center justify-center text-sm text-neutral-500"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Đang tải định mức…</div> : <div className="space-y-4"><div className="grid gap-3 sm:grid-cols-3"><NumberField label="Sản lượng chuẩn / mẻ" min={1} value={draft.yieldQuantity} onChange={(yieldQuantity) => setDraft((current) => ({ ...current, yieldQuantity }))} /><TextField label="Hiệu lực từ" type="date" value={draft.effectiveFrom} onChange={(effectiveFrom) => setDraft((current) => ({ ...current, effectiveFrom }))} /><NumberField label="Hao hụt (%)" min={0} value={draft.wastePercent} onChange={(wastePercent) => setDraft((current) => ({ ...current, wastePercent }))} /></div><div><div className="mb-2 flex items-center justify-between"><p className="text-sm font-bold text-neutral-900">Nguyên liệu</p><button type="button" onClick={() => setLines((current) => [...current, { ingredientId: "", quantity: 0 }])} className="text-xs font-bold text-brand-700 hover:text-brand-800">+ Thêm dòng</button></div><div className="space-y-2">{lines.map((line, index) => <div key={`${line.ingredientId}-${index}`} className="grid grid-cols-[minmax(0,1fr)_120px_36px] gap-2"><select value={line.ingredientId} onChange={(event) => updateLine(index, { ingredientId: event.target.value })} className="h-10 min-w-0 rounded-lg border border-neutral-300 bg-white px-2.5 text-sm outline-none focus:border-brand-500"><option value="">Chọn nguyên liệu</option>{ingredients.map((ingredient) => <option key={ingredient.id} value={ingredient.id}>{ingredient.name} ({unitLabel(ingredient.baseUnit)})</option>)}</select><input type="number" min={0} value={line.quantity || ""} onChange={(event) => updateLine(index, { quantity: Number(event.target.value) || 0 })} placeholder="Định lượng" className="h-10 rounded-lg border border-neutral-300 px-2.5 text-sm outline-none focus:border-brand-500" /><button type="button" onClick={() => setLines((current) => current.length > 1 ? current.filter((_, lineIndex) => lineIndex !== index) : current)} className="grid h-10 w-9 place-items-center rounded-lg text-neutral-400 hover:bg-red-50 hover:text-red-600" aria-label={`Xóa nguyên liệu ${index + 1}`}><Trash2 className="h-4 w-4" /></button></div>)}</div></div><div className="grid gap-3 sm:grid-cols-3"><NumberField label="Bao bì / mẻ" min={0} value={draft.packagingCostPerBatch} onChange={(packagingCostPerBatch) => setDraft((current) => ({ ...current, packagingCostPerBatch }))} /><NumberField label="Nhân công / mẻ" min={0} value={draft.directLaborCostPerBatch} onChange={(directLaborCostPerBatch) => setDraft((current) => ({ ...current, directLaborCostPerBatch }))} /><NumberField label="Overhead / mẻ" min={0} value={draft.overheadCostPerBatch} onChange={(overheadCostPerBatch) => setDraft((current) => ({ ...current, overheadCostPerBatch }))} /></div>{message && <p className="rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-700">{message}</p>}<button type="button" onClick={saveDraft} disabled={isSaving} className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50">{isSaving && <Loader2 className="h-4 w-4 animate-spin" />}Lưu BOM nháp</button></div>}
+      {isLoading ? <div className="flex h-32 items-center justify-center text-sm text-neutral-500"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Đang tải định mức…</div> : <div className="space-y-4"><div className="grid gap-3 sm:grid-cols-3"><NumberField label="Sản lượng chuẩn / mẻ" min={1} value={draft.yieldQuantity} onChange={(yieldQuantity) => setDraft((current) => ({ ...current, yieldQuantity }))} /><TextField label="Hiệu lực từ" type="date" value={draft.effectiveFrom} onChange={(effectiveFrom) => setDraft((current) => ({ ...current, effectiveFrom }))} /><NumberField label="Hao hụt (%)" min={0} value={draft.wastePercent} onChange={(wastePercent) => setDraft((current) => ({ ...current, wastePercent }))} /></div><div><div className="mb-2 flex items-center justify-between"><p className="text-sm font-bold text-neutral-900">Nguyên liệu</p><button type="button" onClick={() => setLines((current) => [...current, { ingredientId: "", quantity: 0 }])} className="text-xs font-bold text-brand-700 hover:text-brand-800">+ Thêm dòng</button></div><div className="space-y-2">{lines.map((line, index) => <div key={`${line.ingredientId}-${index}`} className="grid grid-cols-[minmax(0,1fr)_120px_36px] gap-2"><select value={line.ingredientId} onChange={(event) => updateLine(index, { ingredientId: event.target.value })} className="h-10 min-w-0 rounded-lg border border-neutral-300 bg-white px-2.5 text-sm outline-none focus:border-brand-500"><option value="">Chọn nguyên liệu</option>{ingredients.map((ingredient) => <option key={ingredient.id} value={ingredient.id}>{ingredient.name} ({unitLabel(ingredient.baseUnit)})</option>)}</select><input type="number" min={0} value={line.quantity || ""} onChange={(event) => updateLine(index, { quantity: Number(event.target.value) || 0 })} placeholder="Định lượng" className="h-10 rounded-lg border border-neutral-300 px-2.5 text-sm outline-none focus:border-brand-500" /><button type="button" onClick={() => setLines((current) => current.length > 1 ? current.filter((_, lineIndex) => lineIndex !== index) : current)} className="grid h-10 w-9 place-items-center rounded-lg text-neutral-400 hover:bg-red-50 hover:text-red-600" aria-label={`Xóa nguyên liệu ${index + 1}`}><Trash2 className="h-4 w-4" /></button></div>)}</div></div><div className="grid gap-3 sm:grid-cols-3"><NumberField label="Bao bì / mẻ" min={0} value={draft.packagingCostPerBatch} onChange={(packagingCostPerBatch) => setDraft((current) => ({ ...current, packagingCostPerBatch }))} /><NumberField label="Nhân công / mẻ" min={0} value={draft.directLaborCostPerBatch} onChange={(directLaborCostPerBatch) => setDraft((current) => ({ ...current, directLaborCostPerBatch }))} /><NumberField label="Overhead / mẻ" min={0} value={draft.overheadCostPerBatch} onChange={(overheadCostPerBatch) => setDraft((current) => ({ ...current, overheadCostPerBatch }))} /></div><button type="button" onClick={saveDraft} disabled={isSaving} className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50">{isSaving && <Loader2 className="h-4 w-4 animate-spin" />}Lưu BOM nháp</button></div>}
     </FormSection>
   );
 }

@@ -1,10 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
   <title id="title">SweetTime — Bake Joy, Share Time</title>
-  <desc id="desc">Social sharing card for SweetTime Bakery.</desc>
-  <rect width="1200" height="630" fill="#F4EBDD"/>
-  <circle cx="1080" cy="80" r="190" fill="#F07A58" opacity=".18"/>
-  <circle cx="80" cy="610" r="230" fill="#2F8D88" opacity=".14"/>
-  <path d="M600 145c-22-39-82-24-82 22 0 38 46 64 82 94 36-30 82-56 82-94 0-46-60-61-82-22Z" fill="#D94A34"/>
-  <text x="600" y="365" text-anchor="middle" fill="#D94A34" font-family="Georgia, 'Times New Roman', serif" font-size="128" font-weight="700" font-style="italic">Sweet<tspan fill="#123E66">Time</tspan></text>
-  <text x="600" y="445" text-anchor="middle" fill="#2F8D88" font-family="Arial, sans-serif" font-size="30" font-weight="700" letter-spacing="8">BAKE JOY, SHARE TIME</text>
+  <desc id="desc">Ảnh chia sẻ thương hiệu SweetTime Bakery &amp; Tea.</desc>
+  <rect width="1200" height="630" fill="#FFF6E8"/>
+  <circle cx="1100" cy="20" r="250" fill="#F7DBD1"/>
+  <circle cx="40" cy="620" r="250" fill="#F2E8DA"/>
+  <path d="M600 98c-15-28-58-18-58 15 0 27 33 45 58 66 25-21 58-39 58-66 0-33-43-43-58-15Z" fill="#C9A24C"/>
+  <text x="600" y="330" text-anchor="middle" fill="#C24A36" font-family="Georgia, 'Times New Roman', serif" font-size="142" font-weight="700">SweetTime</text>
+  <text x="600" y="405" text-anchor="middle" fill="#1F2E4A" font-family="Arial, sans-serif" font-size="34" font-weight="700" letter-spacing="10">BAKERY &amp; TEA</text>
+  <path d="M340 462h520" stroke="#C9A24C" stroke-width="3"/>
+  <text x="600" y="525" text-anchor="middle" fill="#C24A36" font-family="Georgia, 'Times New Roman', serif" font-size="42" font-weight="700">Bake Joy, Share Time</text>
 </svg>

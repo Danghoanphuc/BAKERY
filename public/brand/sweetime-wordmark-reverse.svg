@@ -1,12 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 520 150" role="img" aria-labelledby="title desc">
-  <title id="title">SweetTime reverse logo</title>
-  <desc id="desc">SweetTime wordmark for dark backgrounds.</desc>
-  <rect width="520" height="150" rx="18" fill="#123E66"/>
-  <g transform="translate(28 27)">
-    <path d="M36 31c-4.5-8-16.8-4.9-16.8 4.5 0 7.8 9.5 13.2 16.8 19.3 7.3-6.1 16.8-11.5 16.8-19.3C52.8 26.1 40.5 23 36 31Z" fill="#F07A58"/>
-    <path d="M18 62h36M24 62v6h24v-6" fill="none" stroke="#F4EBDD" stroke-width="4" stroke-linecap="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 210" role="img" aria-labelledby="title desc">
+  <title id="title">SweetTime Bakery &amp; Tea trên nền tối</title>
+  <desc id="desc">Phiên bản logo SweetTime dành cho nền tối.</desc>
+  <g transform="translate(22 8)">
+    <text x="16" y="122" fill="#FFF6E8" font-family="Georgia, 'Times New Roman', serif" font-size="112" font-weight="700">SweetTime</text>
+    <path d="M515 28c-7-13-27-8-27 7 0 12 15 21 27 30 12-9 27-18 27-30 0-15-20-20-27-7Z" fill="#F4B438"/>
+    <path d="M147 158c18 0 27-9 36-22-3 19-14 32-37 34m-5-20c-13-9-25-5-35 2 14 1 25 7 35 18m424-12c-18 0-27-9-36-22 3 19 14 32 37 34m5-20c13-9 25-5 35 2-14 1-25 7-35 18" fill="none" stroke="#C9A24C" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="198" y="174" fill="#FFF6E8" font-family="Arial, sans-serif" font-size="31" font-weight="700" letter-spacing="7">BAKERY &amp; TEA</text>
   </g>
-  <text x="102" y="78" fill="#F07A58" font-family="Georgia, 'Times New Roman', serif" font-size="62" font-weight="700" font-style="italic">Sweet</text>
-  <text x="292" y="78" fill="#FFFFFF" font-family="Georgia, 'Times New Roman', serif" font-size="62" font-weight="700" font-style="italic">Time</text>
-  <text x="105" y="111" fill="#F4EBDD" font-family="Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="3">BAKE JOY, SHARE TIME</text>
 </svg>

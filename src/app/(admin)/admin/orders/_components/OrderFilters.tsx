@@ -24,11 +24,13 @@ export function OrderFilters(props: OrderFiltersProps) {
             <input
               value={props.query}
               onChange={(event) => props.setQuery(event.target.value)}
+              aria-label="Tìm kiếm đơn hàng"
               placeholder="Tìm mã đơn, tên khách, số điện thoại..."
               className="h-10 w-full rounded-lg border border-neutral-200 pl-9 pr-3 text-sm outline-none focus:border-brand-500"
             />
           </label>
           <Select
+            label="Lọc theo trạng thái"
             value={props.statusFilter}
             onChange={(value) => props.setStatusFilter(value as StatusFilter)}
             options={[
@@ -39,6 +41,7 @@ export function OrderFilters(props: OrderFiltersProps) {
             ]}
           />
           <Select
+            label="Lọc theo thời gian"
             value={props.dateFilter}
             onChange={(value) => props.setDateFilter(value as DateFilter)}
             options={[
@@ -56,11 +59,13 @@ export function OrderFilters(props: OrderFiltersProps) {
       </div>
 
       <div className="border-b border-neutral-200">
-        <nav className="-mb-px flex flex-wrap gap-6">
+        <nav aria-label="Loại đơn hàng" className="-mb-px flex flex-wrap gap-6">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => props.setActiveTab(tab.id)}
+              type="button"
+              aria-current={props.activeTab === tab.id ? "page" : undefined}
               className={`border-b-2 px-1 py-2 text-sm font-medium transition-colors ${
                 props.activeTab === tab.id
                   ? "border-brand-500 text-brand-600"
@@ -77,16 +82,19 @@ export function OrderFilters(props: OrderFiltersProps) {
 }
 
 function Select({
+  label,
   value,
   onChange,
   options,
 }: {
+  label: string;
   value: string;
   onChange: (value: string) => void;
   options: [string, string][];
 }) {
   return (
     <select
+      aria-label={label}
       value={value}
       onChange={(event) => onChange(event.target.value)}
       className="h-10 rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:border-brand-500"

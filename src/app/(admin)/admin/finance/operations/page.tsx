@@ -2,6 +2,7 @@
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { AlertTriangle, Factory, Loader2, PackageCheck, ShoppingCart, Warehouse } from "lucide-react";
+import { toast } from "sonner";
 import type { FinanceIngredient, InventoryBalance, Product, RecipeVersion, WasteReason } from "@/types";
 
 type Mode = "purchase" | "production" | "waste";
@@ -16,7 +17,6 @@ export default function OperationsPage() {
   const [balances, setBalances] = useState<Array<InventoryBalance & { id: string }>>([]);
   const [batches, setBatches] = useState<BatchRow[]>([]);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
   const [purchase, setPurchase] = useState({ supplierId: "", documentNumber: "", occurredAt: today() });
   const [purchaseLines, setPurchaseLines] = useState<PurchaseLine[]>([{ ingredientId: "", quantity: 0, lineAmount: 0 }]);
   const [batch, setBatch] = useState({ recipeVersionId: "", plannedQuantity: 1, actualGoodQuantity: 1, damagedQuantity: 0, packagingCost: 0, directLaborCost: 0, overheadCost: 0, occurredAt: today() });
@@ -53,18 +53,18 @@ export default function OperationsPage() {
   }
 
   async function submitPurchase(event: FormEvent) {
-    event.preventDefault(); setSaving(true); setMessage(null);
+    event.preventDefault(); setSaving(true);
     const response = await post("/api/admin/finance/purchases", {
       idempotencyKey: `purchase:${crypto.randomUUID()}`, ...purchase,
       locationId: "main", lines: purchaseLines, occurredAt: new Date(purchase.occurredAt),
     });
-    setMessage(response.ok ? "Đã nhập kho nguyên liệu và cập nhật giá trị tồn." : await errorText(response));
+    await notifyResponse(response, "Đã nhập kho nguyên liệu và cập nhật giá trị tồn.");
     if (response.ok) { setPurchaseLines([{ ingredientId: "", quantity: 0, lineAmount: 0 }]); await load(); }
     setSaving(false);
   }
 
   async function submitBatch(event: FormEvent) {
-    event.preventDefault(); setSaving(true); setMessage(null);
+    event.preventDefault(); setSaving(true);
     const response = await post("/api/admin/finance/production-batches", {
       idempotencyKey: `batch:${crypto.randomUUID()}`,
       ...batch,
@@ -73,18 +73,18 @@ export default function OperationsPage() {
       ingredientUsages: usages,
       occurredAt: new Date(batch.occurredAt),
     });
-    setMessage(response.ok ? "Đã hoàn tất mẻ, xuất nguyên liệu và nhập thành phẩm." : await errorText(response));
+    await notifyResponse(response, "Đã hoàn tất mẻ, xuất nguyên liệu và nhập thành phẩm.");
     if (response.ok) await load();
     setSaving(false);
   }
 
   async function submitWaste(event: FormEvent) {
-    event.preventDefault(); setSaving(true); setMessage(null);
+    event.preventDefault(); setSaving(true);
     const response = await post("/api/admin/finance/inventory/waste", {
       idempotencyKey: `waste:${crypto.randomUUID()}`, ...waste,
       locationId: "main", occurredAt: new Date(waste.occurredAt),
     });
-    setMessage(response.ok ? "Đã ghi nhận hao hụt và trừ tồn kho." : await errorText(response));
+    await notifyResponse(response, "Đã ghi nhận hao hụt và trừ tồn kho.");
     if (response.ok) await load();
     setSaving(false);
   }
@@ -96,7 +96,6 @@ export default function OperationsPage() {
         <Stat label="Tồn thành phẩm" value={`${balances.filter((item) => item.itemType === "product").reduce((sum, item) => sum + item.quantity, 0)} SP`} detail={formatMoney(balances.filter((item) => item.itemType === "product").reduce((sum, item) => sum + item.inventoryValue, 0))} icon={<PackageCheck />} />
         <Stat label="Mẻ đã hoàn tất" value={`${batches.length} mẻ`} detail={`Gần nhất ${batches[0] ? displayDate(batches[0].occurredAt) : "—"}`} icon={<Factory />} />
       </div>
-      {message && <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3 text-sm font-semibold text-brand-800">{message}</div>}
       <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
         <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
           <div className="mb-4 flex rounded-xl bg-neutral-100 p-1">
@@ -129,6 +128,7 @@ function Select({ label, value, options, onChange }: { label: string; value: str
 function Submit({ saving, label }: { saving: boolean; label: string }) { return <button disabled={saving} className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-neutral-950 text-sm font-black text-white disabled:opacity-50">{saving && <Loader2 className="h-4 w-4 animate-spin" />}{label}</button>; }
 function post(url: string, body: unknown) { return fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }); }
 async function errorText(response: Response) { const body = await response.json().catch(() => null) as { error?: string } | null; return body?.error ?? "Không thể hoàn tất thao tác."; }
+async function notifyResponse(response: Response, successMessage: string) { response.ok ? toast.success(successMessage) : toast.error(await errorText(response)); }
 function today() { return new Date().toISOString().slice(0, 10); }
 function nameOf(type: string, id: string, ingredients: FinanceIngredient[], products: Product[]) { return type === "ingredient" ? ingredients.find((item) => item.id === id)?.name ?? id : products.find((item) => item.id === id)?.name ?? id; }
 function formatMoney(value: number) { return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(value); }

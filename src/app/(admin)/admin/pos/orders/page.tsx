@@ -1,7 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Printer, RefreshCw, Search, X } from "lucide-react";
+import {
+  ArrowLeft,
+  Printer,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  X,
+  XCircle,
+} from "lucide-react";
+import { toast } from "sonner";
 import Link from "next/link";
 import type { Order } from "@/types";
 import { formatCurrency, formatDateTime } from "../_lib/pos-utils";
@@ -46,6 +55,7 @@ export default function PosOrdersPage() {
   const [statusFilter, setStatusFilter] = useState<PosOrderStatus | "all">(
     "all",
   );
+  const [actionOrderId, setActionOrderId] = useState<string | null>(null);
 
   useEffect(() => {
     loadOrders();
@@ -67,6 +77,57 @@ export default function PosOrdersPage() {
       setError("Không thể tải đơn hàng POS.");
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function cancelPendingOrder(order: Order) {
+    if (!window.confirm(`Huỷ đơn chờ thanh toán ${order.orderNumber}?`)) return;
+    await runOrderAction(order.id, `/api/pos/checkout/${order.id}/cancel`);
+  }
+
+  async function refundOrder(order: Order) {
+    const reason = window.prompt(
+      `Lý do hoàn tiền cho đơn ${order.orderNumber}:`,
+      "Khách yêu cầu hoàn tiền",
+    );
+    if (!reason?.trim()) return;
+
+    const settlementConfirmed =
+      order.paymentMethod !== "bank_transfer" ||
+      window.confirm("Xác nhận tiền chuyển khoản đã được hoàn lại cho khách?");
+    if (!settlementConfirmed) return;
+
+    await runOrderAction(order.id, `/api/pos/checkout/${order.id}/refund`, {
+      reason: reason.trim(),
+      settlementConfirmed,
+    });
+  }
+
+  async function runOrderAction(
+    orderId: string,
+    url: string,
+    body?: Record<string, unknown>,
+  ) {
+    try {
+      setActionOrderId(orderId);
+      setError(null);
+      const response = await fetch(url, {
+        method: "POST",
+        headers: body ? { "Content-Type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      const data = (await response.json()) as { error?: string };
+      if (!response.ok) throw new Error(data.error || "Không thể cập nhật đơn.");
+      await loadOrders();
+      toast.success("Đã cập nhật đơn POS.");
+    } catch (actionError) {
+      toast.error(
+        actionError instanceof Error
+          ? actionError.message
+          : "Không thể cập nhật đơn.",
+      );
+    } finally {
+      setActionOrderId(null);
     }
   }
 
@@ -123,7 +184,7 @@ export default function PosOrdersPage() {
       <div className="flex items-center gap-4">
         <Link
           href="/admin/pos"
-          className="grid h-10 w-10 place-items-center rounded-xl border border-[#eadbcc] bg-white text-[#7b6254] transition hover:border-[#b84a39]/50 hover:text-[#b84a39]"
+          className="grid h-11 w-11 place-items-center rounded-xl border border-[#eadbcc] bg-white text-[#7b6254] transition hover:border-[#b84a39]/50 hover:text-[#b84a39]"
           aria-label="Quay lại POS"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -140,7 +201,7 @@ export default function PosOrdersPage() {
           type="button"
           onClick={loadOrders}
           disabled={isLoading}
-          className="flex h-10 items-center gap-2 rounded-xl border border-[#eadbcc] bg-white px-4 text-sm font-bold text-[#7b6254] transition hover:border-[#b84a39]/50 hover:text-[#b84a39] disabled:opacity-50"
+          className="flex h-11 items-center gap-2 rounded-xl border border-[#eadbcc] bg-white px-4 text-sm font-bold text-[#7b6254] transition hover:border-[#b84a39]/50 hover:text-[#b84a39] disabled:opacity-50"
         >
           <RefreshCw
             className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
@@ -167,13 +228,13 @@ export default function PosOrdersPage() {
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
             placeholder="Tìm theo mã đơn, tên, SĐT, ghi chú..."
-            className="h-10 w-full rounded-xl border border-[#eadbcc] bg-white pl-9 pr-9 text-sm font-semibold text-[#3d2417] outline-none transition placeholder:text-[#b49a8a] focus:border-[#b84a39] focus:ring-4 focus:ring-[#b84a39]/10"
+            className="h-11 w-full rounded-xl border border-[#eadbcc] bg-white pl-9 pr-11 text-sm font-semibold text-[#3d2417] outline-none transition placeholder:text-[#b49a8a] focus:border-[#b84a39] focus:ring-4 focus:ring-[#b84a39]/10"
           />
           {searchTerm && (
             <button
               type="button"
               onClick={() => setSearchTerm("")}
-              className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#9b8171] transition hover:bg-[#fff1f0] hover:text-[#b84a39]"
+              className="absolute right-0 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full text-[#9b8171] transition hover:bg-[#fff1f0] hover:text-[#b84a39]"
               aria-label="Xoá tìm kiếm"
             >
               <X className="h-4 w-4" />
@@ -249,6 +310,11 @@ export default function PosOrdersPage() {
                         order.paymentMethod}
                     </span>
                   )}
+                  {order.paymentStatus === "refunded" && (
+                    <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[11px] font-black text-orange-800">
+                      Đã hoàn tiền
+                    </span>
+                  )}
                 </div>
                 <div className="mt-1 flex items-center gap-3 text-xs font-semibold text-[#9b8171]">
                   <span>{order.customerName || "Khách lẻ"}</span>
@@ -277,15 +343,41 @@ export default function PosOrdersPage() {
                   {order.items.length} món
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => printOrderReceipt(order)}
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-[#eadbcc] bg-white text-[#7b6254] transition hover:border-[#b84a39]/50 hover:text-[#b84a39]"
-                aria-label="In hoá đơn"
-                title="In hoá đơn"
-              >
-                <Printer className="h-4 w-4" />
-              </button>
+              <div className="flex shrink-0 gap-2">
+                {order.status === "pending" && order.paymentStatus !== "paid" && (
+                  <button
+                    type="button"
+                    onClick={() => void cancelPendingOrder(order)}
+                    disabled={actionOrderId === order.id}
+                    className="grid h-11 w-11 place-items-center rounded-lg border border-red-200 bg-white text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                    aria-label="Huỷ đơn chờ thanh toán"
+                    title="Huỷ đơn chờ thanh toán"
+                  >
+                    <XCircle className="h-4 w-4" />
+                  </button>
+                )}
+                {order.paymentStatus === "paid" && order.status !== "cancelled" && (
+                  <button
+                    type="button"
+                    onClick={() => void refundOrder(order)}
+                    disabled={actionOrderId === order.id}
+                    className="grid h-11 w-11 place-items-center rounded-lg border border-orange-200 bg-white text-orange-700 transition hover:bg-orange-50 disabled:opacity-50"
+                    aria-label="Hoàn tiền"
+                    title="Hoàn tiền"
+                  >
+                    <RotateCcw className="h-4 w-4" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => printOrderReceipt(order)}
+                  className="grid h-11 w-11 place-items-center rounded-lg border border-[#eadbcc] bg-white text-[#7b6254] transition hover:border-[#b84a39]/50 hover:text-[#b84a39]"
+                  aria-label="In hoá đơn"
+                  title="In hoá đơn"
+                >
+                  <Printer className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -321,10 +413,12 @@ function printOrderReceipt(order: Order) {
   const printWindow = window.open("", "_blank", "width=420,height=680");
   if (!printWindow) return;
 
-  printWindow.document.write(
-    `<pre style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.5; white-space: pre-wrap;">${receipt}</pre>`,
-  );
-  printWindow.document.close();
+  printWindow.document.title = `Hoá đơn ${order.orderNumber}`;
+  const receiptElement = printWindow.document.createElement("pre");
+  receiptElement.style.cssText =
+    "font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;line-height:1.5;white-space:pre-wrap";
+  receiptElement.textContent = receipt;
+  printWindow.document.body.replaceChildren(receiptElement);
   printWindow.focus();
   printWindow.print();
 }
@@ -353,7 +447,7 @@ function StatusPill({
     <button
       type="button"
       onClick={onClick}
-      className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-black transition ${
+      className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-black transition ${
         active
           ? "bg-[#b84a39] text-white"
           : "border border-[#eadbcc] bg-white text-[#65483a] hover:border-[#b84a39]/50"

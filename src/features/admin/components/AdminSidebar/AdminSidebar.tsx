@@ -88,13 +88,13 @@ export function AdminSidebar({ admin }: { admin: AdminPrincipal }) {
   return (
     <aside
       className={clsx(
-        "sticky top-0 flex h-screen shrink-0 flex-col border-r border-[#dfe5e8] bg-[#fffdf9] shadow-[6px_0_20px_rgba(18,62,102,0.06)] transition-[width] duration-200",
+        "sticky top-0 flex h-screen shrink-0 flex-col border-r border-[#e8d9c7] bg-[#fffcf7] shadow-[6px_0_20px_rgba(91,55,31,0.07)] transition-[width] duration-200",
         isExpanded ? "w-64" : "w-[76px]",
       )}
     >
       <div
         className={clsx(
-          "flex h-20 items-center border-b border-[#e5eaec] px-3",
+          "flex h-20 items-center border-b border-[#eadfd1] px-3",
           isExpanded ? "justify-between" : "justify-center",
         )}
       >
@@ -107,10 +107,10 @@ export function AdminSidebar({ admin }: { admin: AdminPrincipal }) {
         >
           <BrandLogo variant="mark" className="h-10 w-10 shrink-0 rounded-xl shadow-sm" alt="" />
           <span className="min-w-0">
-            <span className="block truncate text-base font-black text-[#123e66]">
+            <span className="block truncate text-base font-black text-[#1f2e4a]">
               SweetTime Admin
             </span>
-            <span className="block truncate text-xs font-semibold text-[#6f777b]">
+            <span className="block truncate text-xs font-semibold text-[#7e6a59]">
               Tiệm bánh & vận hành
             </span>
           </span>
@@ -119,7 +119,7 @@ export function AdminSidebar({ admin }: { admin: AdminPrincipal }) {
         <button
           type="button"
           onClick={() => setIsExpanded((current) => !current)}
-          className="grid h-10 w-10 place-items-center rounded-xl border border-[#d7e0e3] bg-white text-[#123e66] transition hover:border-[#2f8d88] hover:text-[#2f8d88]"
+          className="grid h-10 w-10 place-items-center rounded-xl border border-[#e2d2be] bg-white text-[#1f2e4a] transition hover:border-[#c9a24c] hover:text-[#8a6828]"
           aria-label={isExpanded ? "Thu gọn sidebar" : "Mở rộng sidebar"}
           title={isExpanded ? "Thu gọn" : "Mở rộng"}
         >
@@ -148,12 +148,12 @@ export function AdminSidebar({ admin }: { admin: AdminPrincipal }) {
                     "group relative flex h-12 items-center rounded-xl text-sm font-bold transition",
                     isExpanded ? "gap-3 px-3" : "justify-center px-0",
                     isActive
-                      ? "bg-[#e9f0f5] text-[#123e66] shadow-sm ring-1 ring-[#d7e0e3]"
-                      : "text-[#65727a] hover:bg-white hover:text-[#123e66]",
+                      ? "bg-[#f2e8da] text-[#1f2e4a] shadow-sm ring-1 ring-[#e2d2be]"
+                      : "text-[#7e6a59] hover:bg-white hover:text-[#1f2e4a]",
                   )}
                 >
                   {isActive && (
-                    <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-[#d94a34]" />
+                    <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-[#c24a36]" />
                   )}
                   <Icon className="h-5 w-5 shrink-0" />
                   {isExpanded && <span className="truncate">{item.label}</span>}
@@ -166,14 +166,14 @@ export function AdminSidebar({ admin }: { admin: AdminPrincipal }) {
 
       <div
         className={clsx(
-          "border-t border-[#e5eaec] p-3",
+          "border-t border-[#eadfd1] p-3",
           isExpanded ? "text-left" : "text-center",
         )}
       >
-        <div className="rounded-xl bg-[#f3f6f7] px-3 py-3 text-xs font-semibold text-[#6f777b] ring-1 ring-[#dfe5e8]">
+        <div className="rounded-xl bg-[#f2e8da] px-3 py-3 text-xs font-semibold text-[#7e6a59] ring-1 ring-[#e8d9c7]">
           {isExpanded ? (
             <>
-              <p className="truncate text-[#123e66]">{admin.name}</p>
+              <p className="truncate text-[#1f2e4a]">{admin.name}</p>
               <p className="mt-1 truncate">{ADMIN_ROLE_LABELS[admin.role]}</p>
             </>
           ) : (

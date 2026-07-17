@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import type { Product } from "@/types";
 import type { SelectedVoucher } from "@/types/voucher";
 import type { PosVoucherTokenPayload } from "@/lib/pos-voucher-token";
@@ -18,11 +19,23 @@ import { usePosPayment } from "./_hooks/usePosPayment";
 import { usePosHeldOrders } from "./_hooks/usePosHeldOrders";
 import { usePosScanner } from "./_hooks/usePosScanner";
 import {
+  getOrCreatePosDisplaySession,
+  getPosDisplayUrl,
+  POS_DISPLAY_SESSION_CHANGED_EVENT,
+  type PosDisplaySessionConfig,
+} from "@/store/posDisplayStore";
+import {
   buildPosCartItem,
   isProductSellableToday,
   PosCustomer,
   productNeedsCustomization,
 } from "./_lib/pos-utils";
+
+type ProductCustomizationRequest = {
+  product: Product;
+  selectedSize?: string;
+  selectedFlavor?: string;
+};
 
 export default function POSPage() {
   const {
@@ -40,7 +53,8 @@ export default function POSPage() {
     "all",
   );
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [customizationRequest, setCustomizationRequest] =
+    useState<ProductCustomizationRequest | null>(null);
   const [customer, setCustomer] = useState<PosCustomer>({
     name: "",
     phone: "",
@@ -48,6 +62,34 @@ export default function POSPage() {
   const [voucherCode, setVoucherCode] = useState("");
   const [selectedVoucher, setSelectedVoucher] = useState<SelectedVoucher>();
   const [orderNote, setOrderNote] = useState("");
+  const [displaySession, setDisplaySession] =
+    useState<PosDisplaySessionConfig | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const handleSessionChange = (event: Event) => {
+      if (!active) return;
+      setDisplaySession(
+        (event as CustomEvent<PosDisplaySessionConfig>).detail,
+      );
+    };
+    window.addEventListener(
+      POS_DISPLAY_SESSION_CHANGED_EVENT,
+      handleSessionChange,
+    );
+    void getOrCreatePosDisplaySession()
+      .then((session) => {
+        if (active) setDisplaySession(session);
+      })
+      .catch((error) => console.error("POS display session failed:", error));
+    return () => {
+      active = false;
+      window.removeEventListener(
+        POS_DISPLAY_SESSION_CHANGED_EVENT,
+        handleSessionChange,
+      );
+    };
+  }, []);
 
   const { products, categories, isLoading, loadCatalog, filterProducts } =
     usePosCatalog();
@@ -66,16 +108,32 @@ export default function POSPage() {
     selectedVoucher,
     voucherPricing,
     onReloadCatalog: loadCatalog,
+    onSaleCompleted: clearCompletedSale,
   });
 
+  function clearCompletedSale() {
+    clearCart();
+    setCustomer({ name: "", phone: "" });
+    setVoucherCode("");
+    setSelectedVoucher(undefined);
+    setOrderNote("");
+  }
+
   function handleScannerAddProduct(product: Product, options?: { selectedSize?: string; selectedFlavor?: string }) {
-    if (payment.awaitingPaymentDisplay) return;
-    if (!isProductSellableToday(product)) return;
-    if (productNeedsCustomization(product) && !options?.selectedSize && !options?.selectedFlavor) {
-      setSelectedProduct(product);
-      return;
+    if (payment.awaitingPaymentDisplay || !isProductSellableToday(product)) return false;
+
+    const needsSize = Boolean(product.sizeOptions?.length && !options?.selectedSize);
+    const needsFlavor = Boolean(product.flavorOptions?.length && !options?.selectedFlavor);
+    if (needsSize || needsFlavor || product.requiresMessage) {
+      setCustomizationRequest({
+        product,
+        selectedSize: options?.selectedSize,
+        selectedFlavor: options?.selectedFlavor,
+      });
+      return true;
     }
     addItem(buildPosCartItem(product, 1, { selectedSize: options?.selectedSize, selectedFlavor: options?.selectedFlavor }));
+    return true;
   }
 
   async function handleScanVoucher(
@@ -92,7 +150,7 @@ export default function POSPage() {
 
     if (totalPrice <= 0) {
       setVoucherCode(code);
-      return;
+      return true;
     }
 
     try {
@@ -116,7 +174,7 @@ export default function POSPage() {
 
       if (!response.ok) {
         setVoucherCode(code);
-        return;
+        return false;
       }
 
       if (data.customer?.phone) {
@@ -131,7 +189,7 @@ export default function POSPage() {
 
       if (!data.ok || !data.voucher) {
         setVoucherCode(code);
-        return;
+        return false;
       }
 
       setSelectedVoucher({
@@ -145,18 +203,20 @@ export default function POSPage() {
         minOrderValue: data.voucher.minOrderValue,
       });
       setVoucherCode(data.voucher.code);
+      return true;
     } catch (error) {
       console.error("POS scan voucher failed:", error);
       setVoucherCode(code);
+      return false;
     }
   }
 
-  async function handleScanCustomerPhone(phone: string) {
+  async function handleScanCustomer(query: string) {
     try {
       const response = await fetch(
-        `/api/pos/customers/search?q=${encodeURIComponent(phone)}`,
+        `/api/pos/customers/search?q=${encodeURIComponent(query)}`,
       );
-      if (!response.ok) return;
+      if (!response.ok) return false;
       const data = (await response.json()) as {
         customers?: Array<{ id: string; name: string; phone: string; tier?: string; loyaltyPoints?: number; totalOrders?: number }>;
       };
@@ -170,21 +230,43 @@ export default function POSPage() {
           loyaltyPoints: found.loyaltyPoints,
           totalOrders: found.totalOrders,
         });
-      } else {
-        setCustomer((previous) => ({ ...previous, phone }));
+        return true;
       }
+
+      if (/^0[0-9]{9}$/.test(query)) {
+        setCustomer((previous) => ({ ...previous, phone: query }));
+        return true;
+      }
+      return false;
     } catch (error) {
       console.error("POS scan customer failed:", error);
-      setCustomer((previous) => ({ ...previous, phone }));
+      return false;
     }
   }
 
-  const { lastAction, handleInput, handleKeyDown } = usePosScanner({
+  const { feedback, handleSearchKeyDown } = usePosScanner({
     products,
     onAddProduct: handleScannerAddProduct,
     onScanVoucher: handleScanVoucher,
-    onScanCustomer: handleScanCustomerPhone,
+    onScanCustomer: handleScanCustomer,
   });
+
+  useEffect(() => {
+    if (feedback.status === "ready") return;
+    const notify = feedback.status === "error" ? toast.error : toast.success;
+    notify(feedback.message, { id: "pos-scanner-feedback" });
+  }, [feedback.message, feedback.status]);
+
+  useEffect(() => {
+    if (payment.error) {
+      toast.error(payment.error, { id: "pos-payment-feedback" });
+      return;
+    }
+    if (payment.message) {
+      const notify = payment.message.startsWith("Đã tạo") ? toast.success : toast.info;
+      notify(payment.message, { id: "pos-payment-feedback" });
+    }
+  }, [payment.error, payment.message]);
 
   const filteredProducts = useMemo(
     () => filterProducts(products, searchTerm, selectedCategory),
@@ -205,7 +287,7 @@ export default function POSPage() {
 
     if (!isProductSellableToday(product)) return;
     if (productNeedsCustomization(product)) {
-      setSelectedProduct(product);
+      setCustomizationRequest({ product });
       return;
     }
 
@@ -219,35 +301,43 @@ export default function POSPage() {
     customMessage?: string;
     candles?: number;
   }) {
-    if (!selectedProduct) return;
+    if (!customizationRequest) return;
 
     addItem(
-      buildPosCartItem(selectedProduct, customization.quantity, customization),
+      buildPosCartItem(customizationRequest.product, customization.quantity, customization),
     );
-    setSelectedProduct(null);
+    setCustomizationRequest(null);
   }
 
   function handleHoldOrder() {
-    holdOrder({ items, customer, voucher: selectedVoucher });
+    if (payment.awaitingPaymentDisplay) return;
+    holdOrder({ items, customer, voucher: selectedVoucher, note: orderNote });
     resetCurrentSale();
   }
 
   function handleRestoreHeldOrder(order: Parameters<typeof restoreHeldOrder>[0]) {
+    if (payment.awaitingPaymentDisplay) return;
+    if (items.length > 0) {
+      holdOrder({
+        items,
+        customer,
+        voucher: selectedVoucher,
+        note: orderNote,
+      });
+    }
     const restored = restoreHeldOrder(order);
     if (restored) {
       setItems(restored.items);
       setCustomer(restored.customer);
       setSelectedVoucher(restored.voucher);
       setVoucherCode(restored.voucher?.code ?? "");
+      setOrderNote(restored.note ?? "");
+      payment.resetPayment();
     }
   }
 
   function handleSubmitOrder() {
     void payment.submitOrder(orderNote);
-  }
-
-  function openCustomerDisplay() {
-    window.open("/admin/pos/customer-display", "bakery-pos-customer-display");
   }
 
   if (isLoading) {
@@ -260,8 +350,8 @@ export default function POSPage() {
     <div
       className={
         showCartPanel
-          ? "grid min-h-0 grid-cols-1 overflow-visible rounded-3xl border border-[#f0e1d2] bg-[#f5f0eb] shadow-sm xl:h-[calc(100vh-3rem)] xl:grid-cols-[minmax(0,1fr)_320px_340px] xl:overflow-hidden 2xl:grid-cols-[minmax(0,1fr)_340px_360px]"
-          : "grid min-h-0 grid-cols-1 overflow-visible rounded-3xl border border-[#f0e1d2] bg-[#f5f0eb] shadow-sm xl:h-[calc(100vh-3rem)] xl:grid-cols-[minmax(0,1fr)_360px] xl:overflow-hidden 2xl:grid-cols-[minmax(0,1fr)_380px]"
+          ? "grid min-h-0 grid-cols-1 overflow-visible rounded-3xl border border-[#f0e1d2] bg-[#f5f0eb] shadow-sm md:h-[calc(100vh-3rem)] md:grid-cols-[minmax(0,1fr)_320px] md:overflow-hidden lg:grid-cols-[minmax(0,1fr)_390px] xl:grid-cols-[minmax(0,1fr)_minmax(640px,0.95fr)] 2xl:grid-cols-[minmax(0,1fr)_720px]"
+          : "grid min-h-0 grid-cols-1 overflow-visible rounded-3xl border border-[#f0e1d2] bg-[#f5f0eb] shadow-sm md:h-[calc(100vh-3rem)] md:grid-cols-[minmax(0,1fr)_320px] md:overflow-hidden lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_380px]"
       }
     >
       <PosProductGrid
@@ -272,13 +362,25 @@ export default function POSPage() {
         onCategoryChange={setSelectedCategory}
         onSearchChange={setSearchTerm}
         onProductClick={handleProductClick}
-        onOpenCustomerDisplay={openCustomerDisplay}
-        onScannerInput={(value) => handleInput(value, setSearchTerm)}
-        onScannerKeyDown={(event) => handleKeyDown(event, searchTerm, setSearchTerm)}
+        customerDisplayUrl={displaySession ? getPosDisplayUrl(displaySession) : undefined}
+        customerDisplayTarget={
+          displaySession
+            ? `bakery-pos-customer-display-${displaySession.sessionId}`
+            : undefined
+        }
+        onScannerKeyDown={(event) => handleSearchKeyDown(event, searchTerm, setSearchTerm)}
+        scannerStatus={feedback.status}
       />
 
-      {showCartPanel && (
-        <aside className="flex min-h-0 flex-col border-t border-[#f0e1d2] bg-white xl:border-l xl:border-t-0">
+      <div
+        className={
+          showCartPanel
+            ? "min-h-0 border-t border-[#f0e1d2] bg-white md:col-start-2 md:h-full md:overflow-y-auto md:border-l md:border-t-0 xl:grid xl:grid-cols-[minmax(280px,0.95fr)_minmax(320px,1.05fr)] xl:overflow-hidden"
+            : "contents"
+        }
+      >
+        {showCartPanel && (
+        <aside className="flex min-h-0 flex-col border-b border-[#f0e1d2] bg-white xl:border-b-0 xl:border-r">
           <PosCartPanel
             items={items}
             totalQuantity={totalQuantity}
@@ -289,11 +391,18 @@ export default function POSPage() {
             onClear={resetCurrentSale}
             onHoldOrder={handleHoldOrder}
             onRestoreHeldOrder={handleRestoreHeldOrder}
+            isLocked={Boolean(payment.awaitingPaymentDisplay)}
           />
         </aside>
-      )}
+        )}
 
-      <aside className="flex min-h-0 flex-col overflow-y-auto border-t border-[#f0e1d2] bg-white xl:border-l xl:border-t-0">
+      <aside
+        className={
+          showCartPanel
+            ? "flex min-h-0 flex-col bg-white xl:overflow-y-auto"
+            : "flex min-h-0 flex-col overflow-y-auto border-t border-[#f0e1d2] bg-white md:col-start-2 md:row-start-1 md:border-l md:border-t-0"
+        }
+      >
         {payment.payosEnabled === false &&
           payment.paymentMethod === "bank_transfer" && (
             <div className="border-b border-[#f0e1d2] px-4 py-3">
@@ -303,32 +412,6 @@ export default function POSPage() {
               </div>
             </div>
           )}
-
-        {lastAction && lastAction.type !== "unknown" && (
-          <div className="border-b border-[#f0e1d2] px-4 py-3">
-            <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700">
-              {lastAction.type === "product" && `Đã quét: ${lastAction.product.name}`}
-              {lastAction.type === "voucher" && `Đã quét voucher: ${lastAction.code}`}
-              {lastAction.type === "customer" && `Đã quét SĐT: ${lastAction.phone}`}
-            </div>
-          </div>
-        )}
-
-        {(payment.error || payment.message || isLoading) && (
-          <div className="border-b border-[#f0e1d2] px-4 py-3">
-            <div
-              className={
-                payment.error
-                  ? "rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-bold text-red-700"
-                  : "rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700"
-              }
-            >
-              {payment.error ||
-                payment.message ||
-                (isLoading ? "Đang tải POS..." : null)}
-            </div>
-          </div>
-        )}
 
         {payment.awaitingPaymentDisplay && payment.paymentDeadline && (
           <div className="border-b border-[#f0e1d2] bg-[#fffaf6] px-4 py-3">
@@ -372,6 +455,7 @@ export default function POSPage() {
         )}
 
         <PosCheckoutPanel
+          stackedOnTablet={showCartPanel}
           selectedVoucher={selectedVoucher}
           voucherPricing={voucherPricing}
           paymentMethod={payment.paymentMethod}
@@ -409,12 +493,15 @@ export default function POSPage() {
           />
         </PosCheckoutPanel>
       </aside>
+      </div>
 
-      {selectedProduct && (
+      {customizationRequest && (
         <PosProductCustomizerModal
-          product={selectedProduct}
-          isOpen={Boolean(selectedProduct)}
-          onClose={() => setSelectedProduct(null)}
+          product={customizationRequest.product}
+          isOpen={Boolean(customizationRequest)}
+          initialSelectedSize={customizationRequest.selectedSize}
+          initialSelectedFlavor={customizationRequest.selectedFlavor}
+          onClose={() => setCustomizationRequest(null)}
           onAdd={handleCustomizedAdd}
         />
       )}

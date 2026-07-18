@@ -46,6 +46,7 @@ type ProductBlockSheetProps = {
   costingSummary: ProductCostSummary | null;
   setFormData: Dispatch<SetStateAction<ProductFormData>>;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onCostingSummaryChange: () => Promise<void>;
 };
 
 export function getProductBlockFormId(block: ProductWorkspaceBlock) {
@@ -61,6 +62,7 @@ export function ProductBlockSheet({
   costingSummary,
   setFormData,
   onSubmit,
+  onCostingSummaryChange,
 }: ProductBlockSheetProps) {
   const [activeTab, setActiveTab] = useState(getBlockTabs(block, formData)[0]?.id ?? "main");
   const variantEditor = useProductVariantEditor(setFormData);
@@ -100,7 +102,7 @@ export function ProductBlockSheet({
         {block === "sales" && activeTab === "variants" && <VariantSection formData={formData} {...variantEditor} />}
         {block === "sales" && activeTab === "publishing" && <PublishingMetadataSection formData={formData} setFormData={setFormData} />}
 
-        {block === "production" && activeTab === "bom" && <ProductionBomEditor productId={productId} />}
+        {block === "production" && activeTab === "bom" && <ProductionBomEditor productId={productId} onActivated={onCostingSummaryChange} />}
         {block === "production" && activeTab === "schedule" && <><ScrollStep label="Công đoạn"><ProductionProcessSection formData={formData} setFormData={setFormData} /></ScrollStep><ScrollStep label="Thời gian & quy cách"><ProductionScheduleSection formData={formData} setFormData={setFormData} /></ScrollStep></>}
 
         {block === "finance" && activeTab === "performance" && <FinancePerformanceSection formData={formData} setFormData={setFormData} costingSummary={costingSummary} />}

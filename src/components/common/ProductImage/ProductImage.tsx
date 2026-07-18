@@ -8,9 +8,10 @@ type ProductImageProps = {
   src?: string;
   alt: string;
   className?: string;
+  loading?: "eager" | "lazy";
 };
 
-export function ProductImage({ src, alt, className }: ProductImageProps) {
+export function ProductImage({ src, alt, className, loading = "lazy" }: ProductImageProps) {
   const [hasError, setHasError] = useState(false);
   const canShowImage = Boolean(src?.trim()) && !hasError;
 
@@ -31,7 +32,7 @@ export function ProductImage({ src, alt, className }: ProductImageProps) {
     <img
       src={src}
       alt={alt}
-      loading="lazy"
+      loading={loading}
       referrerPolicy="no-referrer"
       onError={() => setHasError(true)}
       className={clsx("h-full w-full object-cover", className)}

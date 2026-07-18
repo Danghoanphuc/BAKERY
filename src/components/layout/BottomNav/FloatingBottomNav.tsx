@@ -24,6 +24,7 @@ export default function FloatingBottomNav() {
   if (
     pathname.startsWith("/checkout") ||
     pathname.startsWith("/admin") ||
+    pathname.startsWith("/san-pham/") ||
     pathname.startsWith("/wholesale")
   ) {
     return null;

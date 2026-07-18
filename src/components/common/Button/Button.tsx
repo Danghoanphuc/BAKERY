@@ -18,18 +18,18 @@ export const Button: React.FC<ButtonProps> = ({
     <button
       className={clsx(
         // Base styles - minimum 48px height for touch optimization
-        "touch-target rounded-xl px-6 text-sm font-extrabold transition-all active:scale-[0.98]",
-        "focus:outline-none focus:ring-2 focus:ring-teal focus:ring-offset-2",
-        "disabled:opacity-50 disabled:cursor-not-allowed",
+        "touch-target whitespace-nowrap rounded-xl px-6 text-sm font-extrabold transition-all duration-200 active:translate-y-px",
+        "focus:outline-none focus-visible:ring-3 focus-visible:ring-accent-gold/45 focus-visible:ring-offset-2",
+        "disabled:cursor-not-allowed disabled:opacity-50",
         // Variant styles
         variant === "primary" && [
-          "bg-brand-500 text-white shadow-[0_8px_18px_rgba(217,74,52,0.2)]",
-          "hover:bg-brand-600 active:bg-brand-700",
+          "bg-brand-500 text-white shadow-[0_8px_18px_oklch(54%_0.15_34/0.2)]",
+          "hover:-translate-y-0.5 hover:bg-brand-600 active:translate-y-0 active:bg-brand-700",
           "disabled:hover:bg-brand-500",
         ],
         variant === "outline" && [
-          "border border-navy text-navy bg-transparent",
-          "hover:bg-navy-soft active:bg-navy-soft",
+          "border border-navy bg-transparent text-navy",
+          "hover:-translate-y-0.5 hover:bg-navy-soft active:translate-y-0 active:bg-navy-soft",
           "disabled:hover:bg-transparent",
         ],
         variant === "text" && [

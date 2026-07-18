@@ -88,20 +88,20 @@ export function AdminSidebar({ admin }: { admin: AdminPrincipal }) {
   return (
     <aside
       className={clsx(
-        "sticky top-0 flex h-screen shrink-0 flex-col border-r border-[#e8d9c7] bg-[#fffcf7] shadow-[6px_0_20px_rgba(91,55,31,0.07)] transition-[width] duration-200",
+        "sticky top-0 flex h-screen shrink-0 flex-col border-r border-sand bg-bg-card shadow-[6px_0_24px_oklch(27%_0.045_48/0.07)] transition-[width] duration-200",
         isExpanded ? "w-64" : "w-[76px]",
       )}
     >
       <div
         className={clsx(
-          "flex h-20 items-center border-b border-[#eadfd1] px-3",
+          "flex h-20 items-center border-b border-sand px-3",
           isExpanded ? "justify-between" : "justify-center",
         )}
       >
         <Link
           href="/admin"
           className={clsx(
-            "min-w-0 items-center gap-3",
+            "min-w-0 items-center gap-3 font-display",
             isExpanded ? "flex" : "hidden",
           )}
         >
@@ -119,7 +119,7 @@ export function AdminSidebar({ admin }: { admin: AdminPrincipal }) {
         <button
           type="button"
           onClick={() => setIsExpanded((current) => !current)}
-          className="grid h-10 w-10 place-items-center rounded-xl border border-[#e2d2be] bg-white text-[#1f2e4a] transition hover:border-[#c9a24c] hover:text-[#8a6828]"
+          className="grid h-10 w-10 place-items-center rounded-xl border border-sand bg-bg-card text-navy transition hover:border-accent-gold hover:text-teal"
           aria-label={isExpanded ? "Thu gọn sidebar" : "Mở rộng sidebar"}
           title={isExpanded ? "Thu gọn" : "Mở rộng"}
         >
@@ -148,12 +148,12 @@ export function AdminSidebar({ admin }: { admin: AdminPrincipal }) {
                     "group relative flex h-12 items-center rounded-xl text-sm font-bold transition",
                     isExpanded ? "gap-3 px-3" : "justify-center px-0",
                     isActive
-                      ? "bg-[#f2e8da] text-[#1f2e4a] shadow-sm ring-1 ring-[#e2d2be]"
-                      : "text-[#7e6a59] hover:bg-white hover:text-[#1f2e4a]",
+                      ? "bg-bg-soft text-navy shadow-sm ring-1 ring-sand"
+                      : "text-text-muted hover:bg-bg-main hover:text-navy",
                   )}
                 >
                   {isActive && (
-                    <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-[#c24a36]" />
+                    <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-brand-500" />
                   )}
                   <Icon className="h-5 w-5 shrink-0" />
                   {isExpanded && <span className="truncate">{item.label}</span>}
@@ -166,11 +166,11 @@ export function AdminSidebar({ admin }: { admin: AdminPrincipal }) {
 
       <div
         className={clsx(
-          "border-t border-[#eadfd1] p-3",
+          "border-t border-sand p-3",
           isExpanded ? "text-left" : "text-center",
         )}
       >
-        <div className="rounded-xl bg-[#f2e8da] px-3 py-3 text-xs font-semibold text-[#7e6a59] ring-1 ring-[#e8d9c7]">
+        <div className="rounded-xl bg-bg-soft px-3 py-3 text-xs font-semibold text-text-muted ring-1 ring-sand">
           {isExpanded ? (
             <>
               <p className="truncate text-[#1f2e4a]">{admin.name}</p>

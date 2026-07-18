@@ -1,22 +1,23 @@
-@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&display=swap");
+/* SweetTime · system: warm editorial bakery · display: Lora · body: Be Vietnam Pro */
+@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&family=Lora:wght@500;600;700&display=swap");
 @import "tailwindcss";
 
 @theme {
   /* Bakery Brand Color Palette */
   /* Backgrounds (Kem) */
   --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
-  --font-display: Georgia, "Times New Roman", serif;
+  --font-display: "Lora", Georgia, "Times New Roman", serif;
 
-  --color-bg-main: #fff6e8;
-  --color-bg-soft: #f2e8da;
-  --color-bg-card: #fffcf7;
-  --color-bg-surface: #e8d9c7;
+  --color-bg-main: oklch(97% 0.018 82);
+  --color-bg-soft: oklch(94% 0.025 78);
+  --color-bg-card: oklch(99% 0.008 82);
+  --color-bg-surface: oklch(90% 0.035 72);
 
   /* Typography (Nâu) */
-  --color-text-primary: #1f2e4a;
-  --color-text-secondary: #51483f;
-  --color-text-muted: #7e6a59;
-  --color-text-light: #9b8877;
+  --color-text-primary: oklch(27% 0.045 48);
+  --color-text-secondary: oklch(39% 0.035 52);
+  --color-text-muted: oklch(49% 0.035 58);
+  --color-text-light: oklch(61% 0.025 65);
 
   /* Brand Colors (Cam Đất/Đỏ Gạch) */
   --color-brand-50: #fff3ef;
@@ -24,21 +25,21 @@
   --color-brand-200: #edb7a8;
   --color-brand-300: #df8d78;
   --color-brand-400: #cf664f;
-  --color-brand-500: #c24a36;
-  --color-brand-600: #a93b2b;
-  --color-brand-700: #8b3025;
+  --color-brand-500: oklch(54% 0.15 34);
+  --color-brand-600: oklch(47% 0.14 34);
+  --color-brand-700: oklch(40% 0.12 34);
   --color-brand-800: #702a22;
   --color-brand-900: #5d271f;
 
-  --color-navy: #1f2e4a;
-  --color-navy-soft: #e9e8e5;
-  --color-teal: #8a6828;
-  --color-teal-soft: #f5ecd7;
-  --color-cream: #fff6e8;
-  --color-sand: #e8d9c7;
+  --color-navy: oklch(27% 0.045 48);
+  --color-navy-soft: oklch(93% 0.018 68);
+  --color-teal: oklch(52% 0.075 75);
+  --color-teal-soft: oklch(95% 0.035 83);
+  --color-cream: oklch(97% 0.018 82);
+  --color-sand: oklch(88% 0.035 70);
   --color-beige: #b8a48f;
   --color-coral: #d2986a;
-  --color-charcoal: #51483f;
+  --color-charcoal: oklch(39% 0.035 52);
 
   /* Accents */
   --color-accent-star: #f4b438;
@@ -100,6 +101,18 @@
   body {
     @apply bg-bg-main font-sans text-text-primary antialiased;
     font-size: 16px;
+  }
+
+  html,
+  body {
+    overflow-x: clip;
+  }
+
+  body {
+    background-image:
+      linear-gradient(oklch(27% 0.045 48 / 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(27% 0.045 48 / 0.018) 1px, transparent 1px);
+    background-size: 32px 32px;
   }
 
   ::selection {
@@ -188,14 +201,14 @@
   .brand-page {
     @apply min-h-screen bg-bg-main text-charcoal;
     background-image:
-      radial-gradient(circle at 8% 0%, rgba(194, 74, 54, 0.1), transparent 26rem),
-      radial-gradient(circle at 95% 10%, rgba(201, 162, 76, 0.1), transparent 22rem);
+      radial-gradient(circle at 8% 0%, oklch(54% 0.15 34 / 0.08), transparent 30rem),
+      radial-gradient(circle at 95% 10%, oklch(67% 0.10 76 / 0.10), transparent 26rem);
   }
 
   .brand-card {
     @apply border border-sand/80 bg-bg-card;
-    border-radius: 1rem;
-    box-shadow: 0 8px 24px rgba(91, 55, 31, 0.08);
+    border-radius: 1.125rem;
+    box-shadow: 0 12px 32px oklch(27% 0.045 48 / 0.07);
   }
 
   .brand-eyebrow {
@@ -204,13 +217,14 @@
   }
 
   .brand-heading {
-    @apply font-extrabold text-navy;
-    letter-spacing: -0.025em;
+    @apply font-display font-semibold text-navy;
+    letter-spacing: -0.035em;
+    line-height: 1.05;
   }
 
   .brand-button-primary {
     @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 text-sm font-extrabold text-white transition;
-    box-shadow: 0 8px 18px rgba(194, 74, 54, 0.22);
+    box-shadow: 0 8px 18px oklch(54% 0.15 34 / 0.22);
   }
 
   .brand-button-primary:hover {
@@ -223,6 +237,34 @@
 
   .brand-chip {
     @apply inline-flex min-h-8 items-center rounded-full border border-sand bg-cream px-3 text-xs font-bold text-charcoal;
+  }
+
+  .brand-shell {
+    width: min(100%, 82.5rem);
+    margin-inline: auto;
+    padding-inline: clamp(1rem, 4vw, 2rem);
+  }
+
+  .brand-section-heading {
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 3vw, 2.5rem);
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    line-height: 1.05;
+    color: var(--color-navy);
+    overflow-wrap: anywhere;
+    min-width: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
   }
 }
 

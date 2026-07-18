@@ -4,9 +4,12 @@ import type { Product } from "@/types";
 import {
   buildProductCartItem,
   canQuickAddProduct,
+  getProductPriceRange,
+  getProductSelectionMaxQuantity,
   getProductTotal,
   getProductUnitPrice,
   hasProductOptions,
+  isProductOptionAvailable,
   validateProductCustomization,
 } from "./product-cart";
 
@@ -85,5 +88,50 @@ describe("product cart helpers", () => {
     expect(canQuickAddProduct(simpleProduct, "delivery")).toBe(true);
     expect(canQuickAddProduct({ ...simpleProduct, stock: 0 }, "delivery")).toBe(false);
     expect(canQuickAddProduct(product, "delivery")).toBe(false);
+  });
+
+  it("derives the visible starting price from sellable variants", () => {
+    const inconsistentCatalogProduct: Product = {
+      ...product,
+      price: 15_000,
+      sizeOptions: [
+        { id: "small", label: "16cm", priceAdjustment: 5_000 },
+        { id: "large", label: "20cm", priceAdjustment: 100_000 },
+      ],
+    };
+
+    expect(getProductPriceRange(inconsistentCatalogProduct)).toEqual({
+      min: 20_000,
+      max: 115_000,
+    });
+  });
+
+  it("disables unavailable combinations and caps quantity by variant stock", () => {
+    const matrixProduct: Product = {
+      ...product,
+      variantCombinations: [
+        {
+          id: "small-vanilla",
+          sizeOptionId: "small",
+          flavorOptionId: "vanilla",
+          stock: 2,
+        },
+        {
+          id: "large-vanilla",
+          sizeOptionId: "large",
+          flavorOptionId: "vanilla",
+          stock: 0,
+        },
+      ],
+    };
+
+    expect(getProductSelectionMaxQuantity(matrixProduct, "small", "vanilla")).toBe(2);
+    expect(
+      isProductOptionAvailable(
+        matrixProduct,
+        { sizeId: "large" },
+        { selectedFlavor: "vanilla", quantity: 1 },
+      ),
+    ).toBe(false);
   });
 });

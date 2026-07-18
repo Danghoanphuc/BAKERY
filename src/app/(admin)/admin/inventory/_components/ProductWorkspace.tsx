@@ -35,6 +35,7 @@ type ProductWorkspaceProps = {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onSave: () => void;
   onBack: () => void;
+  onCostingSummaryChange: () => Promise<void>;
 };
 
 const itemTypeLabels = {
@@ -60,6 +61,7 @@ export function ProductWorkspace({
   onSubmit,
   onSave,
   onBack,
+  onCostingSummaryChange,
 }: ProductWorkspaceProps) {
   const [activePanel, setActivePanel] = useState<WorkspacePanel | null>(null);
   const [isCardSettingsOpen, setIsCardSettingsOpen] = useState(false);
@@ -133,6 +135,7 @@ export function ProductWorkspace({
             costingSummary={costingSummary}
             setFormData={setFormData}
             onSubmit={onSubmit}
+            onCostingSummaryChange={onCostingSummaryChange}
           />
         ) : activePanel === "analytics" ? <AnalyticsSheet productId={productId} ledgerStock={ledgerStock} /> : <ProcurementSheet />}
       </ProductWorkspaceDrawer>

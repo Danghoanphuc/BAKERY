@@ -11,7 +11,13 @@ export interface ProductCustomization {
 export interface ProductCustomizationErrors {
   selectedSize?: string;
   selectedFlavor?: string;
+  quantity?: string;
 }
+
+export type ProductPriceRange = {
+  min: number;
+  max: number;
+};
 
 /** Resolves the data that identifies one selected variant everywhere it is sold. */
 export function getProductVariantSelection(
@@ -63,20 +69,116 @@ export function getProductTotal(
   return getProductUnitPrice(product, customization.selectedSize, customization.selectedFlavor) * customization.quantity;
 }
 
+export function getProductPriceRange(product: Product): ProductPriceRange {
+  const sizes = product.sizeOptions?.length
+    ? product.sizeOptions
+    : [{ id: undefined, priceAdjustment: 0 }];
+  const flavors = product.flavorOptions?.length
+    ? product.flavorOptions
+    : [{ id: undefined, priceAdjustment: 0 }];
+  const prices: number[] = [];
+
+  for (const size of sizes) {
+    for (const flavor of flavors) {
+      if (isProductSelectionAvailable(product, size.id, flavor.id, 1)) {
+        prices.push(getProductUnitPrice(product, size.id, flavor.id));
+      }
+    }
+  }
+
+  if (prices.length === 0) return { min: product.price, max: product.price };
+  return { min: Math.min(...prices), max: Math.max(...prices) };
+}
+
+export function getProductStartingPrice(product: Product) {
+  return getProductPriceRange(product).min;
+}
+
+export function getProductSelectionMaxQuantity(
+  product: Product,
+  selectedSize?: string,
+  selectedFlavor?: string,
+) {
+  const { size, flavor, combination } = getProductVariantSelection(
+    product,
+    selectedSize,
+    selectedFlavor,
+  );
+  const stocks = [product.stock, size?.stock, flavor?.stock, combination?.stock]
+    .filter((stock): stock is number => typeof stock === "number")
+    .map((stock) => Math.max(0, stock));
+
+  return stocks.length ? Math.min(99, ...stocks) : 99;
+}
+
+export function isProductSelectionAvailable(
+  product: Product,
+  selectedSize?: string,
+  selectedFlavor?: string,
+  quantity = 1,
+) {
+  const { combination } = getProductVariantSelection(
+    product,
+    selectedSize,
+    selectedFlavor,
+  );
+  const needsCompleteCombination = Boolean(
+    product.variantCombinations?.length &&
+      product.sizeOptions?.length &&
+      product.flavorOptions?.length,
+  );
+
+  if (needsCompleteCombination && selectedSize && selectedFlavor && !combination) {
+    return false;
+  }
+  if (combination?.isAvailable === false) return false;
+  return getProductSelectionMaxQuantity(product, selectedSize, selectedFlavor) >= quantity;
+}
+
+export function isProductOptionAvailable(
+  product: Product,
+  option: { sizeId?: string; flavorId?: string },
+  current: Pick<ProductCustomization, "selectedSize" | "selectedFlavor" | "quantity">,
+) {
+  const selectedSize = option.sizeId ?? current.selectedSize;
+  const selectedFlavor = option.flavorId ?? current.selectedFlavor;
+  const hasBothAxes = Boolean(product.sizeOptions?.length && product.flavorOptions?.length);
+
+  if (product.variantCombinations?.length && hasBothAxes) {
+    return product.variantCombinations.some(
+      (combination) =>
+        (!selectedSize || combination.sizeOptionId === selectedSize) &&
+        (!selectedFlavor || combination.flavorOptionId === selectedFlavor) &&
+        combination.isAvailable !== false &&
+        (combination.stock === undefined || combination.stock >= current.quantity),
+    );
+  }
+
+  return isProductSelectionAvailable(
+    product,
+    selectedSize,
+    selectedFlavor,
+    current.quantity,
+  );
+}
+
 export function validateProductCustomization(
   product: Product,
   customization: ProductCustomization,
 ): ProductCustomizationErrors {
-  const selectedCombination = product.variantCombinations?.find(
-    (item) =>
-      item.sizeOptionId === customization.selectedSize &&
-      item.flavorOptionId === customization.selectedFlavor,
+  const selectionUnavailable = Boolean(
+    customization.selectedSize || customization.selectedFlavor,
+  ) && !isProductSelectionAvailable(
+    product,
+    customization.selectedSize,
+    customization.selectedFlavor,
+    customization.quantity,
   );
-  const combinationUnavailable =
-    selectedCombination &&
-    (selectedCombination.isAvailable === false ||
-      (typeof selectedCombination.stock === "number" &&
-        selectedCombination.stock <= 0));
+  const maxQuantity = getProductSelectionMaxQuantity(
+    product,
+    customization.selectedSize,
+    customization.selectedFlavor,
+  );
 
   return {
     selectedSize:
@@ -86,8 +188,12 @@ export function validateProductCustomization(
     selectedFlavor:
       product.flavorOptions?.length && !customization.selectedFlavor
         ? "Vui lòng chọn hương vị"
-        : combinationUnavailable
+        : selectionUnavailable
           ? "Tổ hợp này hiện chưa thể bán"
+        : undefined,
+    quantity:
+      maxQuantity < customization.quantity
+        ? "Số lượng vẫn có không đủ"
         : undefined,
   };
 }

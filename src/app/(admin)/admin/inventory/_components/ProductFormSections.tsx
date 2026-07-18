@@ -1461,7 +1461,7 @@ function toDateValue(value?: Date | string) {
   return Number.isNaN(date.getTime()) ? new Date().toISOString().slice(0, 10) : date.toISOString().slice(0, 10);
 }
 
-export function ProductionBomEditor({ productId }: { productId: string }) {
+export function ProductionBomEditor({ productId, onActivated }: { productId: string; onActivated?: () => Promise<void> }) {
   const [ingredients, setIngredients] = useState<FinanceIngredient[]>([]);
   const [activeRecipe, setActiveRecipe] = useState<RecipeVersion | null>(null);
   const [draftRecipe, setDraftRecipe] = useState<RecipeVersion | null>(null);
@@ -1531,10 +1531,11 @@ export function ProductionBomEditor({ productId }: { productId: string }) {
     try {
       const response = await fetch(`/api/admin/finance/recipes/${draftRecipeId}/activate`, { method: "POST" });
       if (!response.ok) throw new Error("Không thể kích hoạt BOM.");
-      toast.success("BOM đã được kích hoạt; phiên bản cũ vẫn được lưu trong lịch sử.");
       setActiveRecipe({ ...(draftRecipe ?? activeRecipe ?? { id: draftRecipeId, productId, version: 0, status: "active", effectiveFrom: new Date(), yieldQuantity: draft.yieldQuantity, ingredients: [], packagingCostPerBatch: 0, directLaborCostPerBatch: 0, overheadCostPerBatch: 0, wasteBasisPoints: 0 }), id: draftRecipeId, status: "active" });
       setDraftRecipeId(null);
       setDraftRecipe(null);
+      await onActivated?.();
+      toast.success("BOM đã được kích hoạt; giá vốn và sheet Tài chính đã được cập nhật.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không thể kích hoạt BOM.");
     } finally {

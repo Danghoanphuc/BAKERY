@@ -114,6 +114,18 @@ export function ProductEditor({ mode, productId }: ProductEditorProps) {
     router.push("/admin/inventory");
   };
 
+  const refreshCostingSummary = async () => {
+    if (!productId) return;
+    const response = await fetch("/api/admin/finance/costing-summary", {
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      throw new Error("Không thể tải lại giá vốn sau khi kích hoạt BOM.");
+    }
+    const costing = (await response.json()) as CostingSummaryResponse;
+    setCostingSummary(costing.byProductId?.[productId] ?? null);
+  };
+
   const saveProduct = async () => {
     setIsSaving(true);
     setError(null);
@@ -212,6 +224,7 @@ export function ProductEditor({ mode, productId }: ProductEditorProps) {
         onSubmit={handleSubmit}
         onSave={saveProduct}
         onBack={goBack}
+        onCostingSummaryChange={refreshCostingSummary}
       />
     );
   }

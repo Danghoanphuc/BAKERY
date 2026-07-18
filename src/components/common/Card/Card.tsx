@@ -17,13 +17,13 @@ export const Card: React.FC<CardProps> = ({
     <div
       className={clsx(
         // Base card styles
-        "bg-white rounded-lg shadow-sm border border-neutral-200",
+        "rounded-[1.125rem] border border-sand bg-bg-card shadow-[0_12px_32px_oklch(27%_0.045_48/0.07)]",
         "p-4",
         // Touch feedback when interactive
         onClick && [
-          "cursor-pointer transition-transform duration-150 ease-out",
-          "hover:shadow-md active:scale-98",
-          "focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2",
+          "cursor-pointer transition duration-200 ease-out",
+          "hover:-translate-y-0.5 hover:shadow-[0_16px_38px_oklch(27%_0.045_48/0.11)] active:translate-y-0",
+          "focus:outline-none focus-visible:ring-3 focus-visible:ring-accent-gold/45 focus-visible:ring-offset-2",
         ],
         className,
       )}

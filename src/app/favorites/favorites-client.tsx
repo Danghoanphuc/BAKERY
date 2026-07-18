@@ -13,8 +13,10 @@ import {
 
 import { ProductDetailModal } from "@/features/product/components/ProductDetailModal";
 import { useProductBuyNow } from "@/features/product/use-product-buy-now";
+import { consumeProductSheetReturn } from "@/features/product/product-return";
 import {
   buildProductCartItem,
+  getProductStartingPrice,
   type ProductCustomization,
 } from "@/features/product/product-cart";
 import { Toast } from "@/components/common";
@@ -32,6 +34,11 @@ export function FavoritesClient({ products }: { products: Product[] }) {
   const buyProductNow = useProductBuyNow();
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  useEffect(() => {
+    const restoredProduct = consumeProductSheetReturn(products);
+    if (restoredProduct) setSelectedProduct(restoredProduct);
+  }, [products]);
 
   useEffect(() => {
     try {
@@ -183,7 +190,7 @@ function FavoriteProductCard({
             {product.name}
           </h2>
           <p className="mt-2 text-sm font-black text-brand-500">
-            {formatPrice(product.price)}
+            {product.sizeOptions?.length ? "Từ " : ""}{formatPrice(getProductStartingPrice(product))}
           </p>
         </div>
       </button>

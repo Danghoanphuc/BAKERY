@@ -57,3 +57,37 @@ export function getFulfillmentPromise(
       : `Thời gian chuẩn bị khoảng ${product.preparationTimeMinutes ?? 30} phút.`,
   };
 }
+
+export function getProductOrderAvailability(
+  product: Product,
+  mode: "delivery" | "pickup",
+) {
+  if (product.isAvailable === false) {
+    return { canOrder: false, label: "Tạm ngừng bán", shortLabel: "Tạm ngừng bán" };
+  }
+  if (product.stock !== undefined && product.stock <= 0) {
+    return { canOrder: false, label: "Đã hết hàng", shortLabel: "Hết hàng" };
+  }
+  if (mode === "pickup" && product.availableForPickup === false) {
+    return { canOrder: false, label: "Chỉ hỗ trợ giao hàng", shortLabel: "Không hỗ trợ nhận tại quán" };
+  }
+  if (mode === "delivery" && product.availableForDelivery === false) {
+    return { canOrder: false, label: "Chỉ nhận tại quán", shortLabel: "Không hỗ trợ giao hàng" };
+  }
+  if (product.availableToday === false && !product.requiresPreorder) {
+    return { canOrder: false, label: "Không bán hôm nay", shortLabel: "Không bán hôm nay" };
+  }
+  if (product.requiresPreorder) {
+    const hours = product.preorderMinHours ?? 0;
+    return {
+      canOrder: true,
+      label: hours > 0 ? `Đặt trước ít nhất ${hours} giờ` : "Cần đặt trước",
+      shortLabel: "Đặt trước",
+    };
+  }
+  return {
+    canOrder: true,
+    label: mode === "pickup" ? "Có thể nhận tại quán" : "Có thể giao tận nơi",
+    shortLabel: "Thêm vào giỏ",
+  };
+}

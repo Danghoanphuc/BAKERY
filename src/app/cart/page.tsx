@@ -73,7 +73,7 @@ export default function CartPage() {
   if (totalQuantity === 0) {
     return (
       <main className="brand-page">
-        <div className="mx-auto flex min-h-screen w-full max-w-[480px] flex-col px-4 pb-32 pt-5">
+        <div className="brand-shell flex min-h-screen flex-col pb-32 pt-5 md:pb-16">
           <CartHeader title="Giỏ hàng" onBack={() => router.back()} />
 
           <section className="flex flex-1 flex-col items-center justify-center text-center">
@@ -100,7 +100,7 @@ export default function CartPage() {
 
   return (
     <main className="brand-page">
-      <div className="mx-auto min-h-screen w-full max-w-[480px] px-4 pb-36 pt-5">
+      <div className="brand-shell min-h-screen pb-36 pt-5 md:pb-16">
         <CartHeader
           title={`Giỏ hàng (${totalQuantity})`}
           onBack={() => router.back()}
@@ -116,7 +116,8 @@ export default function CartPage() {
           }
         />
 
-        <section className="mt-4 space-y-3">
+        <div className="mt-6 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start lg:gap-8">
+        <section className="space-y-3">
           {items.map((item) => {
             const itemSubtotal = item.price * item.quantity;
             const itemDiscount = voucherAllocations.get(item.cartItemId) ?? 0;
@@ -244,6 +245,7 @@ export default function CartPage() {
           onChooseAddress={() => setIsAddressModalOpen(true)}
           onCheckout={() => router.push("/checkout")}
         />
+        </div>
       </div>
 
       <CustomerVoucherPicker
@@ -404,7 +406,7 @@ function CheckoutSummary({
 
   return (
     <div
-      className="mt-4 w-full"
+      className="mt-4 w-full lg:sticky lg:top-6 lg:mt-0"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
       <section className="brand-card p-4">

@@ -16,8 +16,10 @@ import { clsx } from "clsx";
 
 import { ProductDetailModal } from "@/features/product/components/ProductDetailModal";
 import { useProductBuyNow } from "@/features/product/use-product-buy-now";
+import { consumeProductSheetReturn } from "@/features/product/product-return";
 import {
   buildProductCartItem,
+  getProductStartingPrice,
   type ProductCustomization,
 } from "@/features/product/product-cart";
 import { Toast } from "@/components/common";
@@ -78,7 +80,7 @@ const filterChips: FilterChip[] = [
   {
     id: "under-100",
     label: "Dưới 100k",
-    match: (product) => product.price <= 100000,
+    match: (product) => getProductStartingPrice(product) <= 100000,
   },
   {
     id: "bestseller",
@@ -169,6 +171,11 @@ export function SearchExperience({
   const [history, setHistory] = useState<string[]>([]);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
+  useEffect(() => {
+    const restoredProduct = consumeProductSheetReturn(products);
+    if (restoredProduct) setSelectedProduct(restoredProduct);
+  }, [products]);
+
   const categoryById = useMemo(
     () => new Map(categories.map((category) => [category.id, category.name])),
     [categories],
@@ -211,7 +218,7 @@ export function SearchExperience({
         });
 
         if (!filterScore) return null;
-        if (queryAnalysis.maxPrice && product.price > queryAnalysis.maxPrice) return null;
+        if (queryAnalysis.maxPrice && getProductStartingPrice(product) > queryAnalysis.maxPrice) return null;
         if (tokens.length > 0 && textScore === 0) return null;
 
         const boost =
@@ -231,8 +238,8 @@ export function SearchExperience({
       .filter(Boolean) as SearchResult[];
 
     return scored.sort((left, right) => {
-      if (sortMode === "price-asc") return left.product.price - right.product.price;
-      if (sortMode === "price-desc") return right.product.price - left.product.price;
+      if (sortMode === "price-asc") return getProductStartingPrice(left.product) - getProductStartingPrice(right.product);
+      if (sortMode === "price-desc") return getProductStartingPrice(right.product) - getProductStartingPrice(left.product);
       if (sortMode === "popular") {
         return (
           Number(right.product.isBestseller) - Number(left.product.isBestseller) ||
@@ -300,8 +307,8 @@ export function SearchExperience({
 
   return (
     <main className="brand-page">
-      <div className="mx-auto min-h-screen w-full max-w-[480px] px-4 pb-32 pt-3">
-        <header className="sticky top-0 z-20 -mx-4 border-b border-sand bg-bg-main/95 px-4 pb-3 pt-3 backdrop-blur-md">
+      <div className="brand-shell min-h-screen pb-32 pt-3 md:pb-16">
+        <header className="sticky top-0 z-20 -mx-4 border-b border-sand bg-bg-main/95 px-4 pb-4 pt-3 backdrop-blur-xl md:top-4 md:mx-0 md:rounded-2xl md:border md:px-5 md:shadow-[0_14px_40px_oklch(27%_0.045_48/0.08)]">
           <div className="mb-3 flex items-center justify-between">
             <Link
               href="/"
@@ -330,7 +337,7 @@ export function SearchExperience({
             </Link>
           </div>
 
-          <div className="flex h-12 items-center gap-2 rounded-xl border border-sand bg-bg-card px-3 shadow-sm focus-within:border-teal focus-within:ring-2 focus-within:ring-teal/15">
+          <div className="mx-auto flex h-12 max-w-3xl items-center gap-2 rounded-xl border border-sand bg-bg-card px-3 shadow-sm focus-within:border-teal focus-within:ring-2 focus-within:ring-teal/15">
             <Search className="h-4 w-4 shrink-0 text-teal" />
             <input
               value={query}
@@ -353,8 +360,8 @@ export function SearchExperience({
             )}
           </div>
 
-          <div className="-mx-4 mt-3 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex w-max gap-2">
+          <div className="-mx-4 mt-3 overflow-x-auto px-4 [scrollbar-width:none] md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden">
+            <div className="mx-auto flex w-max max-w-full gap-2 md:justify-center">
               {filterChips.map((chip) => {
                 const active = combinedFilters.includes(chip.id);
                 const inferred = inferredFilters.includes(chip.id);
@@ -409,7 +416,7 @@ export function SearchExperience({
             </div>
 
             {results.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 lg:grid-cols-4">
                 {results.map(({ product, context, reasons }) => (
                   <SearchProductCard
                     key={product.id}
@@ -476,7 +483,7 @@ function Discovery({
   onToggleFavorite: (productId: string) => void;
 }) {
   return (
-    <div className="space-y-6 pt-2">
+    <div className="space-y-10 py-8 md:py-12">
       <section>
         <SectionTitle icon={<Sparkles className="h-4 w-4" />} title="Gợi ý nhanh" />
         <div className="mt-3 flex flex-wrap gap-2">
@@ -514,8 +521,8 @@ function Discovery({
 
       <section>
         <SectionTitle icon={<Heart className="h-4 w-4" />} title="Đang được chọn nhiều" />
-        <div className="-mx-4 mt-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex w-max gap-3">
+        <div className="-mx-4 mt-4 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden">
+          <div className="flex w-max gap-3 md:grid md:w-full md:grid-cols-3 md:gap-5 lg:grid-cols-4">
             {recommendedProducts.map((product) => (
               <SearchProductCard
                 key={product.id}
@@ -556,11 +563,11 @@ function SearchProductCard({
   return (
     <article
       className={clsx(
-        "overflow-hidden rounded-[16px] border border-[#f0e3d3] bg-white shadow-[0_4px_12px_rgba(139,75,31,0.06)]",
-        isCompact && "w-[154px] shrink-0",
+        "group overflow-hidden rounded-[18px] border border-sand bg-bg-card shadow-[0_10px_30px_oklch(27%_0.045_48/0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_38px_oklch(27%_0.045_48/0.11)]",
+        isCompact && "w-[154px] shrink-0 md:w-auto md:min-w-0",
       )}
     >
-      <div className="relative aspect-[4/5] bg-[#fdf9f4]">
+      <div className="relative aspect-[4/5] bg-bg-soft md:aspect-[3/4]">
         <button
           type="button"
           onClick={onOpen}
@@ -570,7 +577,7 @@ function SearchProductCard({
           <ProductImage
             src={product.imageUrl}
             alt={product.name}
-            className="object-cover"
+            className="object-cover transition duration-500 group-hover:scale-[1.03]"
           />
         </button>
         <button
@@ -616,7 +623,7 @@ function SearchProductCard({
         )}
         <div className="mt-2 flex items-center justify-between gap-2">
           <p className="truncate text-[14px] font-black text-[#b84a39]">
-            {formatPrice(product.price)}
+            {product.sizeOptions?.length ? "Từ " : ""}{formatPrice(getProductStartingPrice(product))}
           </p>
           <span className="rounded-full bg-[#fff4ec] px-2 py-1 text-[10px] font-bold text-[#8c5a42]">
             Thêm
@@ -851,7 +858,7 @@ function getProductReasons(
   addReason(product.requiresMessage === true, "Ghi lời chúc");
   addReason(product.isBestseller === true, "Best seller");
   addReason(product.isNew === true, "Mới");
-  addReason(analysis.maxPrice !== undefined && product.price <= analysis.maxPrice, "Đúng ngân sách");
+  addReason(analysis.maxPrice !== undefined && getProductStartingPrice(product) <= analysis.maxPrice, "Đúng ngân sách");
   addReason(
     hasAny(context.haystack, ["healthy", "keto", "it ngot", "nguyen cam"]),
     "Ít ngọt",

@@ -11,23 +11,23 @@ describe("Button", () => {
   it("renders primary variant by default", () => {
     render(<Button>Click me</Button>);
     const button = screen.getByRole("button");
-    expect(button).toHaveClass("bg-primary-500", "text-white");
+    expect(button).toHaveClass("bg-brand-500", "text-white");
   });
 
   it("renders outline variant correctly", () => {
     render(<Button variant="outline">Click me</Button>);
     const button = screen.getByRole("button");
     expect(button).toHaveClass(
-      "border-2",
-      "border-primary-500",
-      "text-primary-500",
+      "border",
+      "border-navy",
+      "text-navy",
     );
   });
 
   it("renders text variant correctly", () => {
     render(<Button variant="text">Click me</Button>);
     const button = screen.getByRole("button");
-    expect(button).toHaveClass("text-primary-500", "bg-transparent");
+    expect(button).toHaveClass("text-brand-500", "bg-transparent");
   });
 
   it("calls onClick handler when clicked", () => {

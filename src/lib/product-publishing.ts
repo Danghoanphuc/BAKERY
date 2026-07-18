@@ -2,6 +2,7 @@ import type { Category, Product } from "@/types";
 import { findCategoryForProduct } from "@/lib/product-category";
 import { getProductPath } from "@/lib/product-path";
 import { getPublicBaseUrl } from "@/lib/public-url";
+import { getProductStartingPrice } from "@/features/product/product-cart";
 
 export { getProductPath };
 
@@ -91,7 +92,7 @@ export function buildProductFeedItem(
     id: product.id,
     name: product.displayName || product.name,
     category: categoryName,
-    price: product.price,
+    price: getProductStartingPrice(product),
     currency: "VND",
     description: getProductDescription(product),
     ingredients: product.ingredients ?? [],

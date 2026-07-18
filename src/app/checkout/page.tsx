@@ -248,7 +248,7 @@ export default function CheckoutPage() {
 
   return (
     <main className="brand-page">
-      <div className="mx-auto min-h-screen w-full max-w-[480px] px-3.5 pb-40 pt-2">
+      <div className="mx-auto min-h-screen w-full max-w-3xl px-4 pb-40 pt-3 md:px-6 md:pt-6">
         <CheckoutHeader isPickup={isPickup} onBack={() => router.back()} />
 
         {error ? (
@@ -260,7 +260,7 @@ export default function CheckoutPage() {
           </div>
         ) : null}
 
-        <form onSubmit={handleSubmit} className="space-y-2.5">
+        <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
           <CheckoutFulfillmentCard
             isPickup={isPickup}
             customerName={contact.name}

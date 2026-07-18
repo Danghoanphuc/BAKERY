@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ProductCollection } from "@/features/home/components";
 import { ProductDetailModal } from "@/features/product/components/ProductDetailModal";
 import { useProductBuyNow } from "@/features/product/use-product-buy-now";
+import { consumeProductSheetReturn } from "@/features/product/product-return";
 import {
   buildProductCartItem,
   type ProductCustomization,
@@ -23,6 +24,11 @@ export function HomepageClient({ title, products }: HomepageClientProps) {
   const { toast, showToast, hideToast } = useToast();
   const buyProductNow = useProductBuyNow();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+
+  useEffect(() => {
+    const restoredProduct = consumeProductSheetReturn(products);
+    if (restoredProduct) setSelectedProduct(restoredProduct);
+  }, [products]);
 
   const handleProductClick = (product: Product) => {
     setSelectedProduct(product);

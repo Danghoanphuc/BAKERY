@@ -22,9 +22,11 @@ import { clsx } from "clsx";
 import { ProductDetailModal } from "@/features/product/components/ProductDetailModal";
 import { CustomerPinSetupPrompt } from "@/features/auth/CustomerPinSetupPrompt";
 import { useProductBuyNow } from "@/features/product/use-product-buy-now";
+import { consumeProductSheetReturn } from "@/features/product/product-return";
 import {
   buildProductCartItem,
   canQuickAddProduct,
+  getProductStartingPrice,
   type ProductCustomization,
 } from "@/features/product/product-cart";
 import { Toast } from "@/components/common";
@@ -116,6 +118,11 @@ export function BakeryHome({
     points: 0,
   });
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    const restoredProduct = consumeProductSheetReturn(products);
+    if (restoredProduct) setSelectedProduct(restoredProduct);
+  }, [products]);
 
   const categoryVisuals = useMemo(
     () => mapCategoriesToVisuals(categories),
@@ -277,8 +284,8 @@ export function BakeryHome({
   return (
     <div className="brand-page">
 
-      <div className="relative mx-auto min-h-screen w-full max-w-[480px] px-4 pb-28">
-        <div className="sticky top-0 z-40 -mx-4 overflow-visible border-b border-sand/80 bg-bg-main/95 px-4 pb-3 pt-3 shadow-[0_5px_18px_rgba(18,62,102,0.06)] backdrop-blur-md">
+      <div className="brand-shell relative min-h-screen pb-32 md:pb-16">
+        <div className="sticky top-0 z-40 -mx-4 overflow-visible border-b border-sand/70 bg-bg-main/95 px-4 pb-3 pt-3 backdrop-blur-xl md:top-4 md:mx-0 md:mt-4 md:rounded-2xl md:border md:px-5 md:shadow-[0_14px_40px_oklch(27%_0.045_48/0.08)]">
           <HomeHeader
             cartCount={totalQuantity}
             address={deliveryAddress}
@@ -357,9 +364,13 @@ function HomeHeader({
 }) {
   return (
     <header>
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="truncate text-xl font-extrabold leading-tight text-navy">
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link href="/" className="hidden font-display text-xl font-semibold tracking-[-0.04em] text-navy md:block">
+            SweetTime
+          </Link>
+          <span className="hidden h-6 w-px bg-sand md:block" aria-hidden="true" />
+          <h1 className="truncate text-lg font-extrabold leading-tight text-navy md:text-sm">
             {name ? (
               <>
                 <span className="font-semibold">Chào mừng</span> {name}
@@ -374,10 +385,10 @@ function HomeHeader({
         <div className="flex shrink-0 items-center gap-2">
           <Link
             href="/favorites"
-            className="relative grid h-10 w-10 place-items-center rounded-xl border border-sand bg-bg-card text-navy shadow-sm transition active:scale-95"
+            className="relative grid h-11 w-11 place-items-center rounded-xl border border-sand bg-bg-card text-navy transition hover:-translate-y-0.5 hover:border-brand-200 active:translate-y-0"
             aria-label="Yêu thích"
           >
-            <Heart className="h-7 w-7" strokeWidth={1.8} />
+            <Heart className="h-5 w-5" strokeWidth={1.8} />
             {favoriteCount > 0 && (
               <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1 text-[11px] font-black text-white">
                 {favoriteCount}
@@ -387,10 +398,10 @@ function HomeHeader({
 
           <Link
             href="/cart"
-            className="relative grid h-10 w-10 place-items-center rounded-xl border border-sand bg-bg-card text-navy shadow-sm transition active:scale-95"
+            className="relative grid h-11 w-11 place-items-center rounded-xl bg-brand-500 text-white shadow-[0_8px_20px_oklch(54%_0.15_34/0.22)] transition hover:-translate-y-0.5 hover:bg-brand-600 active:translate-y-0"
             aria-label="Giỏ hàng"
           >
-            <ShoppingCart className="h-8 w-8" strokeWidth={1.8} />
+            <ShoppingCart className="h-5 w-5" strokeWidth={1.8} />
             {cartCount > 0 && (
               <span className="absolute -right-1.5 -top-1.5 flex h-7 min-w-7 items-center justify-center rounded-full bg-brand-500 px-1.5 text-sm font-black text-white max-sm:h-5 max-sm:min-w-5 max-sm:text-[11px]">
                 {cartCount}
@@ -400,11 +411,11 @@ function HomeHeader({
         </div>
       </div>
 
-      <div className="mt-1 flex items-center justify-between gap-3">
+      <div className="mt-1 flex items-center justify-between gap-3 md:absolute md:left-[10.5rem] md:top-11 md:mt-0">
         <button
           type="button"
           onClick={onAddressClick}
-          className="flex min-w-0 items-center gap-1.5 text-left text-xs font-semibold text-charcoal"
+          className="flex min-h-8 min-w-0 items-center gap-1.5 whitespace-nowrap text-left text-xs font-semibold text-charcoal transition hover:text-brand-600"
         >
           <MapPin className="h-4 w-4 shrink-0" strokeWidth={2.6} />
           <span className="truncate">{address}</span>
@@ -845,7 +856,7 @@ function SearchPill({
                       </span>
                       <span className="mt-1 flex items-center gap-2">
                         <span className="text-[12px] font-black text-[#b84a39]">
-                          {formatPrice(product.price)}
+                          {product.sizeOptions?.length ? "Từ " : ""}{formatPrice(getProductStartingPrice(product))}
                         </span>
                         <span className="truncate text-[11px] font-bold text-[#9b8171]">
                           {reason}
@@ -987,26 +998,26 @@ function normalizeSuggestionText(value: string) {
 
 function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
   return (
-    <section className="pt-4">
-      <p className="brand-eyebrow mb-3">
+    <section className="border-b border-sand pb-4 pt-6 md:pb-5 md:pt-8">
+      <p className="brand-eyebrow mb-4">
         Danh mục sản phẩm
       </p>
-      <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:mx-0 md:grid md:grid-cols-4 md:gap-4 md:px-0 lg:grid-cols-6 [&::-webkit-scrollbar]:hidden">
         {categories.map((category, index) => (
           <Link
             key={`${category.name}-${index}`}
             href={category.href}
-            className="group w-[calc((100%_-_24px)/4)] min-w-[calc((100%_-_24px)/4)] shrink-0 snap-start overflow-hidden rounded-xl border border-sand bg-bg-card shadow-sm transition active:scale-[0.97]"
+            className="group w-[calc((100%_-_36px)/4)] min-w-[calc((100%_-_36px)/4)] shrink-0 snap-start overflow-hidden rounded-2xl border border-sand bg-bg-card transition hover:-translate-y-1 hover:border-brand-200 md:w-auto md:min-w-0"
           >
-            <span className="flex h-11 items-start overflow-hidden px-2 pt-2 text-[11px] font-extrabold leading-[13px] text-navy">
+            <span className="flex h-12 items-start overflow-hidden px-3 pt-3 text-xs font-extrabold leading-[1.2] text-navy">
               {category.name}
             </span>
-            <span className="relative block h-16 w-full overflow-hidden">
+            <span className="relative block h-20 w-full overflow-hidden md:h-24">
               <Image
                 src={category.imageUrl}
                 alt={category.name}
                 fill
-                sizes="84px"
+                sizes="(max-width: 767px) 116px, (max-width: 1023px) 25vw, 16vw"
                 className="object-cover transition duration-200 group-hover:scale-105"
               />
             </span>
@@ -1014,7 +1025,7 @@ function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
         ))}
         <Link
           href="/category"
-          className="group flex h-[108px] w-[calc((100%_-_24px)/4)] min-w-[calc((100%_-_24px)/4)] shrink-0 snap-start flex-col items-center justify-center gap-1.5 overflow-hidden rounded-xl border border-sand bg-bg-card shadow-sm transition active:scale-[0.97]"
+          className="group flex h-[128px] w-[calc((100%_-_36px)/4)] min-w-[calc((100%_-_36px)/4)] shrink-0 snap-start flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-sand bg-bg-card transition hover:-translate-y-1 hover:border-brand-200 md:h-auto md:min-h-[144px] md:w-auto md:min-w-0"
         >
           <div className="grid h-8 w-8 place-items-center rounded-full bg-[#f0d8c2]/40">
             <LayoutGrid className="h-4 w-4 text-[#8a6855]" strokeWidth={2.5} />
@@ -1124,7 +1135,7 @@ function RecommendationSections({
   }
 
   return (
-    <div className="space-y-7 pt-6">
+    <div className="space-y-12 pb-10 pt-5 md:space-y-16 md:pb-14 md:pt-6">
       {groups.slice(0, visibleGroupCount).map((group) => (
         <section key={group.key}>
           <SectionHeader
@@ -1140,7 +1151,7 @@ function RecommendationSections({
             href="/search"
             action="Xem tất cả"
           />
-          <div className="mt-3 grid grid-cols-2 items-start gap-3">
+          <div className="mt-5 grid grid-cols-2 items-start gap-3 md:grid-cols-3 md:gap-5 lg:grid-cols-4">
             {group.products.map((product) => (
               <ProductMiniCard
                 key={product.id}
@@ -1180,8 +1191,8 @@ function ProductMiniCard({
   onQuickAdd: () => void;
 }) {
   return (
-    <article className="relative w-full min-w-0 overflow-hidden rounded-2xl border border-sand bg-bg-card shadow-[0_7px_20px_rgba(18,62,102,0.07)]">
-      <div className="relative aspect-[4/5] w-full overflow-hidden bg-cream">
+    <article className="group relative w-full min-w-0 overflow-hidden rounded-[1.15rem] border border-sand bg-bg-card shadow-[0_10px_30px_oklch(27%_0.045_48/0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_38px_oklch(27%_0.045_48/0.11)]">
+      <div className="relative aspect-[4/5] w-full overflow-hidden bg-cream md:aspect-[3/4]">
         <button
           type="button"
           onClick={onClick}
@@ -1191,14 +1202,14 @@ function ProductMiniCard({
           <ProductImage
             src={product.imageUrl}
             alt={product.name}
-            className="object-cover"
+            className="object-cover transition duration-500 group-hover:scale-[1.03]"
           />
         </button>
         <button
           type="button"
           onClick={onToggleFavorite}
           className={clsx(
-            "absolute right-2 top-2 grid h-9 w-9 place-items-center rounded-xl bg-bg-card/95 text-beige shadow-sm transition active:scale-95",
+            "absolute right-2.5 top-2.5 grid h-10 w-10 place-items-center rounded-full border border-sand bg-bg-card/95 text-beige shadow-sm transition hover:text-brand-500 active:scale-95",
             isFavorite ? "text-brand-500" : "text-text-light",
           )}
           aria-label={isFavorite ? "Bỏ yêu thích" : "Thêm yêu thích"}
@@ -1210,31 +1221,31 @@ function ProductMiniCard({
         </button>
       </div>
 
-      <div className="relative min-h-[112px] p-3">
+      <div className="relative min-h-[128px] p-3.5 md:p-4">
         <button
           type="button"
           onClick={onClick}
           className="block w-full text-left"
           aria-label={`Xem ${product.name}`}
         >
-          <h3 className="line-clamp-2 min-h-[40px] text-sm font-bold leading-5 text-navy">
+          <h3 className="line-clamp-2 min-h-[40px] text-sm font-extrabold leading-5 text-navy md:text-base md:leading-6">
             {product.name}
           </h3>
           {reason && (
-            <span className="mt-1 block truncate text-xs font-semibold text-text-muted">
+            <span className="mt-1 block truncate text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted">
               {reason}
             </span>
           )}
           <div className="mt-2 pr-9">
-            <span className="block w-full whitespace-nowrap text-sm font-black leading-tight text-brand-500">
-              {formatPrice(product.price).replace(" ", "")}
+            <span className="block w-full whitespace-nowrap text-sm font-black leading-tight text-brand-600 md:text-base">
+              {product.sizeOptions?.length ? "Từ " : ""}{formatPrice(getProductStartingPrice(product)).replace(" ", "")}
             </span>
           </div>
         </button>
         <button
           type="button"
           onClick={onQuickAdd}
-          className="absolute bottom-3 right-3 grid h-9 w-9 place-items-center rounded-xl bg-brand-500 text-white shadow-sm transition active:scale-95"
+          className="absolute bottom-3 right-3 grid h-10 w-10 place-items-center rounded-xl bg-brand-500 text-white shadow-[0_8px_18px_oklch(54%_0.15_34/0.22)] transition hover:-translate-y-0.5 hover:bg-brand-600 active:translate-y-0"
           aria-label={`Thêm nhanh ${product.name}`}
         >
           <Plus className="h-4 w-4" />
@@ -1256,18 +1267,18 @@ function SectionHeader({
   href: string;
 }) {
   return (
-    <div className="flex items-end justify-between gap-3">
+    <div className="flex items-end justify-between gap-4">
       <div className="min-w-0">
-        <h2 className="text-lg font-extrabold tracking-[-0.02em] text-navy">{title}</h2>
+        <h2 className="brand-section-heading">{title}</h2>
         {description && (
-          <p className="mt-0.5 truncate text-xs font-medium text-text-muted">
+          <p className="mt-2 line-clamp-2 text-sm font-medium text-text-muted">
             {description}
           </p>
         )}
       </div>
       <Link
         href={href}
-        className="flex min-h-8 items-center gap-0.5 text-xs font-bold text-brand-500"
+        className="flex min-h-10 shrink-0 items-center gap-1 whitespace-nowrap text-xs font-extrabold text-brand-600 transition hover:gap-2"
       >
         {action}
         <ChevronRight className="h-3.5 w-3.5" />

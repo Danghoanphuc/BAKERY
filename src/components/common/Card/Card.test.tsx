@@ -11,7 +11,7 @@ describe("Card", () => {
   it("applies base card styles", () => {
     render(<Card>Content</Card>);
     const card = screen.getByText("Content");
-    expect(card).toHaveClass("bg-white", "rounded-lg", "shadow-sm", "p-4");
+    expect(card).toHaveClass("bg-bg-card", "rounded-[1.125rem]", "border-sand", "p-4");
   });
 
   it("handles click when onClick is provided", () => {
@@ -66,6 +66,6 @@ describe("Card", () => {
     render(<Card onClick={handleClick}>Touch feedback</Card>);
 
     const card = screen.getByText("Touch feedback");
-    expect(card).toHaveClass("active:scale-98", "transition-transform");
+    expect(card).toHaveClass("active:translate-y-0", "transition");
   });
 });

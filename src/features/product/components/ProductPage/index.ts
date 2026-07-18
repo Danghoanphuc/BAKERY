@@ -1,0 +1,1 @@
+export { ProductPageClient } from "./ProductPageClient";

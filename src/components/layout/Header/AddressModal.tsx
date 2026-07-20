@@ -55,17 +55,6 @@ type GoongMapEvent = {
   error?: Error;
 };
 
-type GoongStyleLayer = {
-  id?: string;
-  source?: string;
-  "source-layer"?: string;
-};
-
-type GoongStyle = {
-  layers?: GoongStyleLayer[];
-  [key: string]: unknown;
-};
-
 type GoongMarker = {
   setLngLat: (lngLat: [number, number]) => GoongMarker;
   addTo: (map: GoongMap) => GoongMarker;
@@ -77,8 +66,12 @@ type GoongMarker = {
 const DEFAULT_CENTER = { lat: 14.03886, lng: 108.25011 };
 const GOONG_SCRIPT_ID = "goong-js-sdk";
 const GOONG_CSS_ID = "goong-js-css";
-const GOONG_STYLE_URL = "https://tiles.goong.io/assets/goong_light_v2.json";
-const UNSUPPORTED_GOONG_SOURCE_LAYERS = new Set(["trees"]);
+const GOONG_JS_VERSION = "1.0.9";
+const GOONG_SCRIPT_URLS = [
+  `https://cdn.jsdelivr.net/npm/@goongmaps/goong-js@${GOONG_JS_VERSION}/dist/goong-js.js`,
+  `https://unpkg.com/@goongmaps/goong-js@${GOONG_JS_VERSION}/dist/goong-js.js`,
+];
+const GOONG_STYLE_URL = "https://tiles.goong.io/assets/goong_map_web.json";
 
 declare global {
   interface Window {
@@ -86,13 +79,14 @@ declare global {
       accessToken: string;
       Map: new (options: {
         container: HTMLElement;
-        style: string | GoongStyle;
+        style: string;
         center: [number, number];
         zoom: number;
       }) => GoongMap;
       Marker: new (options?: {
         draggable?: boolean;
         color?: string;
+        element?: HTMLElement;
       }) => GoongMarker;
       NavigationControl: new () => unknown;
     };
@@ -123,34 +117,55 @@ export const AddressModal: React.FC<AddressModalProps> = ({
   const [predictions, setPredictions] = useState<GoongPrediction[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [isResolvingAddress, setIsResolvingAddress] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<{
+    lat: number;
+    lng: number;
+  } | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<GoongMap | null>(null);
   const markerRef = useRef<GoongMarker | null>(null);
+  const currentLocationMarkerRef = useRef<GoongMarker | null>(null);
+  const initialAddressFingerprintRef = useRef("");
+  const skipNextAutocompleteRef = useRef(false);
   const sessionToken = useMemo(() => crypto.randomUUID(), [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
 
     const currentAddress = config.deliveryAddress;
+    const nextCoords =
+      currentAddress?.lat && currentAddress?.lng
+        ? { lat: currentAddress.lat, lng: currentAddress.lng }
+        : DEFAULT_CENTER;
+    initialAddressFingerprintRef.current = getAddressFingerprint({
+      street: currentAddress?.street || "",
+      district: currentAddress?.district || "",
+      city: currentAddress?.city || "Hà Nội",
+      formattedAddress: currentAddress?.formattedAddress || "",
+      placeId: currentAddress?.placeId || "",
+      ...nextCoords,
+    });
     setStreet(currentAddress?.street || "");
     setDistrict(currentAddress?.district || "");
     setCity(currentAddress?.city || "Hà Nội");
     setFormattedAddress(currentAddress?.formattedAddress || "");
     setPlaceId(currentAddress?.placeId || "");
+    skipNextAutocompleteRef.current = true;
     setSearchTerm(currentAddress?.formattedAddress || "");
     setPredictions([]);
     setMapError(null);
-
-    if (currentAddress?.lat && currentAddress?.lng) {
-      setCoords({ lat: currentAddress.lat, lng: currentAddress.lng });
-    } else {
-      setCoords(DEFAULT_CENTER);
-    }
+    setCurrentLocation(null);
+    setCoords(nextCoords);
   }, [config.deliveryAddress, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
+    if (skipNextAutocompleteRef.current) {
+      skipNextAutocompleteRef.current = false;
+      return;
+    }
     if (searchTerm.trim().length < 2) {
       setPredictions([]);
       return;
@@ -164,13 +179,13 @@ export const AddressModal: React.FC<AddressModalProps> = ({
             searchTerm,
           )}&location=${coords.lat},${coords.lng}&sessionToken=${sessionToken}`,
         );
-        const data = (await response.json()) as {
+        const data = await readJsonResponse<{
           predictions?: GoongPrediction[];
           error?: string;
-        };
+        }>(response);
 
-        if (!response.ok)
-          throw new Error(data.error || "Không thể tìm địa chỉ.");
+        if (!response.ok || !data)
+          throw new Error(data?.error || "Không thể tìm địa chỉ.");
         setPredictions(data.predictions ?? []);
       } catch (error) {
         console.error("Address autocomplete failed:", error);
@@ -187,8 +202,8 @@ export const AddressModal: React.FC<AddressModalProps> = ({
     if (!isOpen || !mapContainerRef.current || mapRef.current) return;
 
     let isMounted = true;
-    Promise.all([loadGoongSdk(), loadGoongStyle()])
-      .then(([, style]) => {
+    loadGoongSdk()
+      .then(() => {
         if (!isMounted || !window.goongjs || !mapContainerRef.current) return;
 
         const maptilesKey = process.env.NEXT_PUBLIC_GOONG_MAPTILES_KEY;
@@ -200,7 +215,7 @@ export const AddressModal: React.FC<AddressModalProps> = ({
         window.goongjs.accessToken = maptilesKey;
         const map = new window.goongjs.Map({
           container: mapContainerRef.current,
-          style,
+          style: GOONG_STYLE_URL,
           center: [coords.lng, coords.lat],
           zoom: 15,
         });
@@ -210,6 +225,7 @@ export const AddressModal: React.FC<AddressModalProps> = ({
         });
         map.on("load", () => {
           console.debug("Goong map loaded successfully");
+          window.setTimeout(() => map.resize(), 0);
         });
         const marker = new window.goongjs.Marker({
           draggable: true,
@@ -259,10 +275,32 @@ export const AddressModal: React.FC<AddressModalProps> = ({
   }, [coords.lat, coords.lng]);
 
   useEffect(() => {
+    if (!currentLocation || !mapRef.current || !window.goongjs) return;
+
+    currentLocationMarkerRef.current?.remove();
+    const dot = document.createElement("div");
+    dot.setAttribute("aria-label", "Vị trí hiện tại của bạn");
+    dot.style.width = "18px";
+    dot.style.height = "18px";
+    dot.style.borderRadius = "9999px";
+    dot.style.background = "#2563eb";
+    dot.style.border = "3px solid white";
+    dot.style.boxShadow = "0 0 0 7px rgba(37, 99, 235, 0.20)";
+
+    currentLocationMarkerRef.current = new window.goongjs.Marker({
+      element: dot,
+    })
+      .setLngLat([currentLocation.lng, currentLocation.lat])
+      .addTo(mapRef.current);
+  }, [currentLocation]);
+
+  useEffect(() => {
     if (!isOpen) {
       markerRef.current?.remove();
+      currentLocationMarkerRef.current?.remove();
       mapRef.current?.remove();
       markerRef.current = null;
+      currentLocationMarkerRef.current = null;
       mapRef.current = null;
     }
   }, [isOpen]);
@@ -275,13 +313,13 @@ export const AddressModal: React.FC<AddressModalProps> = ({
           prediction.place_id,
         )}&sessionToken=${sessionToken}`,
       );
-      const data = (await response.json()) as {
+      const data = await readJsonResponse<{
         result?: GoongPlaceResult | null;
         error?: string;
-      };
+      }>(response);
 
-      if (!response.ok || !data.result) {
-        throw new Error(data.error || "Không thể lấy địa chỉ.");
+      if (!response.ok || !data?.result) {
+        throw new Error(data?.error || "Không thể lấy địa chỉ.");
       }
 
       applyGoongResult(
@@ -307,16 +345,19 @@ export const AddressModal: React.FC<AddressModalProps> = ({
     if (!shouldReverse) return;
 
     try {
+      setIsResolvingAddress(true);
       const response = await fetch(`/api/goong/reverse?lat=${lat}&lng=${lng}`);
-      const data = (await response.json()) as {
+      const data = await readJsonResponse<{
         result?: GoongPlaceResult | null;
         error?: string;
-      };
+      }>(response);
 
-      if (!response.ok || !data.result) return;
+      if (!response.ok || !data?.result) return;
       applyGoongResult(data.result, data.result.formatted_address);
     } catch (error) {
       console.error("Reverse geocode failed:", error);
+    } finally {
+      setIsResolvingAddress(false);
     }
   }
 
@@ -330,6 +371,7 @@ export const AddressModal: React.FC<AddressModalProps> = ({
     const parsed = parseAddress(nextAddress, result.compound);
 
     setFormattedAddress(nextAddress);
+    skipNextAutocompleteRef.current = true;
     setSearchTerm(nextAddress);
     setStreet(result.name || parsed.street);
     setDistrict(parsed.district);
@@ -346,15 +388,26 @@ export const AddressModal: React.FC<AddressModalProps> = ({
   }
 
   function useCurrentLocation() {
+    if (currentLocation) {
+      void handleCoordinateChange(
+        currentLocation.lat,
+        currentLocation.lng,
+        true,
+      );
+      return;
+    }
+
     if (!navigator.geolocation) {
       setMapError("Trình duyệt chưa hỗ trợ lấy vị trí hiện tại.");
       return;
     }
 
     setIsLocating(true);
+    setMapError(null);
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
+        setCurrentLocation({ lat: latitude, lng: longitude });
         handleCoordinateChange(latitude, longitude, true).finally(() =>
           setIsLocating(false),
         );
@@ -371,7 +424,7 @@ export const AddressModal: React.FC<AddressModalProps> = ({
   }
 
   function handleConfirm() {
-    if (!street.trim() || !district.trim() || !city.trim()) return;
+    if (!canSave) return;
 
     const nextAddress = {
       street: street.trim(),
@@ -397,7 +450,20 @@ export const AddressModal: React.FC<AddressModalProps> = ({
     onClose();
   }
 
-  const isFormValid = street.trim() && district.trim() && city.trim();
+  const isFormValid = Boolean(street.trim() && district.trim() && city.trim());
+  const currentAddressFingerprint = getAddressFingerprint({
+    street,
+    district,
+    city,
+    formattedAddress,
+    placeId,
+    lat: coords.lat,
+    lng: coords.lng,
+  });
+  const hasAddressChanged =
+    currentAddressFingerprint !== initialAddressFingerprintRef.current;
+  const canSave =
+    isFormValid && hasAddressChanged && !isLocating && !isResolvingAddress;
 
   const searchHeader = (
     <div className="relative">
@@ -407,29 +473,49 @@ export const AddressModal: React.FC<AddressModalProps> = ({
         value={searchTerm}
         onChange={(event) => setSearchTerm(event.target.value)}
         placeholder="Nhập số nhà, tên đường, quận..."
-        className="h-12 w-full rounded-xl border border-sand bg-bg-card pl-10 pr-3 text-sm font-semibold outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
+        className="h-11 w-full rounded-xl border border-sand bg-bg-card pl-10 pr-16 text-sm font-semibold outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/15"
       />
+      {isSearching && (
+        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-text-muted">
+          Đang tìm...
+        </span>
+      )}
+      {predictions.length > 0 && (
+        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 max-h-[42dvh] overflow-y-auto rounded-xl border border-sand bg-bg-card shadow-[0_16px_36px_rgba(61,36,23,0.16)]">
+          {predictions.map((prediction) => (
+            <button
+              key={prediction.place_id}
+              type="button"
+              onClick={() => selectPrediction(prediction)}
+              className="flex w-full gap-3 border-b border-sand/50 px-3 py-3 text-left last:border-b-0 hover:bg-cream"
+            >
+              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />
+              <span className="min-w-0">
+                <span className="block truncate text-sm font-black text-navy">
+                  {prediction.structured_formatting?.main_text ||
+                    prediction.description}
+                </span>
+                <span className="mt-0.5 block truncate text-xs font-semibold text-text-muted">
+                  {prediction.structured_formatting?.secondary_text ||
+                    prediction.description}
+                </span>
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 
-  const footer = (
-    <div className="flex gap-3">
-      <button
-        type="button"
-        onClick={handleCancel}
-        className="h-12 flex-1 rounded-xl border border-sand bg-bg-card text-sm font-black text-navy"
-      >
-        Hủy
-      </button>
-      <button
-        type="button"
-        onClick={handleConfirm}
-        disabled={!isFormValid}
-        className="h-12 flex-1 rounded-xl bg-brand-500 text-sm font-black text-white shadow-[0_8px_18px_rgba(217,74,52,0.20)] disabled:cursor-not-allowed disabled:bg-neutral-300"
-      >
-        Lưu địa chỉ
-      </button>
-    </div>
+  const saveAction = (
+    <button
+      type="button"
+      onClick={handleConfirm}
+      disabled={!canSave}
+      className="min-h-9 rounded-xl bg-brand-500 px-4 text-sm font-black text-white shadow-[0_6px_14px_rgba(217,74,52,0.20)] transition-[background-color,color,box-shadow,transform] active:translate-y-px disabled:cursor-not-allowed disabled:bg-sand disabled:text-text-muted disabled:shadow-none"
+    >
+      Lưu
+    </button>
   );
 
   return (
@@ -437,78 +523,104 @@ export const AddressModal: React.FC<AddressModalProps> = ({
       isOpen={isOpen}
       onClose={handleCancel}
       title="Tìm và ghim địa chỉ của bạn"
+      titleClassName="text-sm font-black leading-5 text-navy"
+      headerAction={saveAction}
       headerContent={searchHeader}
-      footer={footer}
-      className="flex h-[85dvh] max-h-[85dvh] flex-col lg:h-[85vh] lg:max-h-[85vh] lg:max-w-xl"
+      contentClassName="flex flex-col overflow-hidden p-3 lg:p-4"
+      className="flex h-[90dvh] max-h-[760px] flex-col lg:h-[85vh] lg:max-h-[85vh] lg:max-w-xl"
     >
-      <div className="space-y-4">
-        <div className="space-y-2">
-          {predictions.length > 0 && (
-            <div className="max-h-48 overflow-y-auto rounded-xl border border-sand bg-bg-card shadow-sm">
-              {predictions.map((prediction) => (
-                <button
-                  key={prediction.place_id}
-                  type="button"
-                  onClick={() => selectPrediction(prediction)}
-                  className="flex w-full gap-3 border-b border-sand/50 px-3 py-3 text-left last:border-b-0 hover:bg-cream"
-                >
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-black text-navy">
-                      {prediction.structured_formatting?.main_text ||
-                        prediction.description}
-                    </span>
-                    <span className="mt-0.5 block truncate text-xs font-semibold text-text-muted">
-                      {prediction.structured_formatting?.secondary_text ||
-                        prediction.description}
-                    </span>
-                  </span>
-                </button>
-              ))}
+      <div className="flex min-h-0 flex-1 flex-col gap-3">
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border border-sand bg-cream">
+          <div className="relative min-h-[14rem] flex-1">
+            <div className="absolute inset-0">
+              <div ref={mapContainerRef} className="h-full w-full" />
             </div>
-          )}
-          {isSearching && (
-            <p className="text-xs font-bold text-text-muted">
-              Đang tìm địa chỉ...
-            </p>
-          )}
-        </div>
-
-        <div className="overflow-hidden rounded-2xl border border-sand bg-cream">
-          <div ref={mapContainerRef} className="h-56 w-full" />
+            <div className="pointer-events-none absolute left-2.5 top-2.5 rounded-full bg-white/92 px-3 py-1.5 text-[10px] font-black text-navy shadow-sm backdrop-blur">
+              Kéo pin đỏ để chỉnh điểm giao
+            </div>
+          </div>
           {mapError && (
             <div className="border-t border-sand px-3 py-2 text-xs font-bold text-amber-800">
               {mapError}
             </div>
           )}
-          <div className="flex items-center justify-between gap-3 border-t border-sand bg-bg-card px-3 py-2">
-            <p className="text-xs font-bold text-text-muted">
-              Kéo pin hoặc chạm bản đồ để chỉnh vị trí.
-            </p>
-            <button
-              type="button"
-              onClick={useCurrentLocation}
-              disabled={isLocating}
-              className="inline-flex min-h-9 shrink-0 animate-pulse items-center gap-1.5 rounded-xl bg-brand-500 px-3 py-2 text-[11px] font-black leading-tight text-white shadow-[0_0_0_4px_rgba(217,74,52,0.10)] disabled:opacity-60"
-            >
-              <LocateFixed className="h-4 w-4" />
-              {isLocating ? "Đang tìm..." : "Nhấn nút để tìm vị trí ngay"}
-            </button>
+          <div className="border-t border-sand bg-bg-card p-2.5">
+            {currentLocation ? (
+              <div className="flex items-center justify-between gap-3">
+                <p className="min-w-0 text-[11px] font-bold leading-4 text-text-muted">
+                  <span className="text-blue-600">Chấm xanh: bạn</span>
+                  <span aria-hidden="true"> · </span>
+                  <span className="text-brand-600">Pin đỏ: điểm giao</span>
+                </p>
+                <button
+                  type="button"
+                  onClick={useCurrentLocation}
+                  disabled={isResolvingAddress}
+                  className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 text-[11px] font-black text-blue-700 disabled:opacity-60"
+                >
+                  <LocateFixed className="h-4 w-4" />
+                  Về vị trí của tôi
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={useCurrentLocation}
+                disabled={isLocating}
+                className="group flex min-h-12 w-full items-center justify-center gap-3 rounded-xl bg-brand-500 px-4 text-left text-white shadow-[0_8px_20px_rgba(217,74,52,0.26)] ring-4 ring-brand-500/10 transition-transform active:scale-[0.99] disabled:opacity-60"
+              >
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/18">
+                  <LocateFixed className="h-5 w-5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-black leading-4">
+                    {isLocating
+                      ? "Đang xác định vị trí..."
+                      : "Xác định vị trí của tôi"}
+                  </span>
+                  {!isLocating && (
+                    <span className="mt-0.5 block text-[10px] font-bold text-white/80">
+                      Một chạm để thấy bạn đang đứng ở đâu
+                    </span>
+                  )}
+                </span>
+              </button>
+            )}
           </div>
         </div>
 
         {formattedAddress && (
-          <div className="rounded-xl bg-cream px-3 py-2 text-xs font-bold leading-5 text-navy ring-1 ring-sand">
+          <div className="shrink-0 rounded-xl bg-cream px-3 py-2 text-xs font-bold leading-4 text-navy ring-1 ring-sand">
             <span className="mb-0.5 block text-[9px] uppercase tracking-[0.12em] text-text-muted">
               Vị trí đã ghim của bạn
             </span>
-            {formattedAddress}
+            <span className="line-clamp-2">{formattedAddress}</span>
           </div>
         )}
       </div>
     </Modal>
   );
 };
+
+function getAddressFingerprint(address: {
+  street: string;
+  district: string;
+  city: string;
+  formattedAddress: string;
+  placeId: string;
+  lat: number;
+  lng: number;
+}) {
+  return JSON.stringify([
+    address.street.trim(),
+    address.district.trim(),
+    address.city.trim(),
+    address.formattedAddress.trim(),
+    address.placeId.trim(),
+    address.lat.toFixed(6),
+    address.lng.toFixed(6),
+  ]);
+}
 
 function parseAddress(
   formattedAddress: string,
@@ -536,52 +648,61 @@ function loadGoongSdk() {
       const link = document.createElement("link");
       link.id = GOONG_CSS_ID;
       link.rel = "stylesheet";
-      link.href =
-        "https://cdn.jsdelivr.net/npm/@goongmaps/goong-js@1.0.11/dist/goong-js.css";
+      link.href = `https://cdn.jsdelivr.net/npm/@goongmaps/goong-js@${GOONG_JS_VERSION}/dist/goong-js.css`;
       document.head.appendChild(link);
     }
 
     const existingScript = document.getElementById(
       GOONG_SCRIPT_ID,
     ) as HTMLScriptElement | null;
-    if (existingScript) {
+    if (existingScript && existingScript.dataset.loadState !== "failed") {
       existingScript.addEventListener("load", () => resolve(), { once: true });
       existingScript.addEventListener("error", reject, { once: true });
       return;
     }
 
-    const script = document.createElement("script");
-    script.id = GOONG_SCRIPT_ID;
-    script.src =
-      "https://cdn.jsdelivr.net/npm/@goongmaps/goong-js@1.0.11/dist/goong-js.js";
-    script.async = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("GOONG_SCRIPT_LOAD_FAILED"));
-    document.head.appendChild(script);
+    existingScript?.remove();
+    loadGoongScript(GOONG_SCRIPT_URLS, resolve, reject);
   });
 }
 
-async function loadGoongStyle(): Promise<string | GoongStyle> {
+function loadGoongScript(
+  urls: string[],
+  resolve: () => void,
+  reject: (reason: Error) => void,
+  index = 0,
+) {
+  const url = urls[index];
+  if (!url) {
+    reject(new Error("GOONG_SCRIPT_LOAD_FAILED"));
+    return;
+  }
+
+  const script = document.createElement("script");
+  script.id = GOONG_SCRIPT_ID;
+  script.src = url;
+  script.async = true;
+  script.dataset.loadState = "loading";
+  script.onload = () => {
+    script.dataset.loadState = "loaded";
+    resolve();
+  };
+  script.onerror = () => {
+    script.dataset.loadState = "failed";
+    script.remove();
+    loadGoongScript(urls, resolve, reject, index + 1);
+  };
+  document.head.appendChild(script);
+}
+
+async function readJsonResponse<T>(response: Response): Promise<T | null> {
+  if (!response.headers.get("content-type")?.includes("application/json")) {
+    return null;
+  }
+
   try {
-    const response = await fetch(GOONG_STYLE_URL);
-    if (!response.ok) return GOONG_STYLE_URL;
-
-    const style = (await response.json()) as GoongStyle;
-    if (!Array.isArray(style.layers)) return style;
-
-    return {
-      ...style,
-      layers: style.layers.filter(
-        (layer) =>
-          !(
-            layer.source === "composite" &&
-            layer["source-layer"] &&
-            UNSUPPORTED_GOONG_SOURCE_LAYERS.has(layer["source-layer"])
-          ),
-      ),
-    };
-  } catch (error) {
-    console.warn("Failed to sanitize Goong style:", error);
-    return GOONG_STYLE_URL;
+    return (await response.json()) as T;
+  } catch {
+    return null;
   }
 }

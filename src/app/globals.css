@@ -1,12 +1,14 @@
-/* SweetTime · system: warm editorial bakery · display: Lora · body: Be Vietnam Pro */
-@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&family=Lora:wght@500;600;700&display=swap");
+/* Hallmark · genre: editorial · macrostructure: Catalogue · design-system: DESIGN.md · designed-as-app */
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R5 V4 */
+@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&family=Fraunces:opsz,wght@9..144,600..900&display=swap");
+@import "../../tokens.css";
 @import "tailwindcss";
 
 @theme {
   /* Bakery Brand Color Palette */
   /* Backgrounds (Kem) */
   --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Lora", Georgia, "Times New Roman", serif;
+  --font-display: "Fraunces", ui-serif, serif;
 
   --color-bg-main: oklch(97% 0.018 82);
   --color-bg-soft: oklch(94% 0.025 78);
@@ -20,16 +22,16 @@
   --color-text-light: oklch(61% 0.025 65);
 
   /* Brand Colors (Cam Đất/Đỏ Gạch) */
-  --color-brand-50: #fff3ef;
-  --color-brand-100: #f7dbd1;
-  --color-brand-200: #edb7a8;
-  --color-brand-300: #df8d78;
-  --color-brand-400: #cf664f;
-  --color-brand-500: oklch(54% 0.15 34);
-  --color-brand-600: oklch(47% 0.14 34);
-  --color-brand-700: oklch(40% 0.12 34);
-  --color-brand-800: #702a22;
-  --color-brand-900: #5d271f;
+  --color-brand-50: oklch(97% 0.018 50);
+  --color-brand-100: oklch(93% 0.035 50);
+  --color-brand-200: oklch(86% 0.065 45);
+  --color-brand-300: oklch(76% 0.10 40);
+  --color-brand-400: oklch(64% 0.13 36);
+  --color-brand-500: oklch(50% 0.14 34);
+  --color-brand-600: oklch(43% 0.13 34);
+  --color-brand-700: oklch(37% 0.11 34);
+  --color-brand-800: oklch(31% 0.09 34);
+  --color-brand-900: oklch(26% 0.07 34);
 
   --color-navy: oklch(27% 0.045 48);
   --color-navy-soft: oklch(93% 0.018 68);
@@ -37,16 +39,16 @@
   --color-teal-soft: oklch(95% 0.035 83);
   --color-cream: oklch(97% 0.018 82);
   --color-sand: oklch(88% 0.035 70);
-  --color-beige: #b8a48f;
-  --color-coral: #d2986a;
+  --color-beige: oklch(72% 0.025 65);
+  --color-coral: oklch(69% 0.08 55);
   --color-charcoal: oklch(39% 0.035 52);
 
   /* Accents */
-  --color-accent-star: #f4b438;
-  --color-accent-healthy: #5f8063;
-  --color-accent-healthy-light: #83a485;
-  --color-accent-pink: #c24a36;
-  --color-accent-gold: #c9a24c;
+  --color-accent-star: oklch(78% 0.14 78);
+  --color-accent-healthy: oklch(52% 0.08 145);
+  --color-accent-healthy-light: oklch(65% 0.07 145);
+  --color-accent-pink: oklch(50% 0.14 34);
+  --color-accent-gold: oklch(67% 0.10 76);
 
   /* Neutral (from original, kept for compatibility) */
   --color-neutral-50: #fafafa;
@@ -108,20 +110,13 @@
     overflow-x: clip;
   }
 
-  body {
-    background-image:
-      linear-gradient(oklch(27% 0.045 48 / 0.025) 1px, transparent 1px),
-      linear-gradient(90deg, oklch(27% 0.045 48 / 0.018) 1px, transparent 1px);
-    background-size: 32px 32px;
-  }
-
   ::selection {
-    background: #c24a36;
-    color: white;
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
   }
 
   :focus-visible {
-    outline: 3px solid rgba(201, 162, 76, 0.45);
+    outline: 3px solid var(--color-focus);
     outline-offset: 2px;
   }
 }
@@ -200,15 +195,11 @@
 
   .brand-page {
     @apply min-h-screen bg-bg-main text-charcoal;
-    background-image:
-      radial-gradient(circle at 8% 0%, oklch(54% 0.15 34 / 0.08), transparent 30rem),
-      radial-gradient(circle at 95% 10%, oklch(67% 0.10 76 / 0.10), transparent 26rem);
   }
 
   .brand-card {
     @apply border border-sand/80 bg-bg-card;
-    border-radius: 1.125rem;
-    box-shadow: 0 12px 32px oklch(27% 0.045 48 / 0.07);
+    border-radius: var(--radius-card);
   }
 
   .brand-eyebrow {
@@ -223,8 +214,8 @@
   }
 
   .brand-button-primary {
-    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 text-sm font-extrabold text-white transition;
-    box-shadow: 0 8px 18px oklch(54% 0.15 34 / 0.22);
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 text-sm font-extrabold text-white;
+    transition: background-color var(--dur-short) var(--ease-out), transform var(--dur-micro) var(--ease-out);
   }
 
   .brand-button-primary:hover {
@@ -232,7 +223,8 @@
   }
 
   .brand-button-secondary {
-    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-navy bg-transparent px-5 text-sm font-extrabold text-navy transition;
+    @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-navy bg-transparent px-5 text-sm font-extrabold text-navy;
+    transition: background-color var(--dur-short) var(--ease-out), transform var(--dur-micro) var(--ease-out);
   }
 
   .brand-chip {
@@ -269,88 +261,88 @@
 }
 
 .admin-ui-frame {
-  color: #51483f;
-  background: #f8f3eb;
+  color: var(--color-ink-2);
+  background: var(--color-paper);
 }
 
 .admin-ui-frame h1,
 .admin-ui-frame h2,
 .admin-ui-frame h3 {
-  color: #1f2e4a;
+  color: var(--color-ink);
   letter-spacing: -0.015em;
 }
 
 .admin-ui-frame :where(.bg-white) {
-  background-color: #fffcf7;
+  background-color: var(--color-paper-3);
 }
 
 .admin-ui-frame :where(.bg-neutral-50) {
-  background-color: #f2e8da;
+  background-color: var(--color-paper-2);
 }
 
 .admin-ui-frame :where(.border-neutral-100, .border-neutral-200, .border-neutral-300) {
-  border-color: #e8d9c7;
+  border-color: var(--color-rule);
 }
 
 .admin-ui-frame :where(.text-neutral-950, .text-neutral-900) {
-  color: #1f2e4a;
+  color: var(--color-ink);
 }
 
 .admin-ui-frame :where(.text-neutral-800, .text-neutral-700) {
-  color: #51483f;
+  color: var(--color-ink-2);
 }
 
 .admin-ui-frame :where(.text-neutral-600, .text-neutral-500) {
-  color: #7e6a59;
+  color: var(--color-muted);
 }
 
 .admin-ui-frame :where(.rounded-lg) {
   border-radius: 0.75rem;
 }
 
-.admin-ui-frame :where(.shadow-sm) {
-  box-shadow: 0 8px 22px rgba(91, 55, 31, 0.07);
-}
+.admin-ui-frame :where(.shadow-sm) { box-shadow: none; }
 
 .admin-ui-frame :where(input, select, textarea) {
-  background-color: #fffcf7;
-  border-color: #e2d2be;
-  color: #51483f;
+  background-color: var(--color-paper-3);
+  border-color: var(--color-rule-2);
+  color: var(--color-ink-2);
+  outline: 2px solid transparent;
+  outline-offset: 1px;
 }
 
 .admin-ui-frame :where(input:focus, select:focus, textarea:focus) {
-  border-color: #c9a24c;
-  box-shadow: 0 0 0 3px rgba(201, 162, 76, 0.18);
+  border-color: var(--color-rule-2);
+  outline-color: var(--color-focus);
 }
 
 .admin-ui-frame :where(table) {
-  color: #51483f;
+  color: var(--color-ink-2);
 }
 
 .admin-ui-frame :where(thead) {
-  background-color: #f2e8da;
-  color: #1f2e4a;
+  background-color: var(--color-paper-2);
+  color: var(--color-ink);
 }
 
 .admin-ui-frame :where(th) {
-  color: #75614f;
+  color: var(--color-muted);
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.04em;
 }
 
 .admin-ui-frame :where(tbody tr) {
-  border-color: #eadfD1;
+  border-color: var(--color-rule);
 }
 
 .admin-ui-frame :where(tbody tr:hover) {
-  background-color: rgba(201, 162, 76, 0.07);
+  background-color: var(--color-accent-soft);
 }
 
 .admin-ui-frame .btn-primary,
 .admin-ui-frame .btn-secondary {
   display: inline-flex;
-  height: 2.5rem;
+  min-height: 2.75rem;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
@@ -358,18 +350,18 @@
   padding: 0 0.875rem;
   font-size: 0.875rem;
   font-weight: 800;
-  transition: 160ms ease;
+  transition: background-color var(--dur-short) var(--ease-out), transform var(--dur-micro) var(--ease-out);
 }
 
 .admin-ui-frame .btn-primary {
-  background: #c24a36;
-  color: white;
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
 }
 
 .admin-ui-frame .btn-secondary {
-  border: 1px solid #ddcdb9;
-  background: #fffcf7;
-  color: #1f2e4a;
+  border: 1px solid var(--color-rule-2);
+  background: var(--color-paper-3);
+  color: var(--color-ink);
 }
 
 .admin-ui-frame :where(.btn-primary, .btn-secondary):disabled {
@@ -383,18 +375,17 @@
 .admin-ui-frame :where([class~="bg-[#b84a39]"]) { background-color: var(--color-brand-500); }
 .admin-ui-frame :where([class~="text-[#3d2417]"]) { color: var(--color-navy); }
 .admin-ui-frame :where([class~="text-[#8a4a28]"]) { color: var(--color-text-muted); }
-.admin-ui-frame :where([class~="bg-[#fffaf6]"]) { background-color: #fffdf9; }
-.admin-ui-frame :where([class~="border-[#eadbcc]"], [class~="border-[#f0e1d2]"]) { border-color: #dfe5e8; }
+.admin-ui-frame :where([class~="bg-[#fffaf6]"]) { background-color: var(--color-paper-3); }
+.admin-ui-frame :where([class~="border-[#eadbcc]"], [class~="border-[#f0e1d2]"]) { border-color: var(--color-rule); }
 
 .admin-surface {
-  border: 1px solid #e8d9c7;
+  border: 1px solid var(--color-rule);
   border-radius: 0.75rem;
-  background: #fffcf7;
-  box-shadow: 0 8px 22px rgba(91, 55, 31, 0.07);
+  background: var(--color-paper-3);
 }
 
 .admin-eyebrow {
-  color: #8a6828;
+  color: var(--color-accent-strong);
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -402,18 +393,17 @@
 }
 
 .admin-title {
-  color: #1f2e4a;
+  color: var(--color-ink);
   font-weight: 900;
   letter-spacing: -0.025em;
 }
 
 /* Khung nội dung dùng chung cho cẩm nang thương hiệu. */
 .guide-card {
-  border: 1px solid #e8d9c7;
+  border: 1px solid var(--color-rule);
   border-radius: 1rem;
-  background: #fffcf7;
+  background: var(--color-paper-3);
   padding: 1.25rem;
-  box-shadow: 0 8px 24px rgba(91, 55, 31, 0.06);
 }
 
 @media (min-width: 640px) {
@@ -423,12 +413,12 @@
 /* Cầu nối cho các màn hình cũ còn dùng mã màu trực tiếp. Các token mới ở
    trên là nguồn chuẩn; lớp tương thích này giúp nhận diện phủ toàn hệ thống
    trong lúc từng màn hình được chuyển dần sang utility ngữ nghĩa. */
-:where([class~="text-[#b84a39]"], [class~="text-[#d94a34]"]) { color: #c24a36; }
-:where([class~="bg-[#b84a39]"], [class~="bg-[#d94a34]"]) { background-color: #c24a36; }
-:where([class~="border-[#b84a39]"]) { border-color: #c24a36; }
-:where([class~="text-[#3d2417]"], [class~="text-[#123e66]"]) { color: #1f2e4a; }
-:where([class~="bg-[#123e66]"]) { background-color: #1f2e4a; }
-:where([class~="text-[#8a4a28]"], [class~="text-[#7b6254]"], [class~="text-[#6f777b]"]) { color: #7e6a59; }
-:where([class~="bg-[#fffaf6]"], [class~="bg-[#fffdf9]"]) { background-color: #fffcf7; }
-:where([class~="bg-[#fff1f0]"], [class~="bg-[#fff1ed]"]) { background-color: #fff3ef; }
-:where([class~="border-[#eadbcc]"], [class~="border-[#f0e1d2]"], [class~="border-[#dfe5e8]"]) { border-color: #e8d9c7; }
+:where([class~="text-[#b84a39]"], [class~="text-[#d94a34]"]) { color: var(--color-accent); }
+:where([class~="bg-[#b84a39]"], [class~="bg-[#d94a34]"]) { background-color: var(--color-accent); }
+:where([class~="border-[#b84a39]"]) { border-color: var(--color-accent); }
+:where([class~="text-[#3d2417]"], [class~="text-[#123e66]"]) { color: var(--color-ink); }
+:where([class~="bg-[#123e66]"]) { background-color: var(--color-ink); }
+:where([class~="text-[#8a4a28]"], [class~="text-[#7b6254]"], [class~="text-[#6f777b]"]) { color: var(--color-muted); }
+:where([class~="bg-[#fffaf6]"], [class~="bg-[#fffdf9]"]) { background-color: var(--color-paper-3); }
+:where([class~="bg-[#fff1f0]"], [class~="bg-[#fff1ed]"]) { background-color: var(--color-accent-soft); }
+:where([class~="border-[#eadbcc]"], [class~="border-[#f0e1d2]"], [class~="border-[#dfe5e8]"]) { border-color: var(--color-rule); }

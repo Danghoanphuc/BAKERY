@@ -15,6 +15,7 @@ import {
   ShoppingBag,
   ShoppingCart,
   Users,
+  Workflow,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { BrandLogo } from "@/components/brand/BrandLogo";
@@ -50,6 +51,12 @@ const menuItems = [
     label: "Marketing & ưu đãi",
     icon: Megaphone,
     href: "/admin/marketing",
+  },
+  {
+    id: "growth-studio",
+    label: "Studio tăng trưởng",
+    icon: Workflow,
+    href: "/admin/growth-studio",
   },
   {
     id: "finance",
@@ -88,7 +95,7 @@ export function AdminSidebar({ admin }: { admin: AdminPrincipal }) {
   return (
     <aside
       className={clsx(
-        "sticky top-0 flex h-screen shrink-0 flex-col border-r border-sand bg-bg-card shadow-[6px_0_24px_oklch(27%_0.045_48/0.07)] transition-[width] duration-200",
+        "sticky top-0 flex h-screen shrink-0 flex-col border-r border-sand bg-bg-card",
         isExpanded ? "w-64" : "w-[76px]",
       )}
     >
@@ -105,12 +112,12 @@ export function AdminSidebar({ admin }: { admin: AdminPrincipal }) {
             isExpanded ? "flex" : "hidden",
           )}
         >
-          <BrandLogo variant="mark" className="h-10 w-10 shrink-0 rounded-xl shadow-sm" alt="" />
+          <BrandLogo variant="mark" className="h-10 w-10 shrink-0 rounded-xl" alt="" />
           <span className="min-w-0">
-            <span className="block truncate text-base font-black text-[#1f2e4a]">
+            <span className="block truncate text-base font-black text-navy">
               SweetTime Admin
             </span>
-            <span className="block truncate text-xs font-semibold text-[#7e6a59]">
+            <span className="block truncate text-xs font-semibold text-text-muted">
               Tiệm bánh & vận hành
             </span>
           </span>
@@ -119,7 +126,7 @@ export function AdminSidebar({ admin }: { admin: AdminPrincipal }) {
         <button
           type="button"
           onClick={() => setIsExpanded((current) => !current)}
-          className="grid h-10 w-10 place-items-center rounded-xl border border-sand bg-bg-card text-navy transition hover:border-accent-gold hover:text-teal"
+          className="grid h-11 w-11 place-items-center rounded-xl border border-sand bg-bg-card text-navy transition-colors duration-200 ease-[var(--ease-out)] hover:border-brand-400 hover:text-brand-700 active:translate-y-px"
           aria-label={isExpanded ? "Thu gọn sidebar" : "Mở rộng sidebar"}
           title={isExpanded ? "Thu gọn" : "Mở rộng"}
         >
@@ -145,16 +152,13 @@ export function AdminSidebar({ admin }: { admin: AdminPrincipal }) {
                   href={item.href}
                   title={!isExpanded ? item.label : undefined}
                   className={clsx(
-                    "group relative flex h-12 items-center rounded-xl text-sm font-bold transition",
+                    "group relative flex h-12 items-center rounded-xl border text-sm font-bold transition-colors duration-200 ease-[var(--ease-out)]",
                     isExpanded ? "gap-3 px-3" : "justify-center px-0",
                     isActive
-                      ? "bg-bg-soft text-navy shadow-sm ring-1 ring-sand"
-                      : "text-text-muted hover:bg-bg-main hover:text-navy",
+                      ? "border-sand bg-bg-soft text-navy"
+                      : "border-transparent text-text-muted hover:border-sand hover:bg-bg-main hover:text-navy",
                   )}
                 >
-                  {isActive && (
-                    <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-brand-500" />
-                  )}
                   <Icon className="h-5 w-5 shrink-0" />
                   {isExpanded && <span className="truncate">{item.label}</span>}
                 </Link>
@@ -170,10 +174,10 @@ export function AdminSidebar({ admin }: { admin: AdminPrincipal }) {
           isExpanded ? "text-left" : "text-center",
         )}
       >
-        <div className="rounded-xl bg-bg-soft px-3 py-3 text-xs font-semibold text-text-muted ring-1 ring-sand">
+        <div className="px-2 py-2 text-xs font-semibold text-text-muted">
           {isExpanded ? (
             <>
-              <p className="truncate text-[#1f2e4a]">{admin.name}</p>
+              <p className="truncate text-navy">{admin.name}</p>
               <p className="mt-1 truncate">{ADMIN_ROLE_LABELS[admin.role]}</p>
             </>
           ) : (

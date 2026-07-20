@@ -1,7 +1,7 @@
 export const ADMIN_ROLES = ["owner", "manager", "marketing", "finance", "cashier", "warehouse"] as const;
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 
-export const ADMIN_PERMISSIONS = ["dashboard", "pos", "orders", "customers", "marketing", "finance", "catalog", "inventory", "wholesale", "security"] as const;
+export const ADMIN_PERMISSIONS = ["dashboard", "pos", "orders", "customers", "marketing", "growth_studio", "finance", "catalog", "inventory", "wholesale", "security"] as const;
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
 
 export type AdminPrincipal = {
@@ -21,8 +21,8 @@ export const ADMIN_ROLE_LABELS: Record<AdminRole, string> = {
 
 const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
   owner: ADMIN_PERMISSIONS,
-  manager: ["dashboard", "pos", "orders", "customers", "marketing", "catalog", "inventory", "wholesale"],
-  marketing: ["dashboard", "customers", "marketing"],
+  manager: ["dashboard", "pos", "orders", "customers", "marketing", "growth_studio", "catalog", "inventory", "wholesale"],
+  marketing: ["dashboard", "customers", "marketing", "growth_studio"],
   finance: ["dashboard", "finance"],
   cashier: ["dashboard", "pos", "orders", "customers"],
   warehouse: ["dashboard", "orders", "catalog", "inventory", "wholesale"],
@@ -41,6 +41,7 @@ export function getAdminPermissionForPath(pathname: string): AdminPermission {
     [/^\/admin\/pos(?:\/|$)|^\/api\/pos(?:\/|$)|^\/api\/vouchers\/pos-redeem/, "pos"],
     [/^\/admin\/orders(?:\/|$)|^\/api\/admin\/orders(?:\/|$)/, "orders"],
     [/^\/admin\/customers(?:\/|$)|^\/api\/customers(?:\/|$)/, "customers"],
+    [/^\/admin\/growth-studio(?:\/|$)|^\/api\/admin\/growth-studio(?:\/|$)/, "growth_studio"],
     [/^\/admin\/marketing(?:\/|$)|^\/api\/admin\/(?:loyalty|vouchers)(?:\/|$)|^\/api\/marketing(?:\/|$)/, "marketing"],
     [/^\/admin\/finance(?:\/|$)|^\/api\/(?:admin\/)?finance(?:\/|$)/, "finance"],
     [/^\/admin\/categories(?:\/|$)|^\/api\/(?:categories|products|uploads)(?:\/|$)|^\/api\/admin\/products(?:\/|$)/, "catalog"],

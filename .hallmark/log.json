@@ -1,0 +1,34 @@
+[
+  {
+    "date": "2026-07-20",
+    "scope": "page",
+    "macrostructure": "Workbench",
+    "theme": "SweetTime warm editorial",
+    "enrichment": "none",
+    "brief": "Growth Studio v2 · workspace management, governed history and lineage"
+  },
+  {
+    "date": "2026-07-19",
+    "scope": "component",
+    "macrostructure": "Workbench",
+    "theme": "SweetTime warm editorial",
+    "enrichment": "none",
+    "brief": "Growth Studio · refined task cards, AI model picker and collision repair"
+  },
+  {
+    "date": "2026-07-19",
+    "scope": "page",
+    "macrostructure": "Workbench",
+    "theme": "SweetTime warm editorial",
+    "enrichment": "none",
+    "brief": "Growth Studio · Figma-like node-on-demand canvas"
+  },
+  {
+    "date": "2026-07-19",
+    "scope": "app",
+    "macrostructure": "Catalogue",
+    "theme": "SweetTime warm editorial",
+    "enrichment": "none",
+    "brief": "BAKERY storefront and app-wide visual-system redesign"
+  }
+]

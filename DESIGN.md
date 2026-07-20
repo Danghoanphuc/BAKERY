@@ -29,7 +29,7 @@ semantic tokens in `src/app/globals.css` first.
 
 ## Typography
 
-- Display: Lora, upright only, for page and section headlines.
+- Display: Fraunces, upright only, for page and section headlines.
 - Body/UI: Be Vietnam Pro.
 - Product names stay in the body family at 700–800 weight for compact scanning.
 - Headings use sentence case. Uppercase is reserved for short utility labels.
@@ -67,3 +67,21 @@ Touch targets are at least 44px, preferably 48px on mobile.
 - Preserve current uncommitted product configurator work.
 - No production files or route trees are deleted as part of the redesign.
 - Existing global styles are migrated incrementally; Tailwind entry directives stay.
+
+## Hallmark implementation
+
+- Genre: editorial commerce.
+- Storefront macrostructure: Catalogue.
+- Storefront component voice: F6 product grid, image · name · price · one action.
+- App navigation: compact bottom rail on mobile; no glass blur or moving card-within-card.
+- Storefront motion: static by default; only press feedback and image hover at 1.02×.
+- Category labels stay on one line. Full category names remain available to assistive technology.
+
+## Exports
+
+- CSS custom properties: `tokens.css`.
+- DTCG tokens: `tokens.json`.
+- Tailwind v4 values are mapped through `src/app/globals.css`.
+- shadcn-compatible roles map as follows: background → paper, foreground → ink,
+  primary → accent, primary-foreground → accent-ink, border/input → rule,
+  ring → focus, radius → radius-control.

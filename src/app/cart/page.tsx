@@ -77,7 +77,7 @@ export default function CartPage() {
           <CartHeader title="Giỏ hàng" onBack={() => router.back()} />
 
           <section className="flex flex-1 flex-col items-center justify-center text-center">
-            <div className="grid h-24 w-24 place-items-center rounded-2xl bg-teal-soft text-teal">
+            <div className="grid h-20 w-20 place-items-center text-brand-700">
               <ShoppingBag className="h-11 w-11" />
             </div>
             <h1 className="brand-heading mt-5 text-2xl">
@@ -108,7 +108,7 @@ export default function CartPage() {
             <button
               type="button"
               onClick={clearCart}
-              className="grid h-10 w-10 place-items-center rounded-xl border border-sand bg-bg-card text-brand-500 shadow-sm transition active:scale-95"
+              className="grid h-11 w-11 place-items-center rounded-xl border border-sand bg-bg-card text-brand-600 transition-transform duration-150 ease-[var(--ease-out)] active:translate-y-px"
               aria-label="Xóa tất cả"
             >
               <Trash2 className="h-5 w-5" />
@@ -151,7 +151,7 @@ export default function CartPage() {
                       <button
                         type="button"
                         onClick={() => removeItem(item.cartItemId)}
-                        className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-500 transition active:scale-95"
+                        className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-brand-50 text-brand-600 transition-transform duration-150 ease-[var(--ease-out)] active:translate-y-px"
                         aria-label="Xóa sản phẩm"
                       >
                         <Trash2 className="h-4 w-4" />
@@ -167,7 +167,7 @@ export default function CartPage() {
                           Thành tiền {formatPrice(itemTotalAfterDiscount)}
                         </p>
                         {itemDiscount > 0 && selectedVoucher && (
-                          <p className="mt-0.5 text-[11px] font-black text-[#34802f]">
+                          <p className="mt-0.5 text-[11px] font-black text-accent-healthy">
                             Tiết kiệm {formatPrice(itemDiscount)} với{" "}
                             {selectedVoucher.code}
                           </p>
@@ -193,15 +193,15 @@ export default function CartPage() {
                   </div>
                 </div>
 
-                <div className="mt-3 rounded-xl border border-dashed border-sand bg-cream px-3 py-2">
+                <div className="mt-3 border-t border-sand pt-2">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-[12px] font-black text-[#7a351f]">
+                      <p className="truncate text-[12px] font-black text-brand-800">
                         {selectedVoucher
                           ? `Đang áp ${selectedVoucher.code}`
                           : "Áp voucher cho giỏ hàng"}
                       </p>
-                      <p className="mt-0.5 truncate text-[11px] font-semibold text-[#7b6254]">
+                      <p className="mt-0.5 truncate text-[11px] font-semibold text-text-muted">
                         {selectedVoucher
                           ? voucherPricing.isEligible
                             ? "Có thể đổi hoặc bỏ mã này."
@@ -214,7 +214,7 @@ export default function CartPage() {
                         <button
                           type="button"
                           onClick={clearSelectedVoucher}
-                          className="text-[11px] font-black text-[#9b8171]"
+                          className="min-h-11 whitespace-nowrap text-[11px] font-black text-text-muted"
                         >
                           Bỏ
                         </button>
@@ -222,7 +222,7 @@ export default function CartPage() {
                       <button
                         type="button"
                         onClick={() => setIsVoucherPickerOpen(true)}
-                        className="rounded-lg bg-navy px-3 py-1.5 text-xs font-extrabold text-white"
+                        className="min-h-11 whitespace-nowrap rounded-lg bg-navy px-3 py-1.5 text-xs font-extrabold text-cream"
                       >
                         {selectedVoucher ? "Đổi" : "Chọn"}
                       </button>
@@ -302,7 +302,7 @@ function CartHeader({
       <button
         type="button"
         onClick={onBack}
-        className="grid h-10 w-10 place-items-center rounded-xl border border-sand bg-bg-card text-navy shadow-sm transition active:scale-95"
+        className="grid h-11 w-11 place-items-center rounded-xl border border-sand bg-bg-card text-navy transition-transform duration-150 ease-[var(--ease-out)] active:translate-y-px"
         aria-label="Quay lại"
       >
         <ArrowLeft className="h-5 w-5" />
@@ -361,7 +361,7 @@ function QuantityStepper({
       <button
         type="button"
         onClick={onDecrease}
-        className="grid h-8 w-8 place-items-center rounded-lg bg-bg-card text-charcoal shadow-sm transition active:scale-95"
+        className="grid h-11 w-11 place-items-center rounded-lg bg-bg-card text-charcoal transition-transform duration-150 ease-[var(--ease-out)] active:translate-y-px"
         aria-label="Giảm số lượng"
       >
         <Minus className="h-4 w-4" />
@@ -370,7 +370,7 @@ function QuantityStepper({
       <button
         type="button"
         onClick={onIncrease}
-        className="grid h-8 w-8 place-items-center rounded-lg bg-brand-500 text-white shadow-sm transition active:scale-95"
+        className="grid h-11 w-11 place-items-center rounded-lg bg-brand-500 text-cream transition-transform duration-150 ease-[var(--ease-out)] active:translate-y-px"
         aria-label="Tăng số lượng"
       >
         <Plus className="h-4 w-4" />
@@ -417,12 +417,12 @@ function CheckoutSummary({
           </div>
           <div className="flex items-center justify-between text-[13px] font-semibold text-text-muted">
             <span>{isPickup ? "Phí nhận tại quán" : "Phí vận chuyển"}</span>
-            <span className="text-[#34802f]">
+            <span className="text-accent-healthy">
               {deliveryFee === 0 ? "Miễn phí" : formatPrice(deliveryFee)}
             </span>
           </div>
           {discountAmount > 0 && (
-            <div className="space-y-1.5 rounded-[14px] bg-[#eff8ea] px-3 py-2 text-[12px] font-semibold text-[#34802f]">
+            <div className="space-y-1.5 border-t border-sand bg-teal-soft px-3 py-2 text-[12px] font-semibold text-accent-healthy">
               <div className="flex items-center justify-between gap-3">
                 <span className="inline-flex min-w-0 items-center gap-1.5">
                   <TicketPercent className="h-3.5 w-3.5 shrink-0" />
@@ -432,7 +432,7 @@ function CheckoutSummary({
               {discountLines.map((line) => (
                 <div
                   key={line.id}
-                  className="flex items-center justify-between gap-3 text-[11px] text-[#3d7c37]"
+                  className="flex items-center justify-between gap-3 text-[11px] text-accent-healthy"
                 >
                   <span className="truncate">{line.name}</span>
                   <span className="shrink-0">-{formatPrice(line.amount)}</span>
@@ -441,23 +441,23 @@ function CheckoutSummary({
             </div>
           )}
           {isPickup ? (
-            <div className="rounded-[14px] bg-[#fff8ec] px-3 py-2 text-[12px] font-semibold text-[#8a4a28]">
+            <div className="border-t border-sand bg-brand-50 px-3 py-2 text-[12px] font-semibold text-brand-800">
               Bạn sẽ chọn giờ nhận bánh ở bước thanh toán.
             </div>
           ) : deliveryAddress ? (
-            <button type="button" onClick={onChooseAddress} className="w-full rounded-[14px] bg-[#f2faf7] px-3 py-2 text-left text-[12px] font-semibold text-[#52766f]">
-              <span className="block text-[10px] font-black uppercase tracking-wide text-[#278477]">Giao đến</span>
+            <button type="button" onClick={onChooseAddress} className="min-h-11 w-full border-t border-sand bg-teal-soft px-3 py-2 text-left text-[12px] font-semibold text-teal">
+              <span className="block text-[10px] font-black text-teal">Giao đến</span>
               <span className="mt-0.5 block truncate">{deliveryAddress}</span>
             </button>
           ) : (
-            <div className="flex items-center justify-between gap-3 rounded-[14px] bg-[#fff8ec] px-3 py-2 text-[12px] font-semibold text-[#8a4a28]">
+            <div className="flex items-center justify-between gap-3 border-t border-sand bg-brand-50 px-3 py-2 text-[12px] font-semibold text-brand-800">
               <span className="min-w-0 flex-1">Đơn giao tận nơi cần có địa chỉ nhận bánh.</span>
-              <button type="button" onClick={onChooseAddress} className="shrink-0 rounded-full bg-[#b84a39] px-3 py-2 text-[10px] font-black text-white shadow-sm">
+              <button type="button" onClick={onChooseAddress} className="min-h-11 shrink-0 whitespace-nowrap rounded-xl border border-brand-500 px-3 py-2 text-[10px] font-black text-brand-700">
                 Nhấn vào đây để chọn vị trí
               </button>
             </div>
           )}
-          <div className="flex items-center justify-between border-t border-[#f0dfd4] pt-3">
+          <div className="flex items-center justify-between border-t border-sand pt-3">
             <span className="text-[15px] font-black">Tổng cộng</span>
             <span className="text-[22px] font-black text-brand-500">
               {formatPrice(finalTotal)}

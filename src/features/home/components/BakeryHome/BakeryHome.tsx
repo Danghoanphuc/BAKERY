@@ -6,9 +6,9 @@ import { useRouter } from "next/navigation";
 import type { FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Bell,
   ChevronDown,
   ChevronRight,
-  Heart,
   LayoutGrid,
   MapPin,
   Plus,
@@ -46,8 +46,8 @@ import {
   type HomeCategoryVisual,
 } from "../../data/homeContent";
 
-const FAVORITE_STORAGE_KEY = "bakery-favorite-products";
 const HOME_PROFILE_STORAGE_KEY = "bakery-home-profile-summary";
+const NO_FAVORITE_IDS: string[] = [];
 
 const homeCategoryFallbacks: HomeCategoryVisual[] = [
   ...defaultCategoryVisuals,
@@ -117,7 +117,6 @@ export function BakeryHome({
     isAuthenticated: false,
     points: 0,
   });
-  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
 
   useEffect(() => {
     const restoredProduct = consumeProductSheetReturn(products);
@@ -135,7 +134,7 @@ export function BakeryHome({
     [config.deliveryAddress, profileSummary.address],
   );
 
-  const visibleFavoriteProducts = useMemo(
+  const availableProducts = useMemo(
     () =>
       products.filter((product) =>
         config.deliveryMode === "pickup"
@@ -146,26 +145,13 @@ export function BakeryHome({
   );
 
   const recommendationGroups = useHomeRecommendations({
-    products: visibleFavoriteProducts,
-    favoriteIds,
+    products: availableProducts,
+    favoriteIds: NO_FAVORITE_IDS,
     isAuthenticated: profileSummary.isAuthenticated,
     deliveryMode: config.deliveryMode,
   });
 
   useEffect(() => {
-    try {
-      const savedFavoriteIds =
-        window.localStorage.getItem(FAVORITE_STORAGE_KEY);
-      if (savedFavoriteIds) {
-        const parsed = JSON.parse(savedFavoriteIds);
-        if (Array.isArray(parsed)) {
-          setFavoriteIds(parsed.filter((item) => typeof item === "string"));
-        }
-      }
-    } catch {
-      setFavoriteIds([]);
-    }
-
     try {
       const cachedProfile = window.sessionStorage.getItem(
         HOME_PROFILE_STORAGE_KEY,
@@ -235,28 +221,6 @@ export function BakeryHome({
     };
   }, []);
 
-  const toggleFavorite = (productId: string) => {
-    setFavoriteIds((current) => {
-      const isFavorite = current.includes(productId);
-      const next = isFavorite
-        ? current.filter((id) => id !== productId)
-        : [...current, productId];
-
-      try {
-        window.localStorage.setItem(FAVORITE_STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // The heart state can still work in memory if local storage is blocked.
-      }
-
-      showToast(
-        isFavorite ? "Đã bỏ khỏi danh sách yêu thích" : "Đã thêm vào yêu thích",
-        "success",
-      );
-
-      return next;
-    });
-  };
-
   const handleAddToCart = (customization: ProductCustomization) => {
     if (!selectedProduct) return;
 
@@ -284,17 +248,16 @@ export function BakeryHome({
   return (
     <div className="brand-page">
 
-      <div className="brand-shell relative min-h-screen pb-32 md:pb-16">
-        <div className="sticky top-0 z-40 -mx-4 overflow-visible border-b border-sand/70 bg-bg-main/95 px-4 pb-3 pt-3 backdrop-blur-xl md:top-4 md:mx-0 md:mt-4 md:rounded-2xl md:border md:px-5 md:shadow-[0_14px_40px_oklch(27%_0.045_48/0.08)]">
+      <div className="brand-shell relative min-h-screen pb-24 md:pb-16">
+        <div className="sticky top-0 z-40 -mx-4 overflow-visible border-b border-sand bg-bg-main px-4 pb-2 pt-3 md:mx-0 md:px-0 md:pb-3 md:pt-5">
           <HomeHeader
             cartCount={totalQuantity}
             address={deliveryAddress}
-            favoriteCount={favoriteIds.length}
             name={profileSummary.name}
             onAddressClick={() => setIsAddressModalOpen(true)}
           />
           <SearchPill
-            products={visibleFavoriteProducts}
+            products={availableProducts}
             categories={categories}
           />
         </div>
@@ -315,8 +278,6 @@ export function BakeryHome({
         <CategoryStrip categories={categoryVisuals} />
         <RecommendationSections
           groups={recommendationGroups}
-          favoriteIds={favoriteIds}
-          onToggleFavorite={toggleFavorite}
           onProductClick={setSelectedProduct}
           onQuickAdd={handleQuickAdd}
         />
@@ -352,53 +313,46 @@ export function BakeryHome({
 function HomeHeader({
   cartCount,
   address,
-  favoriteCount,
   name,
   onAddressClick,
 }: {
   cartCount: number;
   address: string;
-  favoriteCount: number;
   name?: string;
   onAddressClick: () => void;
 }) {
   return (
     <header>
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <Link href="/" className="hidden font-display text-xl font-semibold tracking-[-0.04em] text-navy md:block">
             SweetTime
           </Link>
           <span className="hidden h-6 w-px bg-sand md:block" aria-hidden="true" />
-          <h1 className="truncate text-lg font-extrabold leading-tight text-navy md:text-sm">
+          <h1 className="min-w-0 truncate text-sm font-extrabold leading-5 text-navy">
             {name ? (
               <>
-                <span className="font-semibold">Chào mừng</span> {name}
+                <span className="font-semibold text-text-secondary">Chào, </span>
+                <span>{name}</span>
               </>
             ) : (
-              <span className="font-semibold">Xin chào quý khách</span>
-            )}{" "}
-            <span className="text-brand-500">♥</span>
+              <span>Xin chào quý khách</span>
+            )}
           </h1>
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
           <Link
-            href="/favorites"
-            className="relative grid h-11 w-11 place-items-center rounded-xl border border-sand bg-bg-card text-navy transition hover:-translate-y-0.5 hover:border-brand-200 active:translate-y-0"
-            aria-label="Yêu thích"
+            href="/account/preferences"
+            className="relative grid h-11 w-11 place-items-center rounded-xl border border-sand bg-bg-card text-navy transition-[background-color,color,transform] duration-200 ease-[var(--ease-out)] hover:bg-brand-50 active:translate-y-px"
+            aria-label="Thông báo"
           >
-            <Heart className="h-5 w-5" strokeWidth={1.8} />
-            {favoriteCount > 0 && (
-              <span className="absolute -right-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand-500 px-1 text-[11px] font-black text-white">
-                {favoriteCount}
-              </span>
-            )}
+            <Bell className="h-5 w-5" strokeWidth={1.8} />
           </Link>
 
           <Link
             href="/cart"
-            className="relative grid h-11 w-11 place-items-center rounded-xl bg-brand-500 text-white shadow-[0_8px_20px_oklch(54%_0.15_34/0.22)] transition hover:-translate-y-0.5 hover:bg-brand-600 active:translate-y-0"
+            className="relative grid h-11 w-11 place-items-center rounded-xl bg-brand-500 text-white transition-[background-color,transform] duration-200 ease-[var(--ease-out)] hover:bg-brand-600 active:translate-y-px"
             aria-label="Giỏ hàng"
           >
             <ShoppingCart className="h-5 w-5" strokeWidth={1.8} />
@@ -739,11 +693,11 @@ function SearchPill({
   );
 
   return (
-    <div className={clsx("relative mt-3", isOpen ? "z-[80]" : "z-20")}>
+    <div className={clsx("relative mt-2", isOpen ? "z-[80]" : "z-20")}>
       <form
         onSubmit={handleSubmit}
         className={clsx(
-          "relative z-[82] flex h-12 items-center gap-2.5 overflow-hidden rounded-xl border bg-bg-card px-3.5 shadow-sm transition-all duration-200",
+          "relative z-[82] flex h-11 items-center gap-2.5 overflow-hidden rounded-xl border bg-bg-card px-3.5 transition-[background-color,transform] duration-200 ease-[var(--ease-out)]",
           isOpen
             ? "border-teal ring-2 ring-teal/15"
             : "border-sand",
@@ -770,7 +724,7 @@ function SearchPill({
               setQuery("");
               openSearch();
             }}
-            className="grid h-9 w-9 place-items-center rounded-full bg-[#f7eee7] text-[#7b6254] max-sm:h-7 max-sm:w-7"
+            className="grid h-11 w-11 place-items-center rounded-xl bg-brand-50 text-text-secondary"
             aria-label="Xóa tìm kiếm"
           >
             <X className="h-3.5 w-3.5" />
@@ -782,14 +736,14 @@ function SearchPill({
         <button
           type="button"
           aria-label="Đóng gợi ý tìm kiếm"
-          className="fixed inset-0 z-[70] cursor-default bg-[#3d2417]/10 backdrop-blur-[2px]"
+          className="fixed inset-0 z-[var(--z-raised)] cursor-default bg-navy/10"
           onClick={() => setIsOpen(false)}
         />
       )}
 
       <div
         className={clsx(
-          "absolute left-0 right-0 top-[58px] z-[81] max-h-[70vh] overflow-y-auto rounded-2xl border border-sand bg-bg-card/95 shadow-[0_18px_38px_rgba(18,62,102,0.15)] backdrop-blur-lg transition-all duration-200",
+          "absolute left-0 right-0 top-[3.25rem] z-[var(--z-dropdown)] max-h-[70vh] overflow-y-auto rounded-xl border border-sand bg-bg-card transition-[opacity,transform] duration-200 ease-[var(--ease-out)]",
           isOpen
             ? "pointer-events-auto translate-y-0 opacity-100"
             : "pointer-events-none -translate-y-1 opacity-0",
@@ -801,11 +755,11 @@ function SearchPill({
               type="button"
               onMouseDown={(event) => event.preventDefault()}
               onClick={() => goToSearch(query)}
-              className="flex h-11 w-full items-center gap-2 rounded-[14px] bg-[#fff4ec] px-3 text-left text-[13px] font-black text-[#3d2417]"
+              className="flex h-11 w-full items-center gap-2 rounded-xl bg-brand-50 px-3 text-left text-[13px] font-black text-navy"
             >
-              <Search className="h-4 w-4 shrink-0 text-[#b84a39]" />
+              <Search className="h-4 w-4 shrink-0 text-brand-700" />
               <span className="truncate">Tìm “{query.trim()}”</span>
-              <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-[#9b8171]" />
+              <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-text-muted" />
             </button>
           )}
 
@@ -817,13 +771,10 @@ function SearchPill({
                   type="button"
                   onMouseDown={(event) => event.preventDefault()}
                   onClick={() => goToSearch(action.query)}
-                  className="min-h-[72px] rounded-[14px] border border-[#f0e3d3] bg-[#fffaf6] p-3 text-left transition hover:border-[#b84a39]"
+                  className="flex h-11 items-center rounded-xl border border-sand bg-bg-card px-3 text-left transition-colors duration-200 ease-[var(--ease-out)] hover:border-brand-400"
                 >
-                  <span className="block text-[13px] font-black leading-tight text-[#3d2417]">
+                  <span className="block truncate whitespace-nowrap text-xs font-black text-navy">
                     {action.label}
-                  </span>
-                  <span className="mt-1 block text-[11px] font-bold leading-snug text-[#9b8171]">
-                    {action.tone}
                   </span>
                 </button>
               ))}
@@ -841,9 +792,9 @@ function SearchPill({
                     type="button"
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => goToSearch(product.name)}
-                    className="flex w-full items-center gap-3 rounded-[14px] p-2 text-left transition hover:bg-[#fff4ec]"
+                    className="flex min-h-11 w-full items-center gap-3 rounded-xl p-2 text-left transition-colors duration-200 ease-[var(--ease-out)] hover:bg-brand-50"
                   >
-                    <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-[12px] bg-[#fdf2e3]">
+                    <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-cream">
                       <ProductImage
                         src={product.imageUrl}
                         alt={product.name}
@@ -851,19 +802,19 @@ function SearchPill({
                       />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="line-clamp-1 text-[13px] font-black text-[#3d2417]">
+                      <span className="line-clamp-1 text-[13px] font-black text-navy">
                         {product.name}
                       </span>
                       <span className="mt-1 flex items-center gap-2">
-                        <span className="text-[12px] font-black text-[#b84a39]">
+                        <span className="text-[12px] font-black text-brand-700 tabular-nums">
                           {product.sizeOptions?.length ? "Từ " : ""}{formatPrice(getProductStartingPrice(product))}
                         </span>
-                        <span className="truncate text-[11px] font-bold text-[#9b8171]">
+                        <span className="truncate text-[11px] font-bold text-text-muted">
                           {reason}
                         </span>
                       </span>
                     </span>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-[#b7a397]" />
+                    <ChevronRight className="h-4 w-4 shrink-0 text-text-light" />
                   </button>
                 ))}
               </div>
@@ -879,7 +830,7 @@ function SearchPill({
                     type="button"
                     onMouseDown={(event) => event.preventDefault()}
                     onClick={() => goToSearch(category)}
-                    className="rounded-full border border-[#eadbcc] px-3 py-2 text-xs font-black text-[#65483a] transition hover:border-[#b84a39] hover:text-[#b84a39]"
+                    className="min-h-11 whitespace-nowrap rounded-full border border-sand px-3 py-2 text-xs font-black text-charcoal transition-colors duration-200 ease-[var(--ease-out)] hover:border-brand-500 hover:text-brand-700"
                   >
                     {category}
                   </button>
@@ -902,7 +853,7 @@ function AssistSection({
 }) {
   return (
     <section>
-      <h2 className="mb-2 text-[11px] font-black uppercase tracking-[0.04em] text-[#b38a76]">
+      <h2 className="mb-2 text-xs font-extrabold text-text-secondary">
         {title}
       </h2>
       {children}
@@ -998,39 +949,39 @@ function normalizeSuggestionText(value: string) {
 
 function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
   return (
-    <section className="border-b border-sand pb-4 pt-6 md:pb-5 md:pt-8">
-      <p className="brand-eyebrow mb-4">
-        Danh mục sản phẩm
-      </p>
-      <div className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [scrollbar-width:none] md:mx-0 md:grid md:grid-cols-4 md:gap-4 md:px-0 lg:grid-cols-6 [&::-webkit-scrollbar]:hidden">
+    <section className="border-b border-sand pb-3 pt-4 md:pb-5 md:pt-7">
+      <h2 className="mb-3 text-sm font-extrabold text-navy">Chọn theo loại</h2>
+      <div className="-mx-4 flex snap-x snap-mandatory gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] md:mx-0 md:grid md:grid-cols-4 md:gap-4 md:px-0 lg:grid-cols-6 [&::-webkit-scrollbar]:hidden">
         {categories.map((category, index) => (
           <Link
             key={`${category.name}-${index}`}
             href={category.href}
-            className="group w-[calc((100%_-_36px)/4)] min-w-[calc((100%_-_36px)/4)] shrink-0 snap-start overflow-hidden rounded-2xl border border-sand bg-bg-card transition hover:-translate-y-1 hover:border-brand-200 md:w-auto md:min-w-0"
+            aria-label={category.name}
+            title={category.name}
+            className="group grid w-[calc((100%_-_24px)/4)] min-w-[calc((100%_-_24px)/4)] shrink-0 snap-start grid-rows-[3.75rem_1.75rem] overflow-hidden rounded-xl border border-sand bg-bg-card transition-colors duration-200 ease-[var(--ease-out)] hover:border-brand-300 md:w-auto md:min-w-0 md:grid-rows-[6rem_2.25rem]"
           >
-            <span className="flex h-12 items-start overflow-hidden px-3 pt-3 text-xs font-extrabold leading-[1.2] text-navy">
-              {category.name}
-            </span>
-            <span className="relative block h-20 w-full overflow-hidden md:h-24">
+            <span className="relative block h-full w-full overflow-hidden">
               <Image
                 src={category.imageUrl}
                 alt={category.name}
                 fill
-                sizes="(max-width: 767px) 116px, (max-width: 1023px) 25vw, 16vw"
-                className="object-cover transition duration-200 group-hover:scale-105"
+                sizes="(max-width: 767px) 88px, (max-width: 1023px) 25vw, 16vw"
+                className="object-cover transition-transform duration-200 ease-[var(--ease-out)] group-hover:scale-[1.02]"
               />
+            </span>
+            <span className="block truncate border-t border-sand px-1.5 py-1.5 text-center text-[10px] font-extrabold leading-4 text-navy md:px-2 md:text-xs">
+              {getCategoryDisplayName(category.name)}
             </span>
           </Link>
         ))}
         <Link
           href="/category"
-          className="group flex h-[128px] w-[calc((100%_-_36px)/4)] min-w-[calc((100%_-_36px)/4)] shrink-0 snap-start flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border border-sand bg-bg-card transition hover:-translate-y-1 hover:border-brand-200 md:h-auto md:min-h-[144px] md:w-auto md:min-w-0"
+          className="group flex h-[88px] w-[calc((100%_-_24px)/4)] min-w-[calc((100%_-_24px)/4)] shrink-0 snap-start flex-col items-center justify-center gap-1 overflow-hidden rounded-xl border border-sand bg-bg-card transition-colors duration-200 ease-[var(--ease-out)] hover:border-brand-300 md:h-auto md:min-h-[132px] md:w-auto md:min-w-0"
         >
-          <div className="grid h-8 w-8 place-items-center rounded-full bg-[#f0d8c2]/40">
-            <LayoutGrid className="h-4 w-4 text-[#8a6855]" strokeWidth={2.5} />
+          <div className="grid h-8 w-8 place-items-center rounded-lg bg-brand-50">
+            <LayoutGrid className="h-4 w-4 text-brand-700" strokeWidth={2.5} />
           </div>
-          <span className="px-1 text-center text-[10px] font-black leading-[11px] text-[#8a6855]">
+          <span className="whitespace-nowrap px-1 text-center text-[10px] font-extrabold leading-4 text-brand-700">
             Xem tất cả
           </span>
         </Link>
@@ -1039,66 +990,12 @@ function CategoryStrip({ categories }: { categories: HomeCategoryVisual[] }) {
   );
 }
 
-export function FeaturedPromo() {
-  return (
-    <section className="relative mt-6 overflow-hidden rounded-[22px] bg-[#ffe2df] p-6 shadow-[0_8px_22px_rgba(209,89,92,0.1)] max-sm:mt-5 max-sm:p-5">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,#fff8f0_0_18%,transparent_19%),linear-gradient(135deg,#ffe9e5,#ffd2d3)]" />
-      <div className="relative z-10 grid min-h-[176px] grid-cols-[1fr_1fr] items-center gap-5 max-sm:grid-cols-1">
-        <div>
-          <span className="inline-flex items-center gap-2 rounded-full bg-[#fff3e8] px-3 py-1.5 text-[13px] font-black text-[#9b3f24] max-sm:text-xs">
-            🔥 Ưu đãi nổi bật
-          </span>
-          <h2 className="mt-4 max-w-[340px] font-serif text-[38px] font-black italic leading-[0.95] text-[#8b2e25] max-sm:text-3xl">
-            Set Trà & Bánh Ngọt Ngào ♡
-          </h2>
-          <p className="mt-3 text-[14px] font-medium text-[#9b715b] max-sm:text-sm">
-            Thưởng vị ngọt lành - ưu đãi dành riêng bạn
-          </p>
-          <Link
-            href="/search?q=combo trà bánh"
-            className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-[#c35847] px-5 text-[14px] font-black text-white shadow-sm max-sm:h-10 max-sm:text-sm"
-          >
-            Khám phá ngay
-            <ChevronRight className="h-4 w-4" />
-          </Link>
-        </div>
-        <div className="relative min-h-[176px] max-sm:hidden">
-          <Image
-            src="https://images.unsplash.com/photo-1464305795204-6f5bbfc7fb81?auto=format&fit=crop&w=520&q=90"
-            alt="Set trà bánh"
-            fill
-            className="rounded-[28px] object-cover"
-          />
-          <div className="absolute left-4 top-4 grid h-28 w-28 place-items-center rounded-full bg-white/90 text-center shadow-sm">
-            <span className="text-[15px] font-bold text-[#b84a39]">
-              Giảm đến
-              <span className="block text-[40px] font-black leading-none">
-                25%
-              </span>
-            </span>
-          </div>
-        </div>
-      </div>
-      <div className="relative z-10 mt-4 flex justify-center gap-2">
-        <span className="h-2 w-2 rounded-full bg-[#c35847]" />
-        <span className="h-2 w-2 rounded-full bg-[#e8d9ce]" />
-        <span className="h-2 w-2 rounded-full bg-[#e8d9ce]" />
-        <span className="h-2 w-2 rounded-full bg-[#e8d9ce]" />
-      </div>
-    </section>
-  );
-}
-
 function RecommendationSections({
   groups,
-  favoriteIds,
-  onToggleFavorite,
   onProductClick,
   onQuickAdd,
 }: {
   groups: HomeRecommendationGroup[];
-  favoriteIds: string[];
-  onToggleFavorite: (productId: string) => void;
   onProductClick: (product: Product) => void;
   onQuickAdd: (product: Product) => void;
 }) {
@@ -1126,16 +1023,16 @@ function RecommendationSections({
 
   if (!groups.length) {
     return (
-      <section className="mt-6 rounded-[18px] border border-[#efdfcf] bg-white p-5 text-center">
+      <section className="mt-6 rounded-xl border border-sand bg-bg-card p-5 text-center">
         <h2 className="text-sm font-black">Chưa có món phù hợp</h2>
-        <p className="mt-1 text-xs text-[#8a6250]">Hãy đổi hình thức nhận hàng hoặc quay lại sau nhé.</p>
-        <Link href="/search" className="mt-3 inline-flex rounded-full bg-[#c35847] px-4 py-2 text-xs font-black text-white">Khám phá tất cả món</Link>
+        <p className="mt-1 text-xs text-text-muted">Hãy đổi hình thức nhận hàng hoặc quay lại sau nhé.</p>
+        <Link href="/search" className="mt-3 inline-flex min-h-11 items-center whitespace-nowrap rounded-xl border border-brand-500 px-4 py-2 text-xs font-black text-brand-700">Khám phá món khác</Link>
       </section>
     );
   }
 
   return (
-    <div className="space-y-12 pb-10 pt-5 md:space-y-16 md:pb-14 md:pt-6">
+    <div className="space-y-10 pb-10 pt-4 md:space-y-14 md:pb-14 md:pt-6">
       {groups.slice(0, visibleGroupCount).map((group) => (
         <section key={group.key}>
           <SectionHeader
@@ -1143,7 +1040,7 @@ function RecommendationSections({
               <span className="flex items-center gap-1.5">
                 {group.title}
                 {group.key === "available-now" && (
-                  <Sparkles className="h-4 w-4 text-[#d9a263]" />
+                  <Sparkles className="h-4 w-4 text-accent-gold" />
                 )}
               </span>
             }
@@ -1151,14 +1048,11 @@ function RecommendationSections({
             href="/search"
             action="Xem tất cả"
           />
-          <div className="mt-5 grid grid-cols-2 items-start gap-3 md:grid-cols-3 md:gap-5 lg:grid-cols-4">
+          <div className="mt-3 grid grid-cols-[repeat(2,minmax(0,1fr))] items-start gap-x-3 gap-y-3 md:mt-4 md:grid-cols-[repeat(3,minmax(0,1fr))] md:gap-x-5 md:gap-y-8 lg:grid-cols-[repeat(4,minmax(0,1fr))]">
             {group.products.map((product) => (
               <ProductMiniCard
                 key={product.id}
                 product={product}
-                reason={group.productReason}
-                isFavorite={favoriteIds.includes(product.id)}
-                onToggleFavorite={() => onToggleFavorite(product.id)}
                 onClick={() => onProductClick(product)}
                 onQuickAdd={() => onQuickAdd(product)}
               />
@@ -1168,7 +1062,7 @@ function RecommendationSections({
       ))}
       {visibleGroupCount < groups.length && (
         <div ref={loadMoreRef} className="flex h-20 items-center justify-center" aria-label="Đang tải thêm gợi ý">
-          <span className="h-7 w-7 animate-spin rounded-full border-2 border-[#ead7c8] border-t-[#c35847]" />
+          <span className="h-7 w-7 animate-spin rounded-full border-2 border-sand border-t-brand-500" />
         </div>
       )}
     </div>
@@ -1177,22 +1071,16 @@ function RecommendationSections({
 
 function ProductMiniCard({
   product,
-  reason,
-  isFavorite,
-  onToggleFavorite,
   onClick,
   onQuickAdd,
 }: {
   product: Product;
-  reason?: string;
-  isFavorite: boolean;
-  onToggleFavorite: () => void;
   onClick: () => void;
   onQuickAdd: () => void;
 }) {
   return (
-    <article className="group relative w-full min-w-0 overflow-hidden rounded-[1.15rem] border border-sand bg-bg-card shadow-[0_10px_30px_oklch(27%_0.045_48/0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_38px_oklch(27%_0.045_48/0.11)]">
-      <div className="relative aspect-[4/5] w-full overflow-hidden bg-cream md:aspect-[3/4]">
+    <article className="group relative grid w-full min-w-0 grid-rows-[auto_5rem] overflow-hidden rounded-xl border border-sand bg-bg-card md:grid-rows-[auto_6.5rem]">
+      <div className="relative aspect-[8/5] w-full overflow-hidden bg-cream md:aspect-square">
         <button
           type="button"
           onClick={onClick}
@@ -1202,42 +1090,23 @@ function ProductMiniCard({
           <ProductImage
             src={product.imageUrl}
             alt={product.name}
-            className="object-cover transition duration-500 group-hover:scale-[1.03]"
-          />
-        </button>
-        <button
-          type="button"
-          onClick={onToggleFavorite}
-          className={clsx(
-            "absolute right-2.5 top-2.5 grid h-10 w-10 place-items-center rounded-full border border-sand bg-bg-card/95 text-beige shadow-sm transition hover:text-brand-500 active:scale-95",
-            isFavorite ? "text-brand-500" : "text-text-light",
-          )}
-          aria-label={isFavorite ? "Bỏ yêu thích" : "Thêm yêu thích"}
-        >
-          <Heart
-            className={clsx("h-4 w-4", isFavorite && "fill-current")}
-            strokeWidth={2}
+            className="object-cover transition-transform duration-200 ease-[var(--ease-out)] group-hover:scale-[1.02]"
           />
         </button>
       </div>
 
-      <div className="relative min-h-[128px] p-3.5 md:p-4">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_2.75rem] items-center gap-2 border-t border-sand px-2.5 py-2 md:gap-3 md:p-3">
         <button
           type="button"
           onClick={onClick}
           className="block w-full text-left"
           aria-label={`Xem ${product.name}`}
         >
-          <h3 className="line-clamp-2 min-h-[40px] text-sm font-extrabold leading-5 text-navy md:text-base md:leading-6">
+          <h3 className="line-clamp-2 text-xs font-extrabold leading-4 text-navy md:min-h-10 md:text-sm md:leading-5">
             {product.name}
           </h3>
-          {reason && (
-            <span className="mt-1 block truncate text-[11px] font-bold uppercase tracking-[0.06em] text-text-muted">
-              {reason}
-            </span>
-          )}
-          <div className="mt-2 pr-9">
-            <span className="block w-full whitespace-nowrap text-sm font-black leading-tight text-brand-600 md:text-base">
+          <div className="mt-1 md:mt-2">
+            <span className="block w-full whitespace-nowrap text-xs font-black leading-tight text-brand-700 tabular-nums md:text-sm">
               {product.sizeOptions?.length ? "Từ " : ""}{formatPrice(getProductStartingPrice(product)).replace(" ", "")}
             </span>
           </div>
@@ -1245,7 +1114,7 @@ function ProductMiniCard({
         <button
           type="button"
           onClick={onQuickAdd}
-          className="absolute bottom-3 right-3 grid h-10 w-10 place-items-center rounded-xl bg-brand-500 text-white shadow-[0_8px_18px_oklch(54%_0.15_34/0.22)] transition hover:-translate-y-0.5 hover:bg-brand-600 active:translate-y-0"
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-500 text-white transition-[background-color,transform] duration-200 ease-[var(--ease-out)] hover:bg-brand-600 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-45"
           aria-label={`Thêm nhanh ${product.name}`}
         >
           <Plus className="h-4 w-4" />
@@ -1267,18 +1136,18 @@ function SectionHeader({
   href: string;
 }) {
   return (
-    <div className="flex items-end justify-between gap-4">
+    <div className="flex items-end justify-between gap-3">
       <div className="min-w-0">
         <h2 className="brand-section-heading">{title}</h2>
         {description && (
-          <p className="mt-2 line-clamp-2 text-sm font-medium text-text-muted">
+          <p className="mt-1 hidden line-clamp-1 text-xs font-medium text-text-muted md:mt-2 md:block md:text-sm">
             {description}
           </p>
         )}
       </div>
       <Link
         href={href}
-        className="flex min-h-10 shrink-0 items-center gap-1 whitespace-nowrap text-xs font-extrabold text-brand-600 transition hover:gap-2"
+        className="flex min-h-11 shrink-0 items-center gap-1 whitespace-nowrap border-b border-brand-300 text-xs font-extrabold text-brand-700 transition-colors duration-200 ease-[var(--ease-out)] hover:border-brand-700"
       >
         {action}
         <ChevronRight className="h-3.5 w-3.5" />
@@ -1309,6 +1178,21 @@ function isValidUrl(string: string) {
   } catch {
     return false;
   }
+}
+
+function getCategoryDisplayName(name: string) {
+  const normalized = normalizeSuggestionText(name);
+
+  if (normalized.includes("ngan lop")) return "Ngàn lớp";
+  if (normalized.includes("nguyen cam")) return "Cám";
+  if (normalized.includes("trang mieng")) return "Món tiệc";
+  if (normalized.includes("tra sua")) return "Trà sữa";
+  if (normalized.includes("tra trai cay")) return "Trà trái";
+  if (normalized.includes("sua chua")) return "Sữa chua";
+  if (normalized.includes("thao moc")) return "Thảo mộc";
+  if (normalized.includes("banh ngot")) return "Ngọt";
+
+  return name.split("&")[0].trim();
 }
 
 function mapCategoriesToVisuals(categories: Category[]): HomeCategoryVisual[] {

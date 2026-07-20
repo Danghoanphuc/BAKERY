@@ -7,12 +7,14 @@ import { clsx } from "clsx";
 export interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
-  title: string;
+  title: React.ReactNode;
   children: React.ReactNode;
+  headerAction?: React.ReactNode;
   headerContent?: React.ReactNode;
   footer?: React.ReactNode;
   className?: string;
   contentClassName?: string;
+  titleClassName?: string;
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -20,10 +22,12 @@ export const Modal: React.FC<ModalProps> = ({
   onClose,
   title,
   children,
+  headerAction,
   headerContent,
   footer,
   className,
   contentClassName,
+  titleClassName,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
@@ -120,7 +124,7 @@ export const Modal: React.FC<ModalProps> = ({
   // Portal rendering for proper z-index
   return createPortal(
     <div
-      className="fixed inset-0 z-[140] flex items-end lg:items-center justify-center lg:p-4"
+      className="fixed inset-0 z-[260] flex items-end lg:items-center justify-center lg:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
@@ -150,37 +154,43 @@ export const Modal: React.FC<ModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="shrink-0 border-b border-neutral-200 p-4">
-          <div className="flex items-center justify-between">
+        <div className="shrink-0 border-b border-neutral-200 px-4 py-3 lg:p-4">
+          <div className="flex items-center justify-between gap-3">
             <h2
               id="modal-title"
-              className="text-lg font-semibold text-neutral-900"
+              className={clsx(
+                "min-w-0 flex-1 text-lg font-semibold text-neutral-900",
+                titleClassName,
+              )}
             >
               {title}
             </h2>
-            <button
-              onClick={onClose}
-              className="p-2 -mr-2 text-neutral-500 hover:text-neutral-700 hover:bg-neutral-100 rounded-full transition-colors touch-target"
-              aria-label="Đóng"
-            >
-              <svg
-                width="20"
-                height="20"
-                viewBox="0 0 20 20"
-                fill="none"
-                className="w-5 h-5"
+            <div className="flex shrink-0 items-center gap-1.5">
+              {headerAction}
+              <button
+                onClick={onClose}
+                className="-mr-2 rounded-full p-2 text-neutral-500 transition-colors hover:bg-neutral-100 hover:text-neutral-700 touch-target"
+                aria-label="Đóng"
               >
-                <path
-                  d="M15 5L5 15M5 5L15 15"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  className="h-5 w-5"
+                >
+                  <path
+                    d="M15 5L5 15M5 5L15 15"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            </div>
           </div>
-          {headerContent && <div className="mt-3">{headerContent}</div>}
+          {headerContent && <div className="mt-2.5">{headerContent}</div>}
         </div>
 
         {/* Content */}

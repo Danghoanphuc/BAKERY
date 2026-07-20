@@ -12,6 +12,7 @@ export function AdminFrame({ children, admin }: { children: React.ReactNode; adm
   const router = useRouter();
   const isPosRoute = pathname === "/admin/pos" || pathname.startsWith("/admin/pos/");
   const isTableServiceRoute = pathname === "/admin/pos/tables" || pathname.startsWith("/admin/pos/tables/");
+  const isGrowthStudioRoute = pathname === "/admin/growth-studio" || pathname.startsWith("/admin/growth-studio/");
   const canAccess = canAdminAccessPath(admin.role, pathname);
 
   useEffect(() => {
@@ -24,7 +25,7 @@ export function AdminFrame({ children, admin }: { children: React.ReactNode; adm
     <div
       className={clsx(
         "flex h-screen overflow-hidden",
-        isPosRoute ? "bg-[#f8f3eb]" : "admin-ui-frame bg-[#f8f3eb]",
+        isPosRoute ? "bg-bg-main" : "admin-ui-frame bg-bg-main",
       )}
     >
       <AdminToaster />
@@ -37,6 +38,8 @@ export function AdminFrame({ children, admin }: { children: React.ReactNode; adm
             "flex-1 overflow-y-auto",
             isTableServiceRoute
               ? "p-0 sm:p-6"
+              : isGrowthStudioRoute
+                ? "p-0"
               : isPosRoute
                 ? "p-6"
                 : "px-5 py-5 lg:px-7 lg:py-6",
@@ -46,6 +49,8 @@ export function AdminFrame({ children, admin }: { children: React.ReactNode; adm
             className={
               isTableServiceRoute
                 ? "h-full"
+                : isGrowthStudioRoute
+                  ? "h-full"
                 : isPosRoute
                   ? "mx-auto max-w-7xl"
                   : "mx-auto max-w-[1440px]"

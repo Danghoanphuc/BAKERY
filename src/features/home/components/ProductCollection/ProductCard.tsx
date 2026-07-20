@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import { clsx } from "clsx";
 import { Button } from "@/components/common";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import { ProductShareButton } from "@/features/product/components/ProductShareButton";
@@ -39,7 +38,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   };
 
   return (
-    <article className="brand-card group w-full overflow-hidden transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_38px_oklch(27%_0.045_48/0.11)]">
+    <article className="brand-card group w-full overflow-hidden">
       <a
         href={getProductPath(product)}
         className="relative block aspect-[4/5] w-full overflow-hidden bg-cream lg:aspect-[3/4]"
@@ -48,14 +47,11 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <ProductImage
           src={product.imageUrl}
           alt={product.name}
-          className={clsx(
-            "h-full w-full object-cover transition-all duration-300",
-            "group-hover:scale-[1.03]",
-          )}
+          className="h-full w-full object-cover transition-transform duration-200 ease-[var(--ease-out)] group-hover:scale-[1.02]"
         />
       </a>
 
-      <div className="p-3.5 lg:p-4">
+      <div className="p-3 lg:p-4">
         <h3
           className="mb-2 min-h-[2.5rem] overflow-hidden text-sm font-extrabold leading-5 text-navy lg:min-h-[3rem] lg:text-base lg:leading-6"
           style={{
@@ -68,7 +64,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </h3>
 
         <div className="flex flex-col items-start justify-between gap-1.5 lg:flex-row lg:items-center">
-          <span className="whitespace-nowrap text-sm font-black text-brand-600 lg:text-base">
+          <span className="whitespace-nowrap text-sm font-black text-brand-700 tabular-nums lg:text-base">
             {product.sizeOptions?.length ? "Từ " : ""}{formatPrice(startingPrice)}
           </span>
           <div className="flex w-full items-center gap-1.5 lg:w-auto">
@@ -92,14 +88,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         </div>
 
-        <div className="mt-3 rounded-xl border border-dashed border-sand bg-cream px-2.5 py-2">
+        <div className="mt-3 border-t border-sand pt-2">
           {selectedVoucher ? (
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <p className="truncate text-[11px] font-bold text-[#7a351f]">
+                <p className="truncate text-[11px] font-bold text-brand-800">
                   Voucher {selectedVoucher.code}
                 </p>
-                <p className="text-[10px] font-semibold text-[#7b6254]">
+                <p className="text-[10px] font-semibold text-text-muted">
                   {voucherPricing.isEligible
                     ? `Còn ${formatPrice(voucherPricing.totalAfterDiscount)}`
                     : voucherPricing.reason}
@@ -108,7 +104,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               <button
                 type="button"
                 onClick={() => setIsVoucherPickerOpen(true)}
-                className="shrink-0 text-[11px] font-black text-[#b84a39]"
+                className="min-h-11 shrink-0 whitespace-nowrap text-[11px] font-black text-brand-700"
               >
                 Đổi
               </button>
@@ -117,7 +113,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <button
               type="button"
               onClick={() => setIsVoucherPickerOpen(true)}
-              className="block text-center text-[11px] font-black text-[#7a351f]"
+              className="block min-h-11 w-full whitespace-nowrap text-center text-[11px] font-black text-brand-800"
             >
               Chọn voucher
             </button>

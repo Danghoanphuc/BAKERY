@@ -307,37 +307,32 @@ export function SearchExperience({
 
   return (
     <main className="brand-page">
-      <div className="brand-shell min-h-screen pb-32 pt-3 md:pb-16">
-        <header className="sticky top-0 z-20 -mx-4 border-b border-sand bg-bg-main/95 px-4 pb-4 pt-3 backdrop-blur-xl md:top-4 md:mx-0 md:rounded-2xl md:border md:px-5 md:shadow-[0_14px_40px_oklch(27%_0.045_48/0.08)]">
+      <div className="brand-shell min-h-screen pb-24 pt-3 md:pb-16">
+        <header className="sticky top-0 z-20 -mx-4 border-b border-sand bg-bg-main px-4 pb-3 pt-3 md:mx-0 md:px-0 md:pb-4 md:pt-5">
           <div className="mb-3 flex items-center justify-between">
             <Link
               href="/"
-              className="grid h-10 w-10 place-items-center rounded-xl border border-sand bg-bg-card text-navy shadow-sm"
+              className="grid h-11 w-11 place-items-center rounded-xl border border-sand bg-bg-card text-navy"
               aria-label="Về trang chủ"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>
-            <div className="text-center">
-              <p className="brand-eyebrow">
-                Tìm nhanh
-              </p>
-              <h1 className="brand-heading text-xl">Chọn bánh</h1>
-            </div>
+            <h1 className="brand-heading text-xl">Chọn bánh</h1>
             <Link
               href="/cart"
-              className="relative grid h-10 w-10 place-items-center rounded-xl border border-sand bg-bg-card text-navy shadow-sm"
+              className="relative grid h-11 w-11 place-items-center rounded-xl border border-sand bg-bg-card text-navy"
               aria-label="Giỏ hàng"
             >
               <ShoppingCart className="h-5 w-5" />
               {totalQuantity > 0 && (
-                <span className="absolute -right-1 -top-1 grid h-4 w-4 place-items-center rounded-full bg-[#b84a39] text-[10px] font-black text-white">
+                <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-brand-500 px-1 text-[10px] font-black text-cream">
                   {totalQuantity}
                 </span>
               )}
             </Link>
           </div>
 
-          <div className="mx-auto flex h-12 max-w-3xl items-center gap-2 rounded-xl border border-sand bg-bg-card px-3 shadow-sm focus-within:border-teal focus-within:ring-2 focus-within:ring-teal/15">
+          <div className="mx-auto flex h-11 max-w-3xl items-center gap-2 rounded-xl border border-sand bg-bg-card px-3 focus-within:outline focus-within:outline-2 focus-within:outline-brand-500">
             <Search className="h-4 w-4 shrink-0 text-teal" />
             <input
               value={query}
@@ -352,7 +347,7 @@ export function SearchExperience({
               <button
                 type="button"
                 onClick={() => setQuery("")}
-                className="grid h-7 w-7 place-items-center rounded-full bg-[#f7eee7] text-[#7b6254]"
+                className="grid h-11 w-11 place-items-center rounded-xl bg-brand-50 text-text-secondary"
                 aria-label="Xóa tìm kiếm"
               >
                 <X className="h-4 w-4" />
@@ -371,9 +366,9 @@ export function SearchExperience({
                     type="button"
                     onClick={() => toggleFilter(chip.id)}
                     className={clsx(
-                      "h-8 rounded-full border px-3 text-xs font-bold transition",
+                      "h-11 whitespace-nowrap rounded-full border px-3 text-xs font-bold transition-colors duration-200 ease-[var(--ease-out)]",
                       active
-                        ? "border-brand-500 bg-brand-500 text-white"
+                        ? "border-brand-500 bg-brand-500 text-cream"
                         : "border-sand bg-bg-card text-charcoal",
                     )}
                   >
@@ -400,7 +395,6 @@ export function SearchExperience({
           <Discovery
             history={history}
             recommendedProducts={recommendedProducts}
-            mode={config.deliveryMode}
             onPickQuery={applyQuery}
             onOpenProduct={setSelectedProduct}
             favoriteIds={favoriteIds}
@@ -409,21 +403,20 @@ export function SearchExperience({
         ) : (
           <section className="pt-2">
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm font-bold text-[#3d2417]">
+              <p className="text-sm font-bold text-navy">
                 {results.length} kết quả phù hợp
               </p>
               <SortControl value={sortMode} onChange={setSortMode} />
             </div>
 
             {results.length > 0 ? (
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 lg:grid-cols-4">
+              <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-3 md:grid-cols-[repeat(3,minmax(0,1fr))] md:gap-5 lg:grid-cols-[repeat(4,minmax(0,1fr))]">
                 {results.map(({ product, context, reasons }) => (
                   <SearchProductCard
                     key={product.id}
                     product={product}
                     categoryName={context.categoryName}
                     reasons={reasons}
-                    mode={config.deliveryMode}
                     isFavorite={favoriteIds.includes(product.id)}
                     onToggleFavorite={() => toggleFavorite(product.id)}
                     onOpen={() => setSelectedProduct(product)}
@@ -468,7 +461,6 @@ export function SearchExperience({
 function Discovery({
   history,
   recommendedProducts,
-  mode,
   favoriteIds,
   onPickQuery,
   onOpenProduct,
@@ -476,14 +468,13 @@ function Discovery({
 }: {
   history: string[];
   recommendedProducts: Product[];
-  mode: "delivery" | "pickup";
   favoriteIds: string[];
   onPickQuery: (query: string) => void;
   onOpenProduct: (product: Product) => void;
   onToggleFavorite: (productId: string) => void;
 }) {
   return (
-    <div className="space-y-10 py-8 md:py-12">
+    <div className="space-y-10 py-6 md:py-10">
       <section>
         <SectionTitle icon={<Sparkles className="h-4 w-4" />} title="Gợi ý nhanh" />
         <div className="mt-3 flex flex-wrap gap-2">
@@ -492,7 +483,7 @@ function Discovery({
               key={item}
               type="button"
               onClick={() => onPickQuery(item)}
-              className="rounded-full border border-[#eadbcc] bg-white px-3 py-2 text-xs font-bold text-[#65483a] shadow-sm"
+              className="min-h-11 rounded-full border border-sand bg-bg-card px-3 py-2 text-xs font-bold text-charcoal"
             >
               {item}
             </button>
@@ -509,10 +500,10 @@ function Discovery({
                 key={item}
                 type="button"
                 onClick={() => onPickQuery(item)}
-                className="flex h-10 w-full items-center justify-between rounded-[14px] border border-[#f0e3d3] bg-white px-3 text-left text-sm font-bold text-[#3d2417]"
+                className="flex h-11 w-full items-center justify-between rounded-xl border border-sand bg-bg-card px-3 text-left text-sm font-bold text-navy"
               >
                 {item}
-                <Search className="h-4 w-4 text-[#9b8171]" />
+                <Search className="h-4 w-4 text-text-muted" />
               </button>
             ))}
           </div>
@@ -528,7 +519,6 @@ function Discovery({
                 key={product.id}
                 product={product}
                 isCompact
-                mode={mode}
                 isFavorite={favoriteIds.includes(product.id)}
                 onToggleFavorite={() => onToggleFavorite(product.id)}
                 onOpen={() => onOpenProduct(product)}
@@ -546,7 +536,6 @@ function SearchProductCard({
   categoryName,
   reasons = [],
   isCompact = false,
-  mode,
   isFavorite,
   onToggleFavorite,
   onOpen,
@@ -555,7 +544,6 @@ function SearchProductCard({
   categoryName?: string;
   reasons?: string[];
   isCompact?: boolean;
-  mode: "delivery" | "pickup";
   isFavorite: boolean;
   onToggleFavorite: () => void;
   onOpen: () => void;
@@ -563,11 +551,11 @@ function SearchProductCard({
   return (
     <article
       className={clsx(
-        "group overflow-hidden rounded-[18px] border border-sand bg-bg-card shadow-[0_10px_30px_oklch(27%_0.045_48/0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_38px_oklch(27%_0.045_48/0.11)]",
+        "group overflow-hidden rounded-xl border border-sand bg-bg-card",
         isCompact && "w-[154px] shrink-0 md:w-auto md:min-w-0",
       )}
     >
-      <div className="relative aspect-[4/5] bg-bg-soft md:aspect-[3/4]">
+      <div className="relative aspect-[4/3] bg-bg-soft md:aspect-square">
         <button
           type="button"
           onClick={onOpen}
@@ -577,36 +565,33 @@ function SearchProductCard({
           <ProductImage
             src={product.imageUrl}
             alt={product.name}
-            className="object-cover transition duration-500 group-hover:scale-[1.03]"
+            className="object-cover transition-transform duration-200 ease-[var(--ease-out)] group-hover:scale-[1.02]"
           />
         </button>
         <button
           type="button"
           onClick={onToggleFavorite}
           className={clsx(
-            "absolute right-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-white/95 shadow-sm transition active:scale-95",
-            isFavorite ? "text-[#b84a39]" : "text-[#c99b9b]",
+            "absolute right-1.5 top-1.5 grid h-11 w-11 place-items-center rounded-xl border border-sand bg-bg-card text-text-light transition-[color,transform] duration-200 ease-[var(--ease-out)] active:translate-y-px",
+            isFavorite && "text-brand-600",
           )}
           aria-label={isFavorite ? "Bỏ yêu thích" : "Thêm yêu thích"}
         >
           <Heart className={clsx("h-4 w-4", isFavorite && "fill-current")} />
         </button>
         {product.isBestseller && (
-          <span className="absolute left-2 top-2 rounded-full bg-[#3d2417] px-2 py-1 text-[10px] font-black text-white">
+          <span className="absolute left-2 top-2 rounded-lg bg-navy px-2 py-1 text-[10px] font-black text-cream">
             Best seller
           </span>
         )}
-        <span className="absolute bottom-2 left-2 rounded-full bg-white/95 px-2 py-1 text-[10px] font-black text-[#65483a] shadow-sm">
-          {mode === "pickup" ? "Nhận tại quán" : "Giao tận nơi"}
-        </span>
       </div>
       <button type="button" onClick={onOpen} className="block w-full p-3 text-left">
         {categoryName && (
-          <p className="mb-1 truncate text-[10px] font-bold uppercase text-[#b38a76]">
+          <p className="mb-1 truncate text-[10px] font-bold text-text-muted">
             {categoryName}
           </p>
         )}
-        <h2 className="line-clamp-2 min-h-[36px] text-[13px] font-bold leading-tight text-[#3d2417]">
+        <h2 className="line-clamp-2 min-h-9 text-[13px] font-bold leading-tight text-navy">
           {product.name}
         </h2>
         {reasons.length > 0 && (
@@ -614,7 +599,7 @@ function SearchProductCard({
             {reasons.map((reason) => (
               <span
                 key={reason}
-                className="rounded-full bg-[#f7eee7] px-2 py-1 text-[10px] font-bold text-[#7b6254]"
+                className="rounded-lg bg-brand-50 px-2 py-1 text-[10px] font-bold text-text-secondary"
               >
                 {reason}
               </span>
@@ -622,11 +607,11 @@ function SearchProductCard({
           </div>
         )}
         <div className="mt-2 flex items-center justify-between gap-2">
-          <p className="truncate text-[14px] font-black text-[#b84a39]">
+          <p className="truncate text-[14px] font-black text-brand-700 tabular-nums">
             {product.sizeOptions?.length ? "Từ " : ""}{formatPrice(getProductStartingPrice(product))}
           </p>
-          <span className="rounded-full bg-[#fff4ec] px-2 py-1 text-[10px] font-bold text-[#8c5a42]">
-            Thêm
+          <span className="whitespace-nowrap border-b border-brand-300 text-[10px] font-bold text-brand-700">
+            Xem
           </span>
         </div>
       </button>
@@ -638,13 +623,13 @@ function IntentSummary({ intents }: { intents: string[] }) {
   return (
     <div className="-mx-4 mt-3 overflow-x-auto px-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       <div className="flex w-max items-center gap-2">
-        <span className="text-[11px] font-black uppercase text-[#b38a76]">
+        <span className="text-[11px] font-black text-text-muted">
           Đã hiểu
         </span>
         {intents.map((intent) => (
           <span
             key={intent}
-            className="rounded-full border border-[#f0e3d3] bg-[#fffaf6] px-3 py-1.5 text-xs font-bold text-[#65483a]"
+            className="rounded-full border border-sand bg-bg-card px-3 py-1.5 text-xs font-bold text-charcoal"
           >
             {intent}
           </span>
@@ -662,7 +647,7 @@ function SortControl({
   onChange: (value: SortMode) => void;
 }) {
   return (
-    <label className="flex h-8 items-center gap-1 rounded-full border border-[#eadbcc] bg-white px-2 text-xs font-bold text-[#65483a]">
+    <label className="flex h-11 items-center gap-1 rounded-xl border border-sand bg-bg-card px-2 text-xs font-bold text-charcoal">
       <SlidersHorizontal className="h-3.5 w-3.5" />
       <select
         value={value}
@@ -688,14 +673,14 @@ function NoResults({
   const recoveryQueries = ["giao hôm nay", "best seller", "bánh sinh nhật", "ít ngọt"];
 
   return (
-    <section className="mt-8 rounded-[22px] border border-dashed border-[#e8d5c5] bg-white px-6 py-12 text-center">
-      <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#fff4ec] text-[#b84a39]">
+    <section className="mt-8 border-y border-sand bg-bg-card px-6 py-12 text-center">
+      <span className="mx-auto grid h-14 w-14 place-items-center rounded-xl bg-brand-50 text-brand-700">
         <Search className="h-7 w-7" />
       </span>
-      <h2 className="mt-4 text-lg font-black text-[#3d2417]">
+      <h2 className="mt-4 text-lg font-black text-navy">
         Chưa tìm thấy món phù hợp
       </h2>
-      <p className="mt-2 text-sm leading-relaxed text-[#8c7568]">
+      <p className="mt-2 text-sm leading-relaxed text-text-muted">
         Mình chưa ghép được đủ điều kiện. Bạn có thể nới ngân sách, bỏ bớt bộ
         lọc hoặc chuyển sang nhóm gần nhất.
       </p>
@@ -705,7 +690,7 @@ function NoResults({
             key={item}
             type="button"
             onClick={() => onPickQuery(item)}
-            className="rounded-full border border-[#eadbcc] bg-[#fffaf6] px-3 py-2 text-xs font-black text-[#65483a]"
+            className="min-h-11 rounded-full border border-sand bg-bg-card px-3 py-2 text-xs font-black text-charcoal"
           >
             {item}
           </button>
@@ -714,7 +699,7 @@ function NoResults({
       <button
         type="button"
         onClick={onReset}
-        className="mt-5 h-10 rounded-full bg-[#3d2417] px-4 text-sm font-black text-white"
+        className="mt-5 h-11 whitespace-nowrap rounded-xl border border-navy px-4 text-sm font-black text-navy"
       >
         Xem lại gợi ý
       </button>
@@ -725,10 +710,10 @@ function NoResults({
 function SectionTitle({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="grid h-7 w-7 place-items-center rounded-full bg-[#fff0f2] text-[#b84a39]">
+      <span className="grid h-7 w-7 place-items-center text-brand-700">
         {icon}
       </span>
-      <h2 className="text-base font-black text-[#3d2417]">{title}</h2>
+      <h2 className="text-base font-black text-navy">{title}</h2>
     </div>
   );
 }

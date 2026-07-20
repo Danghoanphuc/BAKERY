@@ -1,0 +1,9 @@
+{
+  "date": "2026-07-19",
+  "framework": "Next.js 16 + Tailwind CSS 4",
+  "fontStack": "Fraunces + Be Vietnam Pro",
+  "palette": "warm flour paper, cacao ink, brick accent",
+  "motion": "motion-cut; CSS transform and opacity only",
+  "spacing": "4-point named scale",
+  "source": "DESIGN.md"
+}

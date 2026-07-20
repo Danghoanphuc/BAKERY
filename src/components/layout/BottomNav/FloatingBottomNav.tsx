@@ -81,18 +81,16 @@ function ProfileBottomNav({
 
   return (
     <div
-      className="pointer-events-none fixed bottom-0 left-0 right-0 z-[100] flex items-center justify-center px-4 pb-4 md:hidden"
-      style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
+      className="pointer-events-none fixed bottom-0 left-0 right-0 z-[var(--z-navigation)] flex items-center justify-center px-3 pb-2 md:hidden"
+      style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}
     >
-      <nav className="pointer-events-auto relative isolate grid h-[72px] w-full max-w-[440px] grid-cols-4 items-center overflow-hidden rounded-2xl border border-sand bg-bg-card/95 px-2 shadow-[0_12px_30px_rgba(18,62,102,0.14)] backdrop-blur-md">
+      <nav className="pointer-events-auto relative isolate grid h-16 w-full max-w-[440px] grid-cols-4 items-center overflow-hidden rounded-2xl border border-sand bg-bg-card px-1">
 
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute bottom-2 left-2 top-2 z-0 w-[calc((100%_-_1rem)/4)] rounded-xl border border-sand bg-cream shadow-sm transition-transform duration-300 ease-out will-change-transform"
+          className="pointer-events-none absolute bottom-0 left-1 z-0 h-0.5 w-[calc((100%_-_0.5rem)/4)] bg-brand-500 transition-transform duration-200 ease-[var(--ease-out)]"
           style={{ transform: `translate3d(${activeIndex * 100}%, 0, 0)` }}
-        >
-          <span className="absolute inset-x-3 top-0 h-0.5 rounded-full bg-brand-500" />
-        </span>
+        />
 
         {navItems.map((item, index) => {
           const isActive = index === activeIndex;
@@ -103,18 +101,17 @@ function ProfileBottomNav({
               key={item.label}
               href={item.href}
               className={clsx(
-                "relative z-10 flex h-[56px] min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-text-muted transition-all duration-200 active:scale-[0.96]",
+                "relative z-10 flex h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-text-muted transition-[color,transform] duration-200 ease-[var(--ease-out)] active:translate-y-px",
                 isActive && "text-brand-500",
               )}
             >
               <Icon
                 className={clsx(
-                  "h-6 w-6 transition-transform duration-200",
-                  isActive && "-translate-y-0.5 scale-105",
+                  "h-5 w-5",
                 )}
                 strokeWidth={isActive ? 2.5 : 2}
               />
-              <span className="w-full truncate px-1 text-center text-[11px] font-bold leading-none">
+              <span className="w-full truncate px-1 text-center text-[10px] font-bold leading-none">
                 {item.label}
               </span>
             </Link>

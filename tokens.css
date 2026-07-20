@@ -1,0 +1,66 @@
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R5 V4 */
+:root {
+  --color-paper: oklch(97% 0.018 82);
+  --color-paper-2: oklch(94% 0.025 78);
+  --color-paper-3: oklch(99% 0.008 82);
+  --color-ink: oklch(27% 0.045 48);
+  --color-ink-2: oklch(39% 0.035 52);
+  --color-muted: oklch(49% 0.035 58);
+  --color-neutral: var(--color-ink-2);
+  --color-rule: oklch(88% 0.035 70);
+  --color-rule-2: oklch(81% 0.038 66);
+  --color-accent: oklch(50% 0.14 34);
+  --color-accent-strong: oklch(43% 0.13 34);
+  --color-accent-soft: oklch(93% 0.035 50);
+  --color-accent-ink: oklch(98% 0.012 82);
+  --color-focus: oklch(43% 0.13 34);
+  --color-success: oklch(48% 0.08 145);
+  --color-error: oklch(48% 0.16 28);
+  --color-overlay: oklch(27% 0.045 48 / 0.42);
+
+  --font-display: "Fraunces", ui-serif, serif;
+  --font-body: "Be Vietnam Pro", ui-sans-serif, sans-serif;
+
+  --space-3xs: 0.125rem;
+  --space-2xs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.5rem;
+  --space-xl: 2.5rem;
+  --space-2xl: 4rem;
+  --space-3xl: 6rem;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-md: 1.25rem;
+  --text-lg: 1.5625rem;
+  --text-xl: 1.953rem;
+  --text-2xl: 2.441rem;
+  --text-3xl: 3.052rem;
+  --text-display: clamp(2.75rem, 5vw + 1rem, 5.25rem);
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+
+  --rule-hair: 1px;
+  --radius-card: 0.875rem;
+  --radius-control: 0.75rem;
+  --radius-nav: 1rem;
+  --shadow-card: 0 0.5rem 1.5rem oklch(27% 0.045 48 / 0.07);
+  --shadow-float: 0 1rem 3rem oklch(27% 0.045 48 / 0.14);
+
+  --z-base: 1;
+  --z-raised: 10;
+  --z-navigation: 30;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal: 400;
+  --z-toast: 500;
+  --z-tooltip: 600;
+}

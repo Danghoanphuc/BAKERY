@@ -37,6 +37,9 @@ export function hasAdminPermission(role: AdminRole, permission: AdminPermission)
 }
 
 export function getAdminPermissionForPath(pathname: string): AdminPermission {
+  pathname = pathname
+    .replace(/^\/wholesale(?=\/|$)/, "/admin")
+    .replace(/^\/api\/wholesale(?=\/|$)/, "/api/admin");
   const rules: Array<[RegExp, AdminPermission]> = [
     [/^\/admin\/pos(?:\/|$)|^\/api\/pos(?:\/|$)|^\/api\/vouchers\/pos-redeem/, "pos"],
     [/^\/admin\/orders(?:\/|$)|^\/api\/admin\/orders(?:\/|$)/, "orders"],

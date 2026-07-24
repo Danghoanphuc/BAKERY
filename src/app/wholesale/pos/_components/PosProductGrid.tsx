@@ -1,0 +1,248 @@
+import Link from "next/link";
+import { ChevronRight, History, LayoutGrid, Monitor, ScanLine, Search, Utensils, X } from "lucide-react";
+import { clsx } from "clsx";
+import { ProductImage } from "@/components/common/ProductImage/ProductImage";
+import { productBelongsToCategory } from "@/lib/product-category";
+import type { Category, Product } from "@/types";
+import {
+  formatCurrency,
+  getProductStockLabel,
+  isProductSellableToday,
+} from "../_lib/pos-utils";
+
+type PosProductGridProps = {
+  products: Product[];
+  categories: Category[];
+  selectedCategory: string | "all";
+  searchTerm: string;
+  onCategoryChange: (category: string | "all") => void;
+  onSearchChange: (value: string) => void;
+  onProductClick: (product: Product) => void;
+  customerDisplayUrl?: string;
+  customerDisplayTarget?: string;
+  onScannerKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
+  scannerStatus?: "ready" | "success" | "error";
+};
+
+export function PosProductGrid({
+  products,
+  categories,
+  selectedCategory,
+  searchTerm,
+  onCategoryChange,
+  onSearchChange,
+  onProductClick,
+  customerDisplayUrl,
+  customerDisplayTarget,
+  onScannerKeyDown,
+  scannerStatus = "ready",
+}: PosProductGridProps) {
+  return (
+    <section className="flex min-h-[65vh] min-w-0 flex-col md:min-h-0">
+      <div className="border-b border-[#f0e1d2] bg-white">
+        <div className="grid gap-2.5 px-3 py-2.5 xl:grid-cols-[minmax(180px,0.75fr)_minmax(240px,1.25fr)] xl:items-center">
+          <Link
+            href="/wholesale/pos/tables"
+            className="group flex h-11 min-w-0 items-center gap-2.5 rounded-xl bg-[#294d35] px-3 text-white shadow-[0_8px_18px_rgba(41,77,53,0.18)] transition hover:bg-[#203f2b]"
+          >
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/12">
+              <Utensils className="h-4 w-4" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-black">
+                Phục vụ tại bàn
+              </span>
+              <span className="block truncate text-[10px] font-semibold text-white/70">
+                Mở sơ đồ bàn và hóa đơn đang phục vụ
+              </span>
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 transition group-hover:translate-x-0.5" />
+          </Link>
+          <div className="flex min-w-0 items-center gap-2">
+            <SearchBox value={searchTerm} onChange={onSearchChange} onScannerKeyDown={onScannerKeyDown} />
+            <span
+              className="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-[#eadbcc] bg-[#fffaf6] text-[#7b6254]"
+              aria-label="Scanner HID sẵn sàng, hậu tố Enter"
+              title="Scanner HID hoạt động toàn màn hình · hậu tố Enter"
+            >
+              <ScanLine className="h-5 w-5" />
+              <span
+                className={clsx(
+                  "absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full ring-2 ring-white",
+                  scannerStatus === "error"
+                    ? "bg-red-500"
+                    : scannerStatus === "success"
+                      ? "bg-emerald-500"
+                      : "bg-blue-500",
+                )}
+              />
+            </span>
+            <Link href="/wholesale/pos/orders" className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-[#eadbcc] bg-[#fffaf6] text-[#7b6254] transition hover:border-[#b84a39]/50 hover:bg-white hover:text-[#b84a39]" aria-label="Đơn hàng POS" title="Quản lý đơn POS"><History className="h-5 w-5" /></Link>
+            <a
+              href={customerDisplayUrl}
+              target={customerDisplayTarget}
+              rel="noopener"
+              aria-disabled={!customerDisplayUrl}
+              onClick={(event) => {
+                if (!customerDisplayUrl) event.preventDefault();
+              }}
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-[#eadbcc] bg-[#fffaf6] text-[#7b6254] transition hover:border-[#b84a39]/50 hover:bg-white hover:text-[#b84a39]"
+              aria-label="Mở màn hình khách"
+              title="Mở màn hình khách"
+            >
+              <Monitor className="h-5 w-5" />
+            </a>
+          </div>
+        </div>
+
+        <div className="border-t border-[#f7eadf] px-3 py-2">
+          <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <CategoryButton
+              active={selectedCategory === "all"}
+              label="Tất cả"
+              count={products.length}
+              icon={<LayoutGrid className="h-3.5 w-3.5" />}
+              onClick={() => onCategoryChange("all")}
+            />
+            {categories.map((category) => (
+              <CategoryButton
+                key={category.id}
+                active={selectedCategory === category.id}
+                label={category.name}
+                count={
+                  products.filter((product) =>
+                    productBelongsToCategory(product, category),
+                  ).length
+                }
+                onClick={() => onCategoryChange(category.id)}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-3">
+        {products.length === 0 ? (
+          <div className="grid h-full place-items-center rounded-2xl border border-dashed border-[#eadbcc] bg-white text-sm font-semibold text-[#9b8171]">
+            Không có sản phẩm phù hợp.
+          </div>
+        ) : (
+          <div className="grid grid-cols-[repeat(auto-fit,minmax(126px,1fr))] gap-2.5 xl:grid-cols-4">
+            {products.map((product) => {
+              const sellable = isProductSellableToday(product);
+              const stockLabel = getProductStockLabel(product);
+
+              return (
+                <button
+                  key={product.id}
+                  type="button"
+                  onClick={() => onProductClick(product)}
+                  disabled={!sellable}
+                  className={clsx(
+                    "group flex h-[168px] flex-col overflow-hidden rounded-xl border bg-white text-left shadow-sm transition active:scale-[0.98]",
+                    sellable
+                      ? "border-[#eadbcc] hover:border-[#b84a39]/50 hover:shadow-md"
+                      : "cursor-not-allowed border-[#eadbcc] opacity-55",
+                  )}
+                >
+                  <div className="relative h-[82px] shrink-0 bg-[#fdf7f0]">
+                    <ProductImage
+                      src={product.imageUrl}
+                      alt={product.name}
+                      className="h-full w-full object-cover"
+                    />
+                    {stockLabel && (
+                      <span className="absolute left-2 top-2 rounded-full bg-white/95 px-2 py-1 text-[11px] font-black text-[#7b6254] shadow-sm">
+                        {stockLabel}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-1 flex-col px-2.5 py-2.5">
+                    <h3 className="line-clamp-2 min-h-[34px] text-xs font-medium leading-[17px] text-[#3d2417]">
+                      {product.name}
+                    </h3>
+                    <p className="mt-auto pt-1 text-[13px] font-bold leading-none text-[#b84a39]">
+                      {formatCurrency(product.price)}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function SearchBox({
+  value,
+  onChange,
+  onScannerKeyDown,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onScannerKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>) => void;
+}) {
+  return (
+    <label className="relative block min-w-0 flex-1">
+      <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9b8171]" />
+      <input
+        type="search"
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onKeyDown={onScannerKeyDown}
+        placeholder="Tìm bánh, SKU, tag..."
+        className="h-11 w-full rounded-xl border border-[#eadbcc] bg-[#fffaf6] pl-10 pr-11 text-sm font-semibold text-[#3d2417] shadow-inner outline-none transition placeholder:text-[#b49a8a] focus:border-[#b84a39] focus:bg-white focus:ring-4 focus:ring-[#b84a39]/10 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
+      />
+      {value && (
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          className="absolute right-0 top-1/2 grid h-11 w-11 -translate-y-1/2 place-items-center rounded-full text-[#9b8171] transition hover:bg-[#fff1f0] hover:text-[#b84a39]"
+          aria-label="Xoá tìm kiếm"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      )}
+    </label>
+  );
+}
+
+function CategoryButton({
+  active,
+  label,
+  count,
+  icon,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  count: number;
+  icon?: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={clsx(
+        "flex h-11 shrink-0 items-center gap-2 rounded-full px-3 text-xs font-black transition",
+        active
+          ? "bg-[#b84a39] text-white shadow-sm"
+          : "border border-[#eadbcc] bg-white text-[#65483a] hover:border-[#b84a39]/50",
+      )}
+    >
+      {icon}
+      <span className="max-w-[130px] truncate">{label}</span>
+      <span
+        className={clsx(
+          "rounded-full px-1.5 py-0.5 text-[10px]",
+          active ? "bg-white/20 text-white" : "bg-[#fff1f0] text-[#b84a39]",
+        )}
+      >
+        {count}
+      </span>
+    </button>
+  );
+}

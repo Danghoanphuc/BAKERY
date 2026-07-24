@@ -7,6 +7,8 @@ describe("admin RBAC", () => {
     expect(getAdminPermissionForPath("/api/admin/loyalty")).toBe("marketing");
     expect(getAdminPermissionForPath("/api/admin/finance/budgets")).toBe("finance");
     expect(getAdminPermissionForPath("/api/pos/checkout")).toBe("pos");
+    expect(getAdminPermissionForPath("/wholesale/finance")).toBe("finance");
+    expect(getAdminPermissionForPath("/api/wholesale/orders")).toBe("orders");
   });
 
   it("keeps sensitive areas isolated by role", () => {

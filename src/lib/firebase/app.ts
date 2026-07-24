@@ -15,14 +15,15 @@ let app: FirebaseApp;
 let db: Firestore;
 let storage: FirebaseStorage;
 
-if (!getApps().length) {
+const defaultApp = getApps().find((candidate) => candidate.name === "[DEFAULT]");
+
+if (!defaultApp) {
   app = initializeApp(firebaseConfig);
-  db = getFirestore(app);
-  storage = getStorage(app);
 } else {
-  app = getApps()[0];
-  db = getFirestore(app);
-  storage = getStorage(app);
+  app = defaultApp;
 }
+
+db = getFirestore(app);
+storage = getStorage(app);
 
 export { app, db, storage };

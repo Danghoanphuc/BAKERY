@@ -98,6 +98,7 @@ export default function InventoryPage() {
   const [isSyncingCardTemplate, setIsSyncingCardTemplate] = useState(false);
   const utilityMenuRef = useRef<HTMLDivElement>(null);
   const utilityButtonRef = useRef<HTMLButtonElement>(null);
+  const costingRequestIdRef = useRef(0);
 
   useEffect(() => {
     void loadInventory();
@@ -125,10 +126,14 @@ export default function InventoryPage() {
       if (showLoading) {
         setIsLoading(true);
       }
-      const [productsRes, categoriesRes, costingRes] = await Promise.all([
+      const costingRequestId = ++costingRequestIdRef.current;
+      const costingRequest = fetch(
+        "/api/wholesale/finance/costing-summary",
+        { cache: "no-store" },
+      );
+      const [productsRes, categoriesRes] = await Promise.all([
         fetch("/api/wholesale/products", { cache: "no-store" }),
         fetch("/api/wholesale/categories", { cache: "no-store" }),
-        fetch("/api/wholesale/finance/costing-summary", { cache: "no-store" }),
       ]);
 
       if (!productsRes.ok || !categoriesRes.ok) {
@@ -138,16 +143,22 @@ export default function InventoryPage() {
       setProducts((await productsRes.json()) as Product[]);
       setCategories((await categoriesRes.json()) as Category[]);
 
-      if (costingRes.ok) {
-        const costing = (await costingRes.json()) as CostingSummaryResponse;
-        setCostingByProductId(costing.byProductId ?? {});
-        setCostingCoverage(
-          costing.coverage ?? { total: 0, recipe: 0, legacy: 0, missing: 0 },
-        );
-      } else {
-        setCostingByProductId({});
-        setCostingCoverage({ total: 0, recipe: 0, legacy: 0, missing: 0 });
-      }
+      void costingRequest
+        .then(async (costingRes) => {
+          if (costingRequestId !== costingRequestIdRef.current) return;
+          if (!costingRes.ok) throw new Error("COSTING_SUMMARY_UNAVAILABLE");
+          const costing = (await costingRes.json()) as CostingSummaryResponse;
+          if (costingRequestId !== costingRequestIdRef.current) return;
+          setCostingByProductId(costing.byProductId ?? {});
+          setCostingCoverage(
+            costing.coverage ?? { total: 0, recipe: 0, legacy: 0, missing: 0 },
+          );
+        })
+        .catch(() => {
+          if (costingRequestId !== costingRequestIdRef.current) return;
+          setCostingByProductId({});
+          setCostingCoverage({ total: 0, recipe: 0, legacy: 0, missing: 0 });
+        });
       setError(null);
       return true;
     } catch (err) {

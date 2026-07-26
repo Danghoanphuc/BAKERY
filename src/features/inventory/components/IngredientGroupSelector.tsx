@@ -346,6 +346,13 @@ function IngredientGroupManager({
       if (!response.ok) {
         throw new Error(payload?.error || "Không thể lưu nhóm nguyên liệu.");
       }
+      toast.success(
+        editingId
+          ? "Đã cập nhật nhóm nguyên liệu."
+          : draft.parentId
+            ? "Đã tạo nhóm nguyên liệu con."
+            : "Đã tạo nhóm nguyên liệu chính.",
+      );
       if (!editingId) resetDraft();
       await onChanged();
     } catch (error) {
@@ -379,6 +386,11 @@ function IngredientGroupManager({
           isActive: !group.isActive,
         }));
       }
+      toast.success(
+        group.isActive
+          ? "Đã ngừng hoạt động nhóm nguyên liệu."
+          : "Đã kích hoạt nhóm nguyên liệu.",
+      );
       await onChanged();
     } catch (error) {
       toast.error(
@@ -403,6 +415,7 @@ function IngredientGroupManager({
       }
       setDeleteCandidateId(null);
       resetDraft();
+      toast.success("Đã xóa nhóm nguyên liệu.");
       await onChanged();
     } catch (error) {
       toast.error(

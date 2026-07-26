@@ -25,7 +25,9 @@ vi.mock("./_components/InventoryStats", () => ({
 }));
 
 vi.mock("./_components/InventoryTable", () => ({
-  InventoryTable: () => <div data-testid="inventory-table" />,
+  InventoryTable: ({ isLoading }: { isLoading: boolean }) => (
+    <div data-testid="inventory-table" data-loading={String(isLoading)} />
+  ),
 }));
 
 const products: Product[] = [
@@ -92,6 +94,33 @@ describe("InventoryPage utility menu", () => {
     );
     expect(firstRow).toBe(
       '"Bánh dâu";"BD-01";"Bánh";8;120000;"Đang bán"',
+    );
+  });
+
+  it("shows inventory before the costing summary finishes", async () => {
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === "/api/products") {
+        return Promise.resolve(jsonResponse(products));
+      }
+      if (url === "/api/categories") {
+        return Promise.resolve(
+          jsonResponse([{ id: "cake", name: "Bánh", iconUrl: "" }]),
+        );
+      }
+      if (url === "/api/admin/finance/costing-summary") {
+        return new Promise<Response>(() => undefined);
+      }
+      return Promise.resolve(jsonResponse({}, false));
+    });
+
+    render(<InventoryPage />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId("inventory-table")).toHaveAttribute(
+        "data-loading",
+        "false",
+      ),
     );
   });
 

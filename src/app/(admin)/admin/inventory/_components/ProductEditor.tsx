@@ -168,7 +168,7 @@ export function ProductEditor({ mode, productId }: ProductEditorProps) {
       }
 
       toast.success(mode === "edit" ? "Đã cập nhật sản phẩm." : "Đã thêm sản phẩm mới.");
-      window.location.assign("/admin/inventory");
+      router.push("/admin/inventory");
     } catch (saveError) {
       console.error("Failed to save product:", saveError);
       const message = saveError instanceof Error ? saveError.message : "Không thể lưu sản phẩm.";

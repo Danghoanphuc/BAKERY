@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 
+import { FormattedNumberInput } from "@/components/common/FormattedNumberInput";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import { ProductOffers } from "@/features/product/components/ProductOffers";
 import { ProductShareButton } from "@/features/product/components/ProductShareButton";
@@ -488,7 +489,7 @@ function PersonalizationSection({ isOpen, onToggle, customization, onChange }: {
       {isOpen ? (
         <div className="grid gap-3 border-t border-sand p-3 sm:grid-cols-[1fr_112px]">
           <label className="text-xs font-black text-navy">Lời chúc trên bánh<textarea value={customization.customMessage ?? ""} onChange={(event) => onChange({ customMessage: event.target.value })} placeholder="Ví dụ: Chúc mừng sinh nhật" rows={2} maxLength={100} className="mt-1.5 w-full resize-none rounded-xl border border-sand bg-bg-card px-3 py-2 text-sm font-medium outline-none focus:border-brand-500" /></label>
-          <label className="text-xs font-black text-navy">Số nến<input type="number" min="0" max="99" value={customization.candles || ""} onChange={(event) => onChange({ candles: Math.min(99, Math.max(0, Number(event.target.value) || 0)) })} placeholder="0" className="mt-1.5 h-10 w-full rounded-xl border border-sand bg-bg-card px-3 text-sm font-medium outline-none focus:border-brand-500" /></label>
+          <label className="text-xs font-black text-navy">Số nến<FormattedNumberInput min={0} max={99} value={customization.candles} onValueChange={(value) => onChange({ candles: value ?? 0 })} placeholder="0" className="mt-1.5 h-10 w-full rounded-xl border border-sand bg-bg-card px-3 text-sm font-medium outline-none focus:border-brand-500" /></label>
         </div>
       ) : null}
     </section>

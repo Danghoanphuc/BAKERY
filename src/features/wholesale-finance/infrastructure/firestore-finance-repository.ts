@@ -48,6 +48,14 @@ export class FirestoreFinanceRepository
       const existing = await transaction.get(reference);
       if (existing.exists()) {
         const current = existing.data() as Record<string, unknown>;
+        if (input.type === "cost_of_goods_sold" && current.amount !== input.amount) {
+          transaction.update(reference, {
+            amount: input.amount,
+            status: input.status,
+            updatedAt: serverTimestamp(),
+          });
+          return "updated" as const;
+        }
         if (current.status === "pending" && input.status === "posted") {
           transaction.update(reference, {
             status: "posted",

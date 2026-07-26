@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { addIngredient, getStandardCostCatalog } from "@/features/finance";
+import { getStandardCostCatalog } from "@/features/finance";
 import { requireAdmin } from "@/lib/auth/require-admin";
 
 export async function GET(request: Request) {
@@ -12,11 +12,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
-  try {
-    return NextResponse.json(await addIngredient(await request.json()), { status: 201 });
-  } catch (error) {
-    const invalid = error instanceof Error && error.message === "INVALID_INGREDIENT";
-    return NextResponse.json({ error: invalid ? "Invalid ingredient" : "Failed to create ingredient" }, { status: invalid ? 400 : 500 });
-  }
+  return NextResponse.json(
+    {
+      error:
+        "Hãy tạo nguyên liệu từ Kho/Sản phẩm để hồ sơ kho và giá vốn được đồng bộ.",
+      createPath: "/admin/inventory/new/ingredient",
+    },
+    { status: 409 },
+  );
 }
 

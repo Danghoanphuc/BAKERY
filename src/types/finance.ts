@@ -65,10 +65,12 @@ export type IngredientBaseUnit = "gram" | "millilitre" | "each";
 export interface FinanceIngredient {
   id: string;
   code: string;
+  groupCode?: string;
   name: string;
   baseUnit: IngredientBaseUnit;
   costPerBaseUnitMicros: number;
   isActive: boolean;
+  createdAt?: Date;
   updatedAt?: Date;
 }
 
@@ -109,6 +111,9 @@ export interface OrderItemFinancialSnapshot {
   orderItemId: string;
   productId: string;
   productName: string;
+  variantId?: string;
+  variantSku?: string;
+  variantBarcode?: string;
   quantity: number;
   grossRevenue: number;
   allocatedDiscount: number;

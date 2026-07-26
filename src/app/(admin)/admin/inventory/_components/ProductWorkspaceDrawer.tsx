@@ -12,6 +12,7 @@ type ProductWorkspaceDrawerProps = {
   title: string;
   onClose: () => void;
   header: ReactNode;
+  footer?: ReactNode;
   children: ReactNode;
 };
 
@@ -20,14 +21,24 @@ export function ProductWorkspaceDrawer({
   title,
   onClose,
   header,
+  footer,
   children,
 }: ProductWorkspaceDrawerProps) {
   const drawerRef = useRef<HTMLElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
   const [mounted, setMounted] = useState(false);
   const titleId = useId();
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    // The portal can only be rendered after hydration provides `document.body`.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -46,7 +57,7 @@ export function ProductWorkspaceDrawer({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        onClose();
+        onCloseRef.current();
         return;
       }
 
@@ -74,7 +85,7 @@ export function ProductWorkspaceDrawer({
       document.body.style.paddingRight = previousPaddingRight;
       previousFocusRef.current?.focus({ preventScroll: true });
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   if (!mounted || !isOpen) return null;
 
@@ -97,6 +108,11 @@ export function ProductWorkspaceDrawer({
         <div className="flex min-w-0 flex-1 flex-col border-l border-neutral-200 bg-[#fbfbfa] shadow-2xl">
           {header}
           <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+          {footer && (
+            <div className="shrink-0 border-t border-neutral-200 bg-white px-5 py-3">
+              {footer}
+            </div>
+          )}
         </div>
         <button
           type="button"

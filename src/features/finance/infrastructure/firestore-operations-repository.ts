@@ -13,6 +13,9 @@ const MOVEMENTS = "inventory_movements";
 const PURCHASES = "purchase_receipts";
 const BATCHES = "production_batches";
 const WASTE = "inventory_waste_records";
+const ADJUSTMENTS = "inventory_adjustments";
+const INGREDIENTS = "finance_ingredients";
+const INGREDIENT_COSTS = "finance_ingredient_cost_versions";
 
 const key = (...parts: Array<string | number>) => encodeURIComponent(parts.join(":"));
 const balanceRef = (type: InventoryItemType, itemId: string, locationId: string) =>
@@ -38,17 +41,38 @@ export async function persistPurchaseReceipt(
   const receiptRef = doc(db, PURCHASES, receiptId);
   const totalAmount = input.lines.reduce((sum, line) => sum + line.lineAmount, 0);
   const refs = input.lines.map((line) => balanceRef("ingredient", line.ingredientId, input.locationId));
+  const ingredientRefs = input.lines.map((line) => doc(db, INGREDIENTS, line.ingredientId));
 
   const created = await runTransaction(db, async (transaction) => {
     if ((await transaction.get(receiptRef)).exists()) return false;
     const snapshots = await Promise.all(refs.map((reference) => transaction.get(reference)));
+    const ingredientSnapshots = await Promise.all(
+      ingredientRefs.map((reference) => transaction.get(reference)),
+    );
     input.lines.forEach((line, index) => {
+      const ingredient = ingredientSnapshots[index];
+      if (!ingredient.exists() || ingredient.data().isActive === false) {
+        throw new Error(`INGREDIENT_NOT_AVAILABLE:${line.ingredientId}`);
+      }
       const current = balanceFromData("ingredient", line.ingredientId, input.locationId, snapshots[index].data());
       const next = calculateWeightedBalance({
         currentQuantity: current.quantity, currentValue: current.inventoryValue,
         receivedQuantity: line.quantity, receivedValue: line.lineAmount,
       });
+      const weightedCostMicros = Math.round(next.inventoryValue * 1_000_000 / next.quantity);
       transaction.set(refs[index], { ...current, ...next, updatedAt: serverTimestamp() });
+      transaction.update(ingredientRefs[index], {
+        costPerBaseUnitMicros: weightedCostMicros,
+        updatedAt: serverTimestamp(),
+      });
+      transaction.set(doc(db, INGREDIENT_COSTS, key(input.idempotencyKey, "cost", line.ingredientId)), {
+        ingredientId: line.ingredientId,
+        costPerBaseUnitMicros: weightedCostMicros,
+        effectiveFrom: input.occurredAt,
+        source: `purchase:${receiptId}`,
+        createdBy: input.createdBy,
+        createdAt: serverTimestamp(),
+      });
       transaction.set(doc(db, MOVEMENTS, key(input.idempotencyKey, line.ingredientId)), {
         itemType: "ingredient", itemId: line.ingredientId, locationId: input.locationId,
         type: "purchase_receipt", direction: "in", quantity: line.quantity,
@@ -190,6 +214,73 @@ export async function persistWaste(input: {
   });
 }
 
+export async function persistInventoryAdjustment(input: {
+  idempotencyKey: string;
+  itemType: InventoryItemType;
+  itemId: string;
+  locationId: string;
+  direction: "in" | "out";
+  quantity: number;
+  inventoryValue?: number;
+  reason: string;
+  occurredAt: Date;
+  createdBy: string;
+}) {
+  const adjustmentId = key(input.idempotencyKey);
+  const adjustmentRef = doc(db, ADJUSTMENTS, adjustmentId);
+  const stockRef = balanceRef(input.itemType, input.itemId, input.locationId);
+  const productCatalogRef = input.itemType === "product"
+    ? doc(db, "products", input.itemId)
+    : null;
+  return runTransaction(db, async (transaction) => {
+    if ((await transaction.get(adjustmentRef)).exists()) return null;
+    const snapshot = await transaction.get(stockRef);
+    const productSnapshot = productCatalogRef
+      ? await transaction.get(productCatalogRef)
+      : null;
+    const current = balanceFromData(input.itemType, input.itemId, input.locationId, snapshot.data());
+    if (!snapshot.exists() && productSnapshot) {
+      current.quantity = Number(productSnapshot.data()?.stock ?? 0);
+    }
+    const next = input.direction === "in"
+      ? calculateWeightedBalance({
+          currentQuantity: current.quantity,
+          currentValue: current.inventoryValue,
+          receivedQuantity: input.quantity,
+          receivedValue: input.inventoryValue ?? 0,
+        })
+      : consumeWeightedInventory(current, input.quantity).nextBalance;
+    const valueDelta = input.direction === "in"
+      ? input.inventoryValue ?? 0
+      : current.inventoryValue - next.inventoryValue;
+    transaction.set(stockRef, { ...current, ...next, updatedAt: serverTimestamp() });
+    if (productCatalogRef) {
+      if (!productSnapshot?.exists()) throw new Error("PRODUCT_NOT_FOUND");
+      transaction.update(productCatalogRef, {
+        stock: next.quantity,
+        updatedAt: serverTimestamp(),
+      });
+    }
+    transaction.set(doc(db, MOVEMENTS, key(input.idempotencyKey, "movement")), {
+      itemType: input.itemType,
+      itemId: input.itemId,
+      locationId: input.locationId,
+      type: "adjustment",
+      direction: input.direction,
+      quantity: input.quantity,
+      inventoryValue: valueDelta,
+      referenceType: "adjustment",
+      referenceId: adjustmentId,
+      idempotencyKey: `${input.idempotencyKey}:movement`,
+      occurredAt: input.occurredAt,
+      createdBy: input.createdBy,
+    });
+    const result = { ...input, id: adjustmentId, inventoryValue: valueDelta };
+    transaction.set(adjustmentRef, { ...result, createdAt: serverTimestamp() });
+    return result;
+  });
+}
+
 type InventoryReadFilter = { itemType: InventoryItemType; itemId: string };
 
 export async function getInventoryBalances(filter?: InventoryReadFilter) {
@@ -248,7 +339,17 @@ export async function persistProductSale(input: {
   idempotencyKey: string;
   orderId: string;
   locationId: string;
-  items: Array<{ productId: string; quantity: number; unitStandardCost?: number }>;
+  items: Array<{
+    productId: string;
+    quantity: number;
+    unitStandardCost?: number;
+    variantBreakdown?: Array<{
+      variantId?: string;
+      variantSku?: string;
+      variantBarcode?: string;
+      quantity: number;
+    }>;
+  }>;
   occurredAt: Date;
   createdBy: string;
 }) {
@@ -279,6 +380,7 @@ export async function persistProductSale(input: {
         itemType: "product", itemId: item.productId, locationId: input.locationId,
         type: "sale", direction: "out", quantity: item.quantity,
         inventoryValue: consumed.consumedValue, referenceType: "order", referenceId: input.orderId,
+        variantBreakdown: item.variantBreakdown ?? [],
         idempotencyKey: `${input.idempotencyKey}:${item.productId}`,
         occurredAt: input.occurredAt, createdBy: input.createdBy,
       });

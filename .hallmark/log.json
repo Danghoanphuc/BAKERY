@@ -1,5 +1,21 @@
 [
   {
+    "date": "2026-07-25",
+    "scope": "page",
+    "macrostructure": "Workbench",
+    "theme": "SweetTime warm editorial",
+    "enrichment": "none",
+    "brief": "Semi-finished creation with required active BOM and canonical production output"
+  },
+  {
+    "date": "2026-07-25",
+    "scope": "page",
+    "macrostructure": "Workbench",
+    "theme": "SweetTime warm editorial",
+    "enrichment": "none",
+    "brief": "Ingredient creation form and ingredient-group manager redesign"
+  },
+  {
     "date": "2026-07-20",
     "scope": "page",
     "macrostructure": "Workbench",

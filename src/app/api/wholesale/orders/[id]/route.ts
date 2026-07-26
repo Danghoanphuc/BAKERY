@@ -6,8 +6,8 @@ import {
   updateOrderOperationsAtomically,
 } from "@/lib/wholesale-db";
 import { expireUnpaidBankTransferOrder } from "@/lib/wholesale-payment-expiry";
-import { captureOrderFinancials } from "@/features/wholesale-finance";
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { captureOrderFinancials, recordProductSaleInventory } from "@/features/wholesale-finance";
+import { getAdminSession, requireAdmin } from "@/lib/auth/require-admin";
 import { parseOrderUpdate } from "@/lib/orders/order-update";
 
 function serializeForJson(value: unknown): unknown {
@@ -67,6 +67,7 @@ export async function PUT(
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
   try {
+    const actor = getAdminSession(request)?.id ?? "admin";
     const { id } = await context.params;
     const currentOrder = await getOrderById(id);
 
@@ -93,7 +94,7 @@ export async function PUT(
 
     if (data.status) {
       await transitionOrderAtomically(id, data.status, {
-        actor: "admin",
+        actor,
         note: data.status === "cancelled" ? data.cancelReason : undefined,
       });
     } else {
@@ -107,10 +108,35 @@ export async function PUT(
 
     if (data.status || data.paymentStatus) {
       let financialSyncError: unknown = null;
+      if (
+        order.salesChannel !== "pos" &&
+        order.actualCostOfGoods === undefined &&
+        (order.status === "completed" || order.status === "delivered")
+      ) {
+        try {
+          const orderForInventory = order;
+          const inventorySale = await recordProductSaleInventory({
+            orderId: orderForInventory.id,
+            items: orderForInventory.items.map((item) => ({
+              ...item,
+              unitStandardCost: orderForInventory.itemFinancialSnapshots?.find(
+                (snapshot) => snapshot.productId === item.productId,
+              )?.unitCost,
+            })),
+            occurredAt: new Date(),
+            actor,
+          });
+          order = { ...order, actualCostOfGoods: inventorySale.inventoryValue };
+          await updateOrder(id, { actualCostOfGoods: inventorySale.inventoryValue });
+        } catch (error) {
+          financialSyncError = error;
+          console.error("Deferred order inventory sync:", error);
+        }
+      }
       try {
-        await captureOrderFinancials(order, "admin");
+        await captureOrderFinancials(order, actor);
       } catch (error) {
-        financialSyncError = error;
+        financialSyncError ??= error;
         console.error("Deferred order financial sync:", error);
       }
 

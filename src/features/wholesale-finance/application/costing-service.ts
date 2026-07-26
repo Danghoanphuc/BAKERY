@@ -3,8 +3,9 @@ import { normalizeIngredientGroup } from "../domain/ingredient-code";
 import {
   activateRecipeVersion as persistRecipeActivation,
   createFinanceIngredient, createRecipeVersion,
-  getActiveRecipeVersions, getAllRecipeVersions, getFinanceIngredients, getRecipeVersionById,
-  recordIngredientCost,
+  getActiveRecipeVersions, getAllRecipeVersions, getFinanceIngredientById,
+  getFinanceIngredients, getIngredientCostVersions, getRecipeVersionById,
+  recordIngredientCost, updateFinanceIngredient,
 } from "../infrastructure/firestore-costing-repository";
 import { financeRepository } from "../infrastructure/firestore-finance-repository";
 import {
@@ -113,27 +114,72 @@ export function summarizeProductCost(
   };
 }
 
-export async function addIngredient(input: Omit<FinanceIngredient, "id" | "updatedAt" | "code"> & { groupCode?: string }) {
-  if (!input.name.trim() || !baseUnits.has(input.baseUnit) ||
+export async function addIngredient(
+  input: Omit<FinanceIngredient, "id" | "createdAt" | "updatedAt" | "code"> & {
+    groupCode?: string;
+    idempotencyKey?: string;
+  },
+  actor = "admin",
+) {
+  if (typeof input.name !== "string" || !input.name.trim() || !baseUnits.has(input.baseUnit) ||
       !Number.isSafeInteger(input.costPerBaseUnitMicros) || input.costPerBaseUnitMicros < 0) {
     throw new Error("INVALID_INGREDIENT");
   }
-  const ingredient = await createFinanceIngredient({
-    ...input,
+  const idempotencyKey = input.idempotencyKey?.trim() || crypto.randomUUID();
+  if (idempotencyKey.length > 120) throw new Error("INVALID_INGREDIENT");
+  return createFinanceIngredient({
+    name: input.name.trim(),
+    baseUnit: input.baseUnit,
+    costPerBaseUnitMicros: input.costPerBaseUnitMicros,
+    isActive: input.isActive !== false,
     groupCode: normalizeIngredientGroup(input.groupCode),
+  }, {
+    idempotencyKey,
+    actor,
   });
-  await recordIngredientCost({
-    ingredientId: ingredient.id,
-    costPerBaseUnitMicros: ingredient.costPerBaseUnitMicros,
-    effectiveFrom: new Date(),
-    source: "initial",
-    createdBy: "admin",
-  });
-  await financeRepository.record({
-    action: "ingredient_created", entityType: "ingredient",
-    entityId: ingredient.id, actor: "admin", metadata: { code: ingredient.code },
-  });
-  return ingredient;
+}
+
+export async function getIngredient(ingredientId: string) {
+  if (!ingredientId) throw new Error("INGREDIENT_NOT_FOUND");
+  return getFinanceIngredientById(ingredientId);
+}
+
+export async function getIngredientCosts(ingredientId: string) {
+  const ingredient = await getFinanceIngredientById(ingredientId);
+  if (!ingredient) throw new Error("INGREDIENT_NOT_FOUND");
+  return getIngredientCostVersions(ingredientId);
+}
+
+export async function editIngredient(
+  ingredientId: string,
+  patch: { name?: unknown; isActive?: unknown; code?: unknown; baseUnit?: unknown; groupCode?: unknown },
+  actor: string,
+) {
+  const current = await getFinanceIngredientById(ingredientId);
+  if (!current) throw new Error("INGREDIENT_NOT_FOUND");
+  if ((patch.code !== undefined && patch.code !== current.code) ||
+      (patch.baseUnit !== undefined && patch.baseUnit !== current.baseUnit) ||
+      (patch.groupCode !== undefined && patch.groupCode !== current.groupCode)) {
+    throw new Error("IMMUTABLE_INGREDIENT_FIELD");
+  }
+  const name = patch.name === undefined ? undefined : String(patch.name).trim();
+  if (name !== undefined && !name) throw new Error("INVALID_INGREDIENT");
+  const isActive = patch.isActive === undefined ? undefined : patch.isActive;
+  if (isActive !== undefined && typeof isActive !== "boolean") {
+    throw new Error("INVALID_INGREDIENT");
+  }
+  if (isActive === false && current.isActive) {
+    const activeRecipes = await getActiveRecipeVersions();
+    if (activeRecipes.some((recipe) =>
+      recipe.ingredients.some((line) => line.ingredientId === ingredientId))) {
+      throw new Error("INGREDIENT_IN_ACTIVE_RECIPE");
+    }
+  }
+  return updateFinanceIngredient(ingredientId, { name, isActive }, actor);
+}
+
+export function deactivateIngredient(ingredientId: string, actor: string) {
+  return editIngredient(ingredientId, { isActive: false }, actor);
 }
 
 export async function changeIngredientCost(input: {
@@ -155,21 +201,21 @@ export async function changeIngredientCost(input: {
     source: input.source,
     createdBy: input.actor,
   });
-  await financeRepository.record({
-    action: "ingredient_cost_changed", entityType: "ingredient",
-    entityId: input.ingredientId, actor: input.actor,
-    metadata: { costPerBaseUnitMicros: input.costPerBaseUnitMicros, source: input.source },
-  });
   return cost;
 }
 
 export async function addRecipeVersion(
   input: Omit<RecipeVersion, "id" | "version" | "status" | "createdAt" | "updatedAt">,
+  actor = "admin",
 ) {
   const integerFields = [input.yieldQuantity, input.packagingCostPerBatch,
     input.directLaborCostPerBatch, input.overheadCostPerBatch, input.wasteBasisPoints];
+  const effectiveFrom = new Date(input.effectiveFrom);
+  const ingredientIds = input.ingredients.map((line) => line.ingredientId);
   if (!input.productId || integerFields.some((value) => !Number.isSafeInteger(value) || value < 0) ||
-      input.yieldQuantity === 0 || input.ingredients.some((line) =>
+      input.yieldQuantity === 0 || input.wasteBasisPoints > 10_000 ||
+      Number.isNaN(effectiveFrom.getTime()) || input.ingredients.length === 0 ||
+      new Set(ingredientIds).size !== ingredientIds.length || input.ingredients.some((line) =>
         !line.ingredientId || !Number.isSafeInteger(line.quantity) || line.quantity <= 0)) {
     throw new Error("INVALID_RECIPE");
   }
@@ -179,25 +225,34 @@ export async function addRecipeVersion(
   if (input.ingredients.some((line) => !availableIngredients.has(line.ingredientId))) {
     throw new Error("INVALID_RECIPE");
   }
-  const recipe = await createRecipeVersion({ ...input, version: 0, status: "draft" });
+  const recipe = await createRecipeVersion({
+    ...input,
+    effectiveFrom,
+    version: 0,
+    status: "draft",
+  });
   await financeRepository.record({
     action: "recipe_version_created", entityType: "recipe",
-    entityId: recipe.id, actor: "admin",
+    entityId: recipe.id, actor,
     metadata: { productId: recipe.productId, version: recipe.version },
   });
   return recipe;
 }
 
-export async function activateRecipe(recipeId: string) {
+export async function activateRecipe(recipeId: string, actor = "admin") {
   const [recipe, ingredients] = await Promise.all([
     getRecipeVersionById(recipeId), getFinanceIngredients(),
   ]);
   if (!recipe) throw new Error("RECIPE_NOT_FOUND");
+  if (new Date(recipe.effectiveFrom).getTime() > Date.now()) {
+    throw new Error("RECIPE_NOT_EFFECTIVE");
+  }
   calculateRecipeStandardUnitCost(recipe, new Map(ingredients.map((item) => [item.id, item])));
   await persistRecipeActivation(recipeId);
   await financeRepository.record({
     action: "recipe_version_activated", entityType: "recipe",
-    entityId: recipeId, actor: "admin",
+    entityId: recipeId, actor,
     metadata: { productId: recipe.productId, version: recipe.version },
   });
+  return recipe;
 }

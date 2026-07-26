@@ -1,11 +1,16 @@
 "use client";
 
 import { Dispatch, FormEvent, SetStateAction, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Check, CircleDashed, Loader2, PackageCheck } from "lucide-react";
 import { clsx } from "clsx";
 import type { Category, FlavorOption, ProductVariantCombination, SizeOption } from "@/types";
 import type { ProductCostSummary } from "@/features/wholesale-finance";
-import { createInternalBarcode, createProductSku, createVariantSku } from "@/lib/product-identifiers";
+import {
+  createInternalBarcode,
+  createProductSku,
+  createProductSkuPattern,
+  createVariantSku,
+} from "@/lib/product-identifiers";
 import type { ProductFormData } from "../_lib/product-form";
 import {
   CostingSection,
@@ -255,6 +260,48 @@ export function ProductForm({
 
   const variantEditor = useProductVariantEditor(setFormData);
 
+  if (mode === "create") {
+    return (
+      <form
+        id={formId}
+        onSubmit={onSubmit}
+        className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start"
+      >
+        <div className="min-w-0 space-y-5">
+          {error && (
+            <div
+              role="alert"
+              className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold leading-6 text-red-700"
+            >
+              {error}
+            </div>
+          )}
+          <StorefrontSection
+            categories={categories}
+            formData={formData}
+            setFormData={setFormData}
+            syncDisplayNameWithName
+          />
+          <ProductMediaSection
+            formData={formData}
+            setFormData={setFormData}
+          />
+          <SalesAvailabilitySection
+            formData={formData}
+            setFormData={setFormData}
+          />
+        </div>
+
+        <FinishedProductCreateSummary
+          categories={categories}
+          formData={formData}
+          isSaving={isSaving}
+          onCancel={onCancel}
+        />
+      </form>
+    );
+  }
+
   return (
     <form
       id={formId}
@@ -267,7 +314,7 @@ export function ProductForm({
         </div>
       )}
 
-      {!hideNavigation && mode !== "create" && <div className="border-b border-neutral-200 bg-neutral-50/80 px-3 py-2.5 sm:px-4">
+      {!hideNavigation && <div className="border-b border-neutral-200 bg-neutral-50/80 px-3 py-2.5 sm:px-4">
         <div
           className="inline-flex w-full flex-wrap gap-1 rounded-lg bg-neutral-100/80 p-1 sm:w-auto"
           role="tablist"
@@ -298,7 +345,7 @@ export function ProductForm({
       </div>}
 
       <div className="space-y-4 p-4 sm:p-5">
-        {mode === "create" ? <><div className="rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-3"><p className="font-bold text-neutral-900">Khởi tạo sản phẩm từ thông tin bán hàng</p><p className="mt-1 text-sm text-neutral-600">Điền tên, danh mục, giá và ảnh đại diện. Các khối Sản xuất, Tài chính, Kho vận sẽ được thiết lập sau khi tạo.</p></div><StorefrontSection categories={categories} formData={formData} setFormData={setFormData} /><ProductMediaSection formData={formData} setFormData={setFormData} /><SalesAvailabilitySection formData={formData} setFormData={setFormData} /></> : activeTab === "basics" && (
+        {activeTab === "basics" && (
           <SalesInfoSection
             categories={categories}
             formData={formData}
@@ -355,9 +402,120 @@ export function ProductForm({
           className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-70"
         >
           {isSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-          {mode === "edit" ? "Cập nhật sản phẩm" : "Tạo sản phẩm"}
+          Cập nhật sản phẩm
         </button>
       </div>}
     </form>
+  );
+}
+
+function FinishedProductCreateSummary({
+  categories,
+  formData,
+  isSaving,
+  onCancel,
+}: {
+  categories: Category[];
+  formData: ProductFormData;
+  isSaving: boolean;
+  onCancel: () => void;
+}) {
+  const categoryName =
+    categories.find((category) => category.id === formData.categoryId)?.name ??
+    "";
+  const checks = [
+    { label: "Tên nội bộ", ready: Boolean(formData.name.trim()) },
+    { label: "Tên hiển thị", ready: Boolean(formData.displayName.trim()) },
+    { label: "Danh mục bán", ready: Boolean(categoryName) },
+    { label: "Giá niêm yết", ready: formData.price > 0 },
+    { label: "Ảnh đại diện", ready: Boolean(formData.imageUrl.trim()) },
+  ];
+  const isReady = checks.every((check) => check.ready);
+  const skuPreview = createProductSkuPattern({
+    itemType: "finished_good",
+    name: formData.name,
+  });
+
+  return (
+    <aside className="lg:sticky lg:top-5">
+      <div className="overflow-hidden rounded-2xl border border-neutral-200 bg-white">
+        <div className="border-b border-neutral-200 p-5">
+          <div className="flex items-center gap-3">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-50 text-brand-700">
+              <PackageCheck className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div>
+              <h2 className="font-display text-xl font-semibold tracking-tight text-neutral-950">
+                Kiểm tra hồ sơ
+              </h2>
+              <p className="mt-0.5 text-xs text-neutral-500">
+                Thành phẩm bán ra cửa hàng
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="border-b border-neutral-200 px-5 py-4">
+          <p className="text-xs font-bold text-neutral-500">Mã dự kiến</p>
+          <p className="mt-1 break-all font-mono text-sm font-bold text-neutral-900">
+            {skuPreview}
+          </p>
+        </div>
+
+        <div className="divide-y divide-neutral-100 px-5">
+          {checks.map((check) => (
+            <div
+              key={check.label}
+              className="flex items-center justify-between gap-3 py-3"
+            >
+              <span className="text-sm font-semibold text-neutral-700">
+                {check.label}
+              </span>
+              {check.ready ? (
+                <Check
+                  className="h-4 w-4 shrink-0 text-emerald-600"
+                  aria-label="Đã hoàn thiện"
+                />
+              ) : (
+                <CircleDashed
+                  className="h-4 w-4 shrink-0 text-neutral-400"
+                  aria-label="Chưa hoàn thiện"
+                />
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="border-t border-neutral-200 bg-neutral-50 px-5 py-4">
+          <p className="text-xs font-bold text-neutral-500">Sau khi tạo</p>
+          <p className="mt-1 text-sm font-bold leading-5 text-neutral-900">
+            {formData.lifecycleStatus === "active" && formData.isAvailable
+              ? "Được phép hiển thị trên cửa hàng"
+              : "Lưu nội bộ, chưa hiển thị trên cửa hàng"}
+          </p>
+        </div>
+
+        <div className="space-y-2 border-t border-neutral-200 p-4">
+          <button
+            type="submit"
+            disabled={isSaving || !isReady}
+            className="inline-flex h-12 w-full items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-brand-600 px-5 text-sm font-extrabold text-[var(--color-accent-ink)] transition-colors hover:bg-brand-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 active:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-55"
+          >
+            {isSaving && (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            )}
+            {isSaving ? "Đang tạo…" : "Tạo thành phẩm"}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={isSaving}
+            className="inline-flex h-11 w-full items-center justify-center whitespace-nowrap rounded-xl px-4 text-sm font-bold text-neutral-600 transition-colors hover:bg-neutral-100 hover:text-neutral-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 active:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-55"
+          >
+            Hủy
+          </button>
+        </div>
+      </div>
+    </aside>
   );
 }

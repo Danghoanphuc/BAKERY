@@ -202,7 +202,7 @@ export function buildProductCartItem(
   product: Product,
   customization: ProductCustomization,
 ): Omit<CartItem, "cartItemId"> {
-  const { size, flavor, imageUrl } = getProductVariantSelection(
+  const { size, flavor, combination, imageUrl } = getProductVariantSelection(
     product,
     customization.selectedSize,
     customization.selectedFlavor,
@@ -210,7 +210,7 @@ export function buildProductCartItem(
 
   return {
     productId: product.id,
-    productName: product.name,
+    productName: product.displayName?.trim() || product.name,
     quantity: customization.quantity,
     price: getProductUnitPrice(product, customization.selectedSize, customization.selectedFlavor),
     imageUrl,
@@ -220,6 +220,9 @@ export function buildProductCartItem(
     selectedFlavor: customization.selectedFlavor,
     selectedFlavorLabel: flavor?.label,
     selectedFlavorSku: flavor?.sku,
+    selectedVariantId: combination?.id,
+    selectedVariantSku: combination?.sku,
+    selectedVariantBarcode: combination?.barcode,
     customMessage: customization.customMessage?.trim() || undefined,
     candles: customization.candles || undefined,
   };

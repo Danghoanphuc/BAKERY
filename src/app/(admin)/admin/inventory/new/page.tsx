@@ -1,7 +1,5 @@
-"use client";
-
-import { ProductEditor } from "../_components/ProductEditor";
+import { redirect } from "next/navigation";
 
 export default function NewProductPage() {
-  return <ProductEditor mode="create" />;
+  redirect("/admin/inventory/new/finished-product");
 }

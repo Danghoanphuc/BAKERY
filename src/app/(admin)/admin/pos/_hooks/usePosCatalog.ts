@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Category, Product } from "@/types";
+import { getProductIdentifierValues } from "@/lib/product-identifiers";
 import { isCategoryVisible } from "@/lib/product-availability";
 import { productBelongsToCategory } from "@/lib/product-category";
 import { isProductSellableToday } from "../_lib/pos-utils";
@@ -73,7 +74,9 @@ export function usePosCatalog() {
         if (!normalizedSearch) return true;
         const haystack = [
           product.name,
+          product.displayName,
           product.description,
+          ...getProductIdentifierValues(product),
           ...(product.tags ?? []),
           ...(product.searchKeywords ?? []),
           ...(product.occasionTags ?? []),

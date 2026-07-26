@@ -116,37 +116,35 @@ export function ProductEditor({ mode, productId }: ProductEditorProps) {
 
   const refreshCostingSummary = async () => {
     if (!productId) return;
-    const response = await fetch("/api/wholesale/finance/costing-summary", {
-      cache: "no-store",
-    });
-    if (!response.ok) {
+    const [response, productResponse] = await Promise.all([
+      fetch("/api/wholesale/finance/costing-summary", { cache: "no-store" }),
+      fetch(`/api/wholesale/products/${productId}`, { cache: "no-store" }),
+    ]);
+    if (!response.ok || !productResponse.ok) {
       throw new Error("Không thể tải lại giá vốn sau khi kích hoạt BOM.");
     }
     const costing = (await response.json()) as CostingSummaryResponse;
+    const product = (await productResponse.json()) as Product;
     setCostingSummary(costing.byProductId?.[productId] ?? null);
+    setFormData((current) => ({
+      ...current,
+      lifecycleStatus: product.lifecycleStatus ?? current.lifecycleStatus,
+      manufacturingOutputQuantity:
+        product.manufacturingOutputQuantity ??
+        current.manufacturingOutputQuantity,
+    }));
   };
 
   const saveProduct = async () => {
     setIsSaving(true);
     setError(null);
 
-    const missingBasics =
-      !formData.name.trim() ||
-      !formData.displayName.trim() ||
-      !formData.categoryId.trim() ||
-      !formData.imageUrl.trim() ||
-      formData.price <= 0;
+    const validationError = getEditorValidationError(formData);
 
-    if (missingBasics) {
-      setBasicsIncomplete(true);
+    if (validationError) {
+      setBasicsIncomplete(formData.itemType === "finished_good");
       setIsSaving(false);
-      setError(
-        !formData.imageUrl.trim()
-          ? "Vui lòng tải lên ít nhất một ảnh sản phẩm."
-          : formData.price <= 0
-            ? "Vui lòng thiết lập giá niêm yết lớn hơn 0."
-            : "Vui lòng điền đủ tên nội bộ, tên hiển thị, danh mục và ảnh để khởi tạo sản phẩm.",
-      );
+      setError(validationError);
       return;
     }
 
@@ -165,15 +163,17 @@ export function ProductEditor({ mode, productId }: ProductEditorProps) {
       );
 
       if (!response.ok) {
-        throw new Error(await response.text());
+        const payload = await response.json().catch(() => null) as { error?: string } | null;
+        throw new Error(payload?.error || "Không thể lưu sản phẩm.");
       }
 
       toast.success(mode === "edit" ? "Đã cập nhật sản phẩm." : "Đã thêm sản phẩm mới.");
-      router.push("/wholesale/inventory");
-      router.refresh();
+      window.location.assign("/wholesale/inventory");
     } catch (saveError) {
       console.error("Failed to save product:", saveError);
-      toast.error("Không thể lưu sản phẩm. Kiểm tra lại thông tin rồi thử lại.");
+      const message = saveError instanceof Error ? saveError.message : "Không thể lưu sản phẩm.";
+      setError(message);
+      toast.error(message);
     } finally {
       setIsSaving(false);
     }
@@ -230,7 +230,7 @@ export function ProductEditor({ mode, productId }: ProductEditorProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-4">
+    <div className="mx-auto w-full max-w-6xl space-y-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Link
@@ -241,12 +241,12 @@ export function ProductEditor({ mode, productId }: ProductEditorProps) {
             Quay lại kho
           </Link>
           <h1 className="mt-2 text-xl font-bold text-neutral-950 sm:text-2xl">
-            {mode === "edit" ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm"}
+            {mode === "edit" ? "Chỉnh sửa sản phẩm" : "Tạo thành phẩm"}
           </h1>
           <p className="mt-0.5 max-w-xl text-sm text-neutral-600">
             {mode === "edit" && productName
               ? productName
-              : "Giá bán, tồn kho, kênh bán và metadata cho trang khách hàng."}
+              : "Khai báo hồ sơ bán hàng, hình ảnh và kênh phục vụ. Công thức, tài chính và kho vận được hoàn thiện sau khi tạo."}
           </p>
         </div>
       </div>
@@ -274,4 +274,35 @@ export function ProductEditor({ mode, productId }: ProductEditorProps) {
       )}
     </div>
   );
+}
+
+function getEditorValidationError(formData: ProductFormData) {
+  if (!formData.name.trim()) return "Vui lòng nhập tên nội bộ.";
+  if (formData.itemType === "ingredient") {
+    if (!formData.ingredientGroup.trim()) {
+      return "Vui lòng nhập nhóm nguyên liệu.";
+    }
+    if (formData.purchasePackQuantity <= 0) {
+      return "Quy cách mua phải lớn hơn 0.";
+    }
+    return null;
+  }
+  if (formData.itemType === "semi_finished") {
+    if (
+      formData.manufacturingOutputQuantity <= 0 ||
+      !formData.manufacturingOutputUnit.trim()
+    ) {
+      return "Vui lòng nhập quy cách đầu ra hợp lệ.";
+    }
+    return null;
+  }
+  if (!formData.displayName.trim()) return "Vui lòng nhập tên hiển thị.";
+  if (!formData.categoryId.trim()) return "Vui lòng chọn danh mục.";
+  if (!formData.imageUrl.trim()) {
+    return "Vui lòng tải lên ít nhất một ảnh sản phẩm.";
+  }
+  if (formData.price <= 0) {
+    return "Vui lòng thiết lập giá niêm yết lớn hơn 0.";
+  }
+  return null;
 }

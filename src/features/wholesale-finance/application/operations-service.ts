@@ -1,13 +1,18 @@
 import type {
-  InventoryItemType, ProductionIngredientUsage, PurchaseReceiptLine, WasteReason,
+  IngredientPurchaseUnit, InventoryItemType, ProductionIngredientUsage,
+  WasteReason,
 } from "@/types";
 import { financeRepository } from "../infrastructure/firestore-finance-repository";
 import {
   getInventoryBalances, getInventoryMovements, getProductionBatches, getPurchaseReceipts, getWasteRecords,
-  persistCompletedProductionBatch, persistProductSale,
+  persistCompletedProductionBatch, persistInventoryAdjustment, persistProductSale,
   persistPurchaseReceipt, persistWaste,
 } from "../infrastructure/firestore-operations-repository";
-import { getRecipeVersionById } from "../infrastructure/firestore-costing-repository";
+import {
+  getFinanceIngredients,
+  getRecipeVersionById,
+} from "../infrastructure/firestore-costing-repository";
+import { convertToBaseQuantity, type PurchaseUnit } from "../domain/unit-conversion";
 
 function positiveInteger(value: number) {
   return Number.isSafeInteger(value) && value > 0;
@@ -17,8 +22,9 @@ function nonNegativeInteger(value: number) {
   return Number.isSafeInteger(value) && value >= 0;
 }
 
-function validDate(value: Date) {
-  return !Number.isNaN(new Date(value).getTime());
+function validOperationalDate(value: Date) {
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) && timestamp <= Date.now() + 5 * 60_000;
 }
 
 const wasteReasons = new Set<WasteReason>([
@@ -28,16 +34,53 @@ const wasteReasons = new Set<WasteReason>([
 
 export async function receiveIngredientPurchase(input: {
   idempotencyKey: string; supplierId?: string; documentNumber?: string;
-  locationId: string; lines: PurchaseReceiptLine[]; occurredAt: Date; actor: string;
+  locationId: string;
+  lines: Array<{
+    ingredientId: string;
+    quantity?: number;
+    purchaseQuantity?: number;
+    purchaseUnit?: IngredientPurchaseUnit;
+    lineAmount: number;
+  }>;
+  occurredAt: Date;
+  actor: string;
 }) {
   const uniqueIngredients = new Set(input.lines.map((line) => line.ingredientId));
-  if (!input.idempotencyKey || !input.locationId || !validDate(input.occurredAt) || input.lines.length === 0 ||
+  if (!input.idempotencyKey || !input.locationId || !validOperationalDate(input.occurredAt) || input.lines.length === 0 ||
       uniqueIngredients.size !== input.lines.length || input.lines.some((line) =>
-        !line.ingredientId || !positiveInteger(line.quantity) || !nonNegativeInteger(line.lineAmount))) {
+        !line.ingredientId || !nonNegativeInteger(line.lineAmount))) {
     throw new Error("INVALID_PURCHASE_RECEIPT");
   }
+  const ingredients = await getFinanceIngredients();
+  const ingredientsById = new Map(ingredients.map((item) => [item.id, item]));
+  const lines = input.lines.map((line) => {
+    const ingredient = ingredientsById.get(line.ingredientId);
+    if (!ingredient?.isActive) throw new Error("INGREDIENT_NOT_AVAILABLE");
+    const purchaseUnit = (line.purchaseUnit ?? ingredient.baseUnit) as PurchaseUnit;
+    const purchaseQuantity = line.purchaseQuantity ?? line.quantity;
+    if (typeof purchaseQuantity !== "number") throw new Error("INVALID_PURCHASE_RECEIPT");
+    let converted: ReturnType<typeof convertToBaseQuantity>;
+    try {
+      converted = convertToBaseQuantity(purchaseQuantity, purchaseUnit);
+    } catch {
+      throw new Error("INVALID_PURCHASE_RECEIPT");
+    }
+    if (converted.unit !== ingredient.baseUnit) {
+      throw new Error("PURCHASE_UNIT_MISMATCH");
+    }
+    return {
+      ingredientId: line.ingredientId,
+      quantity: converted.value,
+      purchaseQuantity,
+      purchaseUnit,
+      lineAmount: line.lineAmount,
+    };
+  });
   const receipt = await persistPurchaseReceipt({
-    ...input, occurredAt: new Date(input.occurredAt), createdBy: input.actor,
+    ...input,
+    lines,
+    occurredAt: new Date(input.occurredAt),
+    createdBy: input.actor,
   });
   if (receipt) await financeRepository.record({
     action: "purchase_received", entityType: "purchase", entityId: receipt.id,
@@ -58,9 +101,11 @@ export async function completeProductionBatch(input: {
   const allowedIngredients = new Set(recipe?.ingredients.map((line) => line.ingredientId));
   const costs = [input.packagingCost, input.directLaborCost, input.overheadCost, input.damagedQuantity];
   if (!recipe || recipe.productId !== input.productId || recipe.status !== "active" ||
-      !input.idempotencyKey || !input.locationId || !validDate(input.occurredAt) || !positiveInteger(input.plannedQuantity) ||
+      !input.idempotencyKey || !input.locationId || !validOperationalDate(input.occurredAt) || !positiveInteger(input.plannedQuantity) ||
       !positiveInteger(input.actualGoodQuantity) || costs.some((value) => !nonNegativeInteger(value)) ||
+      input.actualGoodQuantity + input.damagedQuantity !== input.plannedQuantity ||
       uniqueIngredients.size !== input.ingredientUsages.length || input.ingredientUsages.length === 0 ||
+      uniqueIngredients.size !== allowedIngredients.size ||
       input.ingredientUsages.some((usage) =>
         !allowedIngredients.has(usage.ingredientId) || !positiveInteger(usage.actualQuantity))) {
     throw new Error("INVALID_PRODUCTION_BATCH");
@@ -88,7 +133,7 @@ export async function recordInventoryWaste(input: {
       !["ingredient", "product"].includes(input.itemType) || !positiveInteger(input.quantity)) {
     throw new Error("INVALID_WASTE_RECORD");
   }
-  if (!validDate(input.occurredAt) || !wasteReasons.has(input.reason)) {
+  if (!validOperationalDate(input.occurredAt) || !wasteReasons.has(input.reason)) {
     throw new Error("INVALID_WASTE_RECORD");
   }
   const waste = await persistWaste({ ...input, createdBy: input.actor });
@@ -100,15 +145,69 @@ export async function recordInventoryWaste(input: {
   return waste;
 }
 
+export async function recordInventoryAdjustment(input: {
+  idempotencyKey: string;
+  itemType: InventoryItemType;
+  itemId: string;
+  locationId: string;
+  direction: "in" | "out";
+  quantity: number;
+  inventoryValue?: number;
+  reason: string;
+  occurredAt: Date;
+  actor: string;
+}) {
+  if (!input.idempotencyKey || !input.itemId || !input.locationId ||
+      !["ingredient", "product"].includes(input.itemType) ||
+      !["in", "out"].includes(input.direction) ||
+      !positiveInteger(input.quantity) ||
+      (input.direction === "in" && !nonNegativeInteger(input.inventoryValue ?? -1)) ||
+      !input.reason.trim() || !validOperationalDate(input.occurredAt)) {
+    throw new Error("INVALID_INVENTORY_ADJUSTMENT");
+  }
+  const adjustment = await persistInventoryAdjustment({
+    ...input,
+    occurredAt: new Date(input.occurredAt),
+    createdBy: input.actor,
+  });
+  if (adjustment) await financeRepository.record({
+    action: "inventory_adjusted",
+    entityType: "inventory_adjustment",
+    entityId: adjustment.id,
+    actor: input.actor,
+    metadata: {
+      itemType: input.itemType,
+      itemId: input.itemId,
+      direction: input.direction,
+      quantity: input.quantity,
+      reason: input.reason,
+    },
+  });
+  return adjustment;
+}
+
 export { getInventoryBalances, getInventoryMovements, getProductionBatches, getPurchaseReceipts, getWasteRecords };
 
 export async function recordProductSaleInventory(input: {
   orderId: string; locationId?: string;
-  items: Array<{ productId: string; quantity: number; unitStandardCost?: number }>;
+  items: Array<{
+    productId: string;
+    quantity: number;
+    unitStandardCost?: number;
+    selectedVariantId?: string;
+    selectedVariantSku?: string;
+    selectedVariantBarcode?: string;
+  }>;
   occurredAt?: Date; actor: string;
 }) {
   const quantities = new Map<string, number>();
   const unitCosts = new Map<string, number>();
+  const variants = new Map<string, Map<string, {
+    variantId?: string;
+    variantSku?: string;
+    variantBarcode?: string;
+    quantity: number;
+  }>>();
   for (const item of input.items) {
     if (!item.productId || !positiveInteger(item.quantity) ||
         (item.unitStandardCost !== undefined && !nonNegativeInteger(item.unitStandardCost))) {
@@ -116,13 +215,28 @@ export async function recordProductSaleInventory(input: {
     }
     quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + item.quantity);
     if (item.unitStandardCost !== undefined) unitCosts.set(item.productId, item.unitStandardCost);
+    if (item.selectedVariantId || item.selectedVariantSku || item.selectedVariantBarcode) {
+      const productVariants = variants.get(item.productId) ?? new Map();
+      const key = item.selectedVariantId || item.selectedVariantSku || item.selectedVariantBarcode || "default";
+      const existing = productVariants.get(key);
+      productVariants.set(key, {
+        variantId: item.selectedVariantId,
+        variantSku: item.selectedVariantSku,
+        variantBarcode: item.selectedVariantBarcode,
+        quantity: (existing?.quantity ?? 0) + item.quantity,
+      });
+      variants.set(item.productId, productVariants);
+    }
   }
   return persistProductSale({
     idempotencyKey: `order:${input.orderId}:inventory-sale`,
     orderId: input.orderId,
     locationId: input.locationId ?? "main",
     items: [...quantities].map(([productId, quantity]) => ({
-      productId, quantity, unitStandardCost: unitCosts.get(productId),
+      productId,
+      quantity,
+      unitStandardCost: unitCosts.get(productId),
+      variantBreakdown: [...(variants.get(productId)?.values() ?? [])],
     })),
     occurredAt: input.occurredAt ?? new Date(),
     createdBy: input.actor,

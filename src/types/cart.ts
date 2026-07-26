@@ -12,6 +12,9 @@ export interface CartItem {
   selectedFlavor?: string; // Flavor option ID
   selectedFlavorLabel?: string; // Human-readable flavor name
   selectedFlavorSku?: string; // SKU from flavor option (for barcode matching)
+  selectedVariantId?: string; // Exact Size × Flavor combination ID
+  selectedVariantSku?: string; // Exact sellable variant SKU
+  selectedVariantBarcode?: string; // Exact sellable variant barcode
   customMessage?: string; // Message on cake
   candles?: number; // Number of candles
 }
@@ -51,11 +54,12 @@ export function generateCartItemId(
   candles?: number,
   sizeSku?: string,
   flavorSku?: string,
+  variantSku?: string,
 ): string {
   const parts = [
     productId,
-    sizeSku || selectedSize || "default",
-    flavorSku || selectedFlavor || "default",
+    variantSku || sizeSku || selectedSize || "default",
+    variantSku ? "combination" : flavorSku || selectedFlavor || "default",
     customMessage || "",
     candles?.toString() || "0",
   ];

@@ -34,50 +34,48 @@ function matchesIdentifier(value: string | undefined, normalized: string) {
 
 function findProductByIdentifier(products: Product[], raw: string) {
   const normalized = raw.trim().toLowerCase();
+  const matches: Array<{ product: Product; selectedSize?: string; selectedFlavor?: string }> = [];
 
   for (const product of products) {
     if (!isProductSellableToday(product)) continue;
 
-    for (const combination of product.variantCombinations ?? []) {
-      if (
-        matchesIdentifier(combination.barcode, normalized) ||
-        matchesIdentifier(combination.sku, normalized)
-      ) {
-        return {
-          product,
-          selectedSize: combination.sizeOptionId,
-          selectedFlavor: combination.flavorOptionId,
-        };
-      }
+    const combination = product.variantCombinations?.find((item) =>
+        matchesIdentifier(item.barcode, normalized) ||
+        matchesIdentifier(item.sku, normalized));
+    if (combination) {
+      matches.push({
+        product,
+        selectedSize: combination.sizeOptionId,
+        selectedFlavor: combination.flavorOptionId,
+      });
+      continue;
     }
 
     if (
       matchesIdentifier(product.barcode, normalized) ||
       matchesIdentifier(product.sku, normalized)
     ) {
-      return { product };
+      matches.push({ product });
+      continue;
     }
 
-    for (const size of product.sizeOptions ?? []) {
-      if (
-        matchesIdentifier(size.barcode, normalized) ||
-        matchesIdentifier(size.sku, normalized)
-      ) {
-        return { product, selectedSize: size.id };
-      }
+    const size = product.sizeOptions?.find((item) =>
+        matchesIdentifier(item.barcode, normalized) ||
+        matchesIdentifier(item.sku, normalized));
+    if (size) {
+      matches.push({ product, selectedSize: size.id });
+      continue;
     }
 
-    for (const flavor of product.flavorOptions ?? []) {
-      if (
-        matchesIdentifier(flavor.barcode, normalized) ||
-        matchesIdentifier(flavor.sku, normalized)
-      ) {
-        return { product, selectedFlavor: flavor.id };
-      }
+    const flavor = product.flavorOptions?.find((item) =>
+        matchesIdentifier(item.barcode, normalized) ||
+        matchesIdentifier(item.sku, normalized));
+    if (flavor) {
+      matches.push({ product, selectedFlavor: flavor.id });
     }
   }
 
-  return null;
+  return matches.length === 1 ? matches[0] : null;
 }
 
 export function classifyScannerInput(products: Product[], raw: string): ScannerAction {

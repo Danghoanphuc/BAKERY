@@ -28,6 +28,7 @@ import {
   getPrimaryOrderTransition,
 } from "@/lib/orders/order-workflow";
 import type { Category, Product, Order } from "@/types";
+import { getProductIdentifierValues } from "@/lib/product-identifiers";
 import { isProductListed } from "@/lib/product-availability";
 import {
   normalizeCategoryReference,
@@ -282,7 +283,8 @@ export async function getProductByIdAdmin(id: string): Promise<Product | null> {
 export async function createProduct(data: any): Promise<Product> {
   const categories = await getCategories();
   const categoryId = resolveCanonicalCategoryId(data.categoryId, categories);
-  const docRef = await addDoc(collection(db, "products"), {
+  const docRef = doc(collection(db, "products"));
+  const payload = {
     ...stripUndefined({
       ...data,
       categoryId,
@@ -290,6 +292,23 @@ export async function createProduct(data: any): Promise<Product> {
     }),
     createdAt: Timestamp.now(),
     updatedAt: Timestamp.now(),
+  };
+  const identifiers = getProductIdentifierValues(payload);
+  const identifierRefs = identifiers.map((value) =>
+    doc(db, "product_identifier_registry", encodeURIComponent(value)));
+  await runTransaction(db, async (transaction) => {
+    const reservations = await Promise.all(
+      identifierRefs.map((reference) => transaction.get(reference)),
+    );
+    if (reservations.some((snapshot) => snapshot.exists())) {
+      throw new Error("PRODUCT_IDENTIFIER_EXISTS");
+    }
+    transaction.set(docRef, payload);
+    identifierRefs.forEach((reference, index) => transaction.set(reference, {
+      productId: docRef.id,
+      value: identifiers[index],
+      updatedAt: Timestamp.now(),
+    }));
   });
   await waitForPendingWrites(db);
   const docSnap = await getDocFromServer(docRef);
@@ -312,9 +331,37 @@ export async function updateProduct(
     };
   }
 
-  await updateDoc(docRef, {
-    ...stripUndefined(nextData),
-    updatedAt: Timestamp.now(),
+  await runTransaction(db, async (transaction) => {
+    const currentSnapshot = await transaction.get(docRef);
+    if (!currentSnapshot.exists()) throw new Error("PRODUCT_NOT_FOUND");
+    const current = currentSnapshot.data() as Product;
+    const merged = { ...current, ...stripUndefined(nextData) };
+    const previousIdentifiers = getProductIdentifierValues(current);
+    const nextIdentifiers = getProductIdentifierValues(merged);
+    const allIdentifiers = [...new Set([...previousIdentifiers, ...nextIdentifiers])];
+    const refs = allIdentifiers.map((value) =>
+      doc(db, "product_identifier_registry", encodeURIComponent(value)));
+    const reservations = await Promise.all(refs.map((reference) => transaction.get(reference)));
+    reservations.forEach((snapshot, index) => {
+      const value = allIdentifiers[index];
+      if (nextIdentifiers.includes(value) &&
+          snapshot.exists() &&
+          snapshot.data().productId !== id) {
+        throw new Error("PRODUCT_IDENTIFIER_EXISTS");
+      }
+    });
+    transaction.update(docRef, {
+      ...stripUndefined(nextData),
+      updatedAt: Timestamp.now(),
+    });
+    refs.forEach((reference, index) => {
+      const value = allIdentifiers[index];
+      if (nextIdentifiers.includes(value)) {
+        transaction.set(reference, { productId: id, value, updatedAt: Timestamp.now() });
+      } else if (reservations[index].data()?.productId === id) {
+        transaction.delete(reference);
+      }
+    });
   });
 
   await waitForPendingWrites(db);
@@ -355,7 +402,19 @@ async function syncWholesaleProductName(productId: string, productName: string) 
 }
 
 export async function deleteProduct(id: string): Promise<void> {
-  await deleteDoc(doc(db, "products", id));
+  const productRef = doc(db, "products", id);
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(productRef);
+    if (!snapshot.exists()) return;
+    const identifiers = getProductIdentifierValues(snapshot.data() as Product);
+    const refs = identifiers.map((value) =>
+      doc(db, "product_identifier_registry", encodeURIComponent(value)));
+    const reservations = await Promise.all(refs.map((reference) => transaction.get(reference)));
+    transaction.delete(productRef);
+    refs.forEach((reference, index) => {
+      if (reservations[index].data()?.productId === id) transaction.delete(reference);
+    });
+  });
 }
 
 // ============================================

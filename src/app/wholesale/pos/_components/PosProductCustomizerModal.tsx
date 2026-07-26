@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Minus, Plus, ShoppingCart, X } from "lucide-react";
 import { clsx } from "clsx";
+import { FormattedNumberInput } from "@/components/common/FormattedNumberInput";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import type { Product } from "@/types";
 import {
@@ -150,14 +151,11 @@ export function PosProductCustomizerModal({
                     <span className="mb-1 block text-sm font-black text-[#3d2417]">
                       Tuổi / số nến
                     </span>
-                    <input
-                      type="number"
+                    <FormattedNumberInput
                       min={0}
                       max={99}
-                      value={candles || ""}
-                      onChange={(event) =>
-                        setCandles(Number(event.target.value) || 0)
-                      }
+                      value={candles}
+                      onValueChange={(value) => setCandles(value ?? 0)}
                       className="h-11 w-full rounded-2xl border border-[#eadbcc] bg-[#fffaf6] px-3 text-sm font-semibold text-[#3d2417] outline-none focus:border-[#b84a39]"
                     />
                   </label>

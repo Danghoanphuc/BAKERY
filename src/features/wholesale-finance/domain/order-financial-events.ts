@@ -41,13 +41,13 @@ export function buildOrderEconomicEntries(
       idempotencyKey: `order:${order.id}:delivery`, dimensions, createdBy: actor,
     });
   }
-  if ((order.estimatedCostOfGoods ?? 0) > 0) {
+  const costOfGoods = order.actualCostOfGoods ?? order.estimatedCostOfGoods ?? 0;
+  if (costOfGoods > 0) {
     entries.push({
-      type: "cost_of_goods_sold", status, amount: order.estimatedCostOfGoods ?? 0,
+      type: "cost_of_goods_sold", status, amount: costOfGoods,
       occurredAt, sourceType: "order", sourceId: order.id,
       idempotencyKey: `order:${order.id}:cogs`, dimensions, createdBy: actor,
     });
   }
   return entries;
 }
-

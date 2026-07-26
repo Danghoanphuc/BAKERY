@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { captureOrderFinancials } from "@/features/finance";
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { captureOrderFinancials, recordProductSaleInventory } from "@/features/finance";
+import { getAdminSession, requireAdmin } from "@/lib/auth/require-admin";
 import { getOrderById, updateOrder } from "@/lib/db";
 
 export async function POST(
@@ -17,7 +17,27 @@ export async function POST(
   }
 
   try {
-    await captureOrderFinancials(order, "admin");
+    const actor = getAdminSession(request)?.id ?? "admin";
+    let reconciledOrder = order;
+    if (
+      order.salesChannel !== "pos" &&
+      order.actualCostOfGoods === undefined &&
+      (order.status === "completed" || order.status === "delivered")
+    ) {
+      const inventorySale = await recordProductSaleInventory({
+        orderId: order.id,
+        items: order.items.map((item) => ({
+          ...item,
+          unitStandardCost: order.itemFinancialSnapshots?.find(
+            (snapshot) => snapshot.productId === item.productId,
+          )?.unitCost,
+        })),
+        actor,
+      });
+      reconciledOrder = { ...order, actualCostOfGoods: inventorySale.inventoryValue };
+      await updateOrder(id, { actualCostOfGoods: inventorySale.inventoryValue });
+    }
+    await captureOrderFinancials(reconciledOrder, actor);
     await updateOrder(id, {
       financialSyncPending: false,
       financialSyncError: "",

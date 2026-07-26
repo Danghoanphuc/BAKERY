@@ -1,4 +1,6 @@
 export type InventoryItemType = "ingredient" | "product";
+export type IngredientPurchaseUnit =
+  | "gram" | "kilogram" | "millilitre" | "litre" | "each";
 export type InventoryMovementType =
   | "purchase_receipt" | "production_issue" | "production_output"
   | "sale" | "waste" | "adjustment";
@@ -26,12 +28,21 @@ export interface InventoryMovement {
   idempotencyKey: string;
   occurredAt: Date;
   createdBy: string;
+  variantBreakdown?: Array<{
+    variantId?: string;
+    variantSku?: string;
+    variantBarcode?: string;
+    quantity: number;
+  }>;
 }
 
 export interface PurchaseReceiptLine {
   ingredientId: string;
+  /** Quantity normalized to the ingredient base unit. */
   quantity: number;
   lineAmount: number;
+  purchaseQuantity?: number;
+  purchaseUnit?: IngredientPurchaseUnit;
 }
 
 export interface PurchaseReceipt {

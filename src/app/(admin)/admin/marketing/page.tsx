@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { FormattedNumberInput } from "@/components/common/FormattedNumberInput";
 import type { MarketingCampaign, MarketingSettings } from "@/types";
 import { audienceLabels, channelLabels, discountTypeLabels, formatCurrency, formatNumber, getVoucherMetrics } from "../vouchers/_lib/voucher-admin";
 
@@ -431,7 +432,14 @@ function Field({
   onChange: (value: string) => void;
   type?: string;
 }) {
-  return (
+  return type === "number" ? (
+    <FormattedNumberInput
+      min={0}
+      value={value === "" ? null : Number(value)}
+      onValueChange={(nextValue) => onChange(nextValue === null ? "" : String(nextValue))}
+      className="h-10 w-full rounded-lg border border-neutral-200 px-3 text-sm outline-none focus:border-brand-500"
+    />
+  ) : (
     <input
       type={type}
       value={value}

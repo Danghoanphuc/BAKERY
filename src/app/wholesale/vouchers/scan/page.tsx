@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { ArrowLeft, ScanLine, TicketPercent } from "lucide-react";
+import { FormattedNumberInput } from "@/components/common/FormattedNumberInput";
 import { formatPrice } from "@/lib/utils";
 
 type RedeemResult = {
@@ -175,14 +176,25 @@ function Field({
         {label}
         {required && <span className="text-red-600"> *</span>}
       </span>
-      <input
-        type={type}
-        required={required}
-        autoFocus={autoFocus}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-lg border border-neutral-300 px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-      />
+      {type === "number" ? (
+        <FormattedNumberInput
+          required={required}
+          autoFocus={autoFocus}
+          min={0}
+          value={value === "" ? null : Number(value)}
+          onValueChange={(nextValue) => onChange(nextValue === null ? "" : String(nextValue))}
+          className="h-11 w-full rounded-lg border border-neutral-300 px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+        />
+      ) : (
+        <input
+          type={type}
+          required={required}
+          autoFocus={autoFocus}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-11 w-full rounded-lg border border-neutral-300 px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+        />
+      )}
     </label>
   );
 }

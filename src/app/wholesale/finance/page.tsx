@@ -11,6 +11,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { toast } from "sonner";
+import { FormattedNumberInput } from "@/components/common/FormattedNumberInput";
 import type {
   CostBehavior, CostCenter, CostFunction, CostTraceability, ExpenseCategory,
   ManagementAccountingSummary,
@@ -658,12 +659,11 @@ function NumberField({
         {label}
         {required && <span className="text-red-600"> *</span>}
       </span>
-      <input
-        type="number"
+      <FormattedNumberInput
         min={0}
         required={required}
-        value={Number.isFinite(value) ? value : 0}
-        onChange={(event) => onChange(Number(event.target.value) || 0)}
+        value={Number.isFinite(value) ? value : null}
+        onValueChange={(nextValue) => onChange(nextValue ?? 0)}
         className="h-10 w-full rounded-lg border border-neutral-300 px-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
       />
     </label>

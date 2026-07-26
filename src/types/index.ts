@@ -1,4 +1,5 @@
 export * from "./product";
+export * from "./ingredient-group";
 export * from "./loyalty";
 export * from "./category";
 export * from "./cart";

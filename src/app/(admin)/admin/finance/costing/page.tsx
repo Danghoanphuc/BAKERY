@@ -1,19 +1,18 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   Beaker,
   CheckCircle2,
   FlaskConical,
-  Loader2,
   Plus,
   RefreshCw,
-  Wheat,
 } from "lucide-react";
 import { toast } from "sonner";
+import { FormattedNumberInput } from "@/components/common/FormattedNumberInput";
 import type { FinanceIngredient, Product, RecipeVersion } from "@/types";
-import { calculateCostPerBaseUnitMicros } from "@/features/finance/domain/unit-conversion";
 
 type RecipeLine = { ingredientId: string; quantity: number };
 
@@ -25,15 +24,6 @@ type RecipeFormState = {
   directLaborCostPerBatch: number;
   overheadCostPerBatch: number;
   wastePercent: number;
-};
-
-const emptyIngredient = {
-  code: "",
-  name: "",
-  baseUnit: "gram" as const,
-  purchaseAmount: 0,
-  purchaseQuantity: 1,
-  purchaseUnit: "kilogram" as const,
 };
 
 function emptyRecipeForm(productId = ""): RecipeFormState {
@@ -101,7 +91,6 @@ export default function CostingPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [ingredientForm, setIngredientForm] = useState(emptyIngredient);
   const [recipeForm, setRecipeForm] = useState<RecipeFormState>(() =>
     emptyRecipeForm(requestedProductId),
   );
@@ -149,24 +138,27 @@ export default function CostingPage() {
     const productRows: Product[] = productResponse.ok
       ? await productResponse.json()
       : [];
+    const recipeProducts = productRows.filter(
+      (product) => (product.itemType ?? "finished_good") !== "ingredient",
+    );
 
     setIngredients(ingredientRows);
     setRecipes(recipeRows);
-    setProducts(productRows);
+    setProducts(recipeProducts);
 
     const fromQuery =
       requestedProductId &&
-      productRows.some((product) => product.id === requestedProductId)
+      recipeProducts.some((product) => product.id === requestedProductId)
         ? requestedProductId
         : "";
 
     setRecipeForm((current) => {
       const keepCurrent =
         current.productId &&
-        productRows.some((product) => product.id === current.productId)
+        recipeProducts.some((product) => product.id === current.productId)
           ? current.productId
           : "";
-      const productId = fromQuery || keepCurrent || productRows[0]?.id || "";
+      const productId = fromQuery || keepCurrent || recipeProducts[0]?.id || "";
       return { ...current, productId };
     });
 
@@ -190,11 +182,15 @@ export default function CostingPage() {
   }, [applyRecipe, requestedProductId]);
 
   useEffect(() => {
+    // Initial remote data synchronization is intentionally effect-driven.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
   }, [load]);
 
   useEffect(() => {
     if (requestedProductId) {
+      // Keep query-driven filtering synchronized with browser navigation.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFilterVersionsByProduct(true);
     }
   }, [requestedProductId]);
@@ -249,37 +245,6 @@ export default function CostingPage() {
     }
   }
 
-  async function createIngredient(event: FormEvent) {
-    event.preventDefault();
-    setSaving(true);
-    try {
-      const unitCost = calculateCostPerBaseUnitMicros({
-        purchaseAmount: ingredientForm.purchaseAmount,
-        purchaseQuantity: ingredientForm.purchaseQuantity,
-        purchaseUnit: ingredientForm.purchaseUnit,
-      });
-      const response = await fetch("/api/admin/finance/ingredients", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          code: ingredientForm.code,
-          name: ingredientForm.name,
-          baseUnit: unitCost.baseUnit,
-          costPerBaseUnitMicros: unitCost.costPerBaseUnitMicros,
-          isActive: true,
-        }),
-      });
-      if (!response.ok) throw new Error("create_failed");
-      setIngredientForm(emptyIngredient);
-      toast.success("Đã thêm nguyên liệu và ghi nhận giá mua ban đầu.");
-      await load();
-    } catch {
-      toast.error("Không thể tạo nguyên liệu. Kiểm tra quy cách mua và số tiền.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function createRecipe(event: FormEvent) {
     event.preventDefault();
     setSaving(true);
@@ -324,118 +289,37 @@ export default function CostingPage() {
       <div className="grid gap-5 2xl:grid-cols-[0.8fr_1.2fr]">
         <section className="space-y-5">
           <Panel
-            title="Thêm nguyên liệu"
-            subtitle="Quy đổi giá mua về gram, ml hoặc cái."
-            icon={<Wheat />}
-          >
-            <form onSubmit={createIngredient} className="grid gap-3 sm:grid-cols-2">
-              <Input
-                label="Mã nguyên liệu"
-                required
-                value={ingredientForm.code}
-                onChange={(code) =>
-                  setIngredientForm((v) => ({ ...v, code }))
-                }
-              />
-              <Input
-                label="Tên nguyên liệu"
-                required
-                value={ingredientForm.name}
-                onChange={(name) =>
-                  setIngredientForm((v) => ({ ...v, name }))
-                }
-              />
-              <Input
-                label="Giá mua (VND)"
-                type="number"
-                required
-                value={ingredientForm.purchaseAmount}
-                onChange={(purchaseAmount) =>
-                  setIngredientForm((v) => ({
-                    ...v,
-                    purchaseAmount: Number(purchaseAmount),
-                  }))
-                }
-              />
-              <div className="grid grid-cols-[1fr_120px] gap-2">
-                <Input
-                  label="Số lượng mua"
-                  type="number"
-                  required
-                  value={ingredientForm.purchaseQuantity}
-                  onChange={(purchaseQuantity) =>
-                    setIngredientForm((v) => ({
-                      ...v,
-                      purchaseQuantity: Number(purchaseQuantity),
-                    }))
-                  }
-                />
-                <Select
-                  label="Đơn vị"
-                  value={ingredientForm.purchaseUnit}
-                  options={[
-                    ["kilogram", "kg"],
-                    ["gram", "gram"],
-                    ["litre", "lít"],
-                    ["millilitre", "ml"],
-                    ["each", "cái"],
-                  ]}
-                  onChange={(purchaseUnit) =>
-                    setIngredientForm((v) => ({
-                      ...v,
-                      purchaseUnit:
-                        purchaseUnit as typeof v.purchaseUnit,
-                    }))
-                  }
-                />
-              </div>
-              <button
-                disabled={saving}
-                className="sm:col-span-2 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-neutral-950 text-sm font-bold text-white disabled:opacity-50"
-              >
-                {saving ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="h-4 w-4" />
-                )}{" "}
-                Thêm nguyên liệu
-              </button>
-            </form>
-          </Panel>
-          <Panel
             title="Danh mục nguyên liệu"
-            subtitle={`${ingredients.length} nguyên liệu đang theo dõi`}
+            subtitle={`${ingredients.length} nguyên liệu đồng bộ từ Kho / Sản phẩm`}
             icon={<Beaker />}
             action={
-              <button
-                onClick={() => void load()}
-                className="rounded-lg p-2 hover:bg-neutral-100"
-              >
-                <RefreshCw className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <Link href="/admin/inventory" className="rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs font-bold text-neutral-700 hover:bg-neutral-50">Tạo tại kho</Link>
+                <button onClick={() => void load()} className="rounded-lg p-2 hover:bg-neutral-100"><RefreshCw className="h-4 w-4" /></button>
+              </div>
             }
           >
             <div className="max-h-[430px] space-y-2 overflow-y-auto pr-1">
               {ingredients.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between rounded-xl border border-neutral-100 bg-neutral-50 px-3 py-3"
+                  className={`rounded-xl border px-3 py-3 ${item.isActive ? "border-neutral-100 bg-neutral-50" : "border-neutral-200 bg-neutral-100 opacity-70"}`}
                 >
-                  <div>
-                    <p className="text-sm font-bold text-neutral-900">
-                      {item.name}
-                    </p>
-                    <p className="text-xs text-neutral-400">
-                      {item.code} · /{unitLabel(item.baseUnit)}
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-neutral-900">{item.name}</p>
+                      <p className="text-xs text-neutral-400">
+                        {item.code} · /{unitLabel(item.baseUnit)} · {item.isActive ? "đang dùng" : "đã ngưng"}
+                      </p>
+                    </div>
+                    <p className="text-sm font-black text-neutral-800">
+                      {formatMicros(item.costPerBaseUnitMicros)}
                     </p>
                   </div>
-                  <p className="text-sm font-black text-neutral-800">
-                    {formatMicros(item.costPerBaseUnitMicros)}
-                  </p>
                 </div>
               ))}
               {!loading && ingredients.length === 0 && (
-                <Empty text="Chưa có nguyên liệu. Thêm nguyên liệu đầu tiên ở phía trên." />
+                <Empty text="Chưa có nguyên liệu. Hãy tạo nguyên liệu tại Kho / Sản phẩm." />
               )}
             </div>
           </Panel>
@@ -527,24 +411,23 @@ export default function CostingPage() {
                         className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm"
                       >
                         <option value="">Chọn nguyên liệu</option>
-                        {ingredients.map((item) => (
+                        {ingredients.filter((item) => item.isActive).map((item) => (
                           <option key={item.id} value={item.id}>
                             {item.name} ({unitLabel(item.baseUnit)})
                           </option>
                         ))}
                       </select>
-                      <input
-                        type="number"
+                      <FormattedNumberInput
                         min={1}
-                        value={line.quantity || ""}
+                        value={line.quantity}
                         placeholder="Định lượng"
-                        onChange={(event) =>
+                        onValueChange={(value) =>
                           setRecipeLines((rows) =>
                             rows.map((row, rowIndex) =>
                               rowIndex === index
                                 ? {
                                     ...row,
-                                    quantity: Number(event.target.value),
+                                    quantity: value ?? 0,
                                   }
                                 : row,
                             ),
@@ -762,26 +645,38 @@ function Input({
   onChange,
   type = "text",
   required,
+  readOnly,
 }: {
   label: string;
   value: string | number;
   onChange: (value: string) => void;
   type?: string;
   required?: boolean;
+  readOnly?: boolean;
 }) {
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-bold text-neutral-600">
         {label}
       </span>
-      <input
-        type={type}
-        required={required}
-        min={type === "number" ? 0 : undefined}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
-      />
+      {type === "number" ? (
+        <FormattedNumberInput
+          required={required}
+          min={0}
+          value={value === "" ? null : Number(value)}
+          onValueChange={(nextValue) => onChange(nextValue === null ? "" : String(nextValue))}
+          className="h-10 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+        />
+      ) : (
+        <input
+          type={type}
+          required={required}
+          readOnly={readOnly}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="h-10 w-full rounded-xl border border-neutral-200 px-3 text-sm outline-none focus:border-brand-400 focus:ring-2 focus:ring-brand-100"
+        />
+      )}
     </label>
   );
 }

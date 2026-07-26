@@ -1,5 +1,6 @@
 import { AlertTriangle, PackageCheck, PackageX } from "lucide-react";
 import type { Category, Product } from "@/types";
+import { getProductIdentifierValues } from "@/lib/product-identifiers";
 import {
   getProductStockQty,
   isProductListed,
@@ -81,7 +82,10 @@ export function filterProducts(
     const searchHaystack = normalizeText(
       [
         product.name,
+        product.displayName,
+        ...getProductIdentifierValues(product),
         product.description,
+        product.ingredientGroup,
         categoryName,
         ...(product.tags ?? []),
         ...(product.searchKeywords ?? []),
@@ -93,8 +97,13 @@ export function filterProducts(
     const matchesSearch = !keyword || searchHaystack.includes(keyword);
     const matchesFilter =
       filter === "all" ||
-      (filter === "selling" && listed) ||
-      (filter === "hidden" && !listed) ||
+      filter === (product.itemType ?? "finished_good") ||
+      (filter === "selling" &&
+        (product.itemType ?? "finished_good") === "finished_good" &&
+        listed) ||
+      (filter === "hidden" &&
+        (product.itemType ?? "finished_good") === "finished_good" &&
+        !listed) ||
       (filter === "lowStock" && stock > 0 && stock < 10) ||
       (filter === "outOfStock" && stock <= 0);
 

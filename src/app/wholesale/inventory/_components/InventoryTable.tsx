@@ -1,6 +1,7 @@
 import { ImageIcon, Loader2, Search, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
 import { ProductShareButton } from "@/features/product/components/ProductShareButton";
+import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import type { ProductCostSummary } from "@/features/wholesale-finance";
 import { isProductListed } from "@/lib/product-availability";
 import type { Category, Product } from "@/types";
@@ -61,7 +62,10 @@ export function InventoryTable({
           }
           className="h-10 rounded-lg border border-neutral-300 px-3 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
         >
-          <option value="all">Tất cả trạng thái</option>
+          <option value="all">Tất cả loại hàng</option>
+          <option value="finished_good">Thành phẩm</option>
+          <option value="semi_finished">Bán thành phẩm</option>
+          <option value="ingredient">Nguyên liệu</option>
           <option value="selling">Đang bán</option>
           <option value="hidden">Ngừng bán</option>
           <option value="lowStock">Sắp hết hàng</option>
@@ -73,11 +77,11 @@ export function InventoryTable({
         <table className="min-w-full divide-y divide-neutral-200">
           <thead className="bg-neutral-50">
             <tr>
-              <TableHead>Sản phẩm</TableHead>
-              <TableHead>Danh mục</TableHead>
+              <TableHead>Mặt hàng</TableHead>
+              <TableHead>Phân loại</TableHead>
               <TableHead>Giá / Cost</TableHead>
               <TableHead>Tồn kho</TableHead>
-              <TableHead>Kênh bán</TableHead>
+              <TableHead>Nghiệp vụ</TableHead>
               <TableHead>Trạng thái</TableHead>
               <TableHead align="right">Thao tác</TableHead>
             </tr>
@@ -128,17 +132,17 @@ function InventoryTableRow({
   const stockStatus = getStockStatus(product.stock ?? 0);
   const StockIcon = stockStatus.icon;
   const costSource = costing?.source ?? "missing";
+  const type = product.itemType ?? "finished_good";
+  const isFinishedGood = type === "finished_good";
 
   return (
     <tr onClick={() => onEdit(product)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onEdit(product); } }} tabIndex={0} className="cursor-pointer transition hover:bg-brand-50/40 focus:bg-brand-50/40 focus:outline-none">
       <td className="min-w-[280px] px-4 py-3">
         <div className="flex items-center gap-3">
           {product.imageUrl ? (
-            <img
-              src={product.imageUrl}
-              alt={product.name}
-              className="h-14 w-14 rounded-lg object-cover"
-            />
+            <div className="h-14 w-14 overflow-hidden rounded-lg">
+              <ProductImage src={product.imageUrl} alt={product.name} />
+            </div>
           ) : (
             <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-neutral-100 text-neutral-400">
               <ImageIcon className="h-5 w-5" />
@@ -148,6 +152,7 @@ function InventoryTableRow({
             <div className="truncate text-sm font-semibold text-neutral-950">
               {product.name}
             </div>
+            <ItemTypeBadge type={type} />
             {product.sku && (
               <div className="mt-0.5 font-mono text-xs text-neutral-400">
                 {product.sku}
@@ -161,13 +166,29 @@ function InventoryTableRow({
           </div>
         </div>
       </td>
-      <td className="px-4 py-3 text-sm text-neutral-700">{categoryName}</td>
+      <td className="px-4 py-3 text-sm text-neutral-700">
+        {type === "ingredient"
+          ? product.ingredientGroup || "Chưa phân nhóm"
+          : type === "semi_finished"
+            ? "Nội bộ · Sản xuất"
+            : categoryName}
+      </td>
       <td className="px-4 py-3">
         <div className="text-sm font-semibold text-neutral-950">
-          {formatPrice(product.price)}
+          {type === "ingredient"
+            ? formatPrice(product.referencePurchasePrice ?? 0)
+            : isFinishedGood
+              ? formatPrice(product.price)
+              : typeof costing?.totalCost === "number"
+                ? formatPrice(costing.totalCost)
+                : "Chưa tính"}
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
-          <CostSourceBadge source={costSource} />
+          {type === "ingredient" ? (
+            <span className="text-xs text-neutral-500">Giá mua tham chiếu</span>
+          ) : (
+            <CostSourceBadge source={costSource} />
+          )}
           {typeof costing?.totalCost === "number" && costing.totalCost > 0 && (
             <span className="text-xs text-neutral-500">
               cost {formatPrice(costing.totalCost)}
@@ -191,14 +212,20 @@ function InventoryTableRow({
       </td>
       <td className="px-4 py-3">
         <div className="flex flex-wrap gap-1.5">
-          {product.availableForDelivery && <Badge>Giao tận nơi</Badge>}
-          {product.availableForPickup && <Badge>Đến lấy</Badge>}
-          {product.availableToday && <Badge>Hôm nay</Badge>}
-          {product.requiresPreorder && <Badge>Đặt trước</Badge>}
+          {isFinishedGood ? (
+            <>
+              {product.availableForDelivery && <Badge>Giao tận nơi</Badge>}
+              {product.availableForPickup && <Badge>Đến lấy</Badge>}
+              {product.availableToday && <Badge>Hôm nay</Badge>}
+              {product.requiresPreorder && <Badge>Đặt trước</Badge>}
+            </>
+          ) : (
+            <Badge>{type === "ingredient" ? "Mua hàng" : "Sản xuất / BOM"}</Badge>
+          )}
         </div>
       </td>
       <td className="px-4 py-3">
-        <button
+        {isFinishedGood ? <><button
           type="button"
           onClick={(event) => { event.stopPropagation(); onToggleAvailability(product); }}
           disabled={isSaving}
@@ -222,11 +249,11 @@ function InventoryTableRow({
         </button>
         <div className="mt-1 text-xs text-neutral-500">
           {isProductListed(product) ? "Đang bán" : "Ngừng bán"}
-        </div>
+        </div></> : <div><span className="inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-xs font-bold text-neutral-700">{product.lifecycleStatus === "inactive" ? "Ngừng hoạt động" : product.lifecycleStatus === "draft" ? "Bản nháp" : "Đang hoạt động"}</span><p className="mt-1 text-xs text-neutral-500">Không xuất bản</p></div>}
       </td>
       <td className="px-4 py-3 text-right">
         <div className="inline-flex items-center gap-1">
-          <span onClick={(event) => event.stopPropagation()}><ProductShareButton product={product} iconOnly label="Copy link san pham" className="border-0 text-neutral-500 hover:text-brand-600" /></span>
+          {isFinishedGood && <span onClick={(event) => event.stopPropagation()}><ProductShareButton product={product} iconOnly label="Copy link san pham" className="border-0 text-neutral-500 hover:text-brand-600" /></span>}
           <button
             type="button"
             onClick={(event) => { event.stopPropagation(); onDelete(product); }}
@@ -238,6 +265,23 @@ function InventoryTableRow({
         </div>
       </td>
     </tr>
+  );
+}
+
+function ItemTypeBadge({
+  type,
+}: {
+  type: NonNullable<Product["itemType"]>;
+}) {
+  const config = {
+    finished_good: "Thành phẩm",
+    semi_finished: "Bán thành phẩm",
+    ingredient: "Nguyên liệu",
+  } as const;
+  return (
+    <span className="mt-1 inline-flex rounded-full border border-neutral-200 bg-neutral-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-neutral-600">
+      {config[type]}
+    </span>
   );
 }
 

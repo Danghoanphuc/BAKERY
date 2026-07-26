@@ -117,6 +117,7 @@ function withCartItemId(item: Omit<CartItem, "cartItemId">): CartItem {
       item.candles,
       item.selectedSizeSku,
       item.selectedFlavorSku,
+      item.selectedVariantSku,
     ),
   };
 }

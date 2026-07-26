@@ -1,5 +1,6 @@
 import type {
   FlavorOption,
+  InventoryBaseUnit,
   Product,
   ProductFeedMetrics,
   ProductItemType,
@@ -10,7 +11,15 @@ import type {
   SizeOption,
 } from "@/types";
 
-export type ProductFilter = "all" | "selling" | "hidden" | "lowStock" | "outOfStock";
+export type ProductFilter =
+  | "all"
+  | "finished_good"
+  | "ingredient"
+  | "semi_finished"
+  | "selling"
+  | "hidden"
+  | "lowStock"
+  | "outOfStock";
 
 export type ProductFormData = {
   name: string;
@@ -23,6 +32,15 @@ export type ProductFormData = {
   manufacturingLeadMinutes: number;
   manufacturingOutputQuantity: number;
   manufacturingOutputUnit: string;
+  ingredientGroup: string;
+  ingredientGroupId: string;
+  ingredientSubgroupId: string;
+  baseUnit: InventoryBaseUnit;
+  purchaseUnit: string;
+  purchasePackQuantity: number;
+  referencePurchasePrice: number;
+  minimumStock: number;
+  preferredSupplier: string;
   feedMetrics?: ProductFeedMetrics;
   price: number;
   imageUrl: string;
@@ -89,6 +107,15 @@ export function createEmptyProductForm(categoryId = ""): ProductFormData {
     manufacturingLeadMinutes: 0,
     manufacturingOutputQuantity: 1,
     manufacturingOutputUnit: "cái",
+    ingredientGroup: "",
+    ingredientGroupId: "",
+    ingredientSubgroupId: "",
+    baseUnit: "gram",
+    purchaseUnit: "kg",
+    purchasePackQuantity: 1000,
+    referencePurchasePrice: 0,
+    minimumStock: 0,
+    preferredSupplier: "",
     feedMetrics: undefined,
     price: 0,
     imageUrl: "",
@@ -157,6 +184,15 @@ export function productToForm(product: Product, fallbackCategoryId = ""): Produc
     manufacturingLeadMinutes: product.manufacturingLeadMinutes ?? 0,
     manufacturingOutputQuantity: product.manufacturingOutputQuantity ?? 1,
     manufacturingOutputUnit: product.manufacturingOutputUnit ?? "cái",
+    ingredientGroup: product.ingredientGroup ?? "",
+    ingredientGroupId: product.ingredientGroupId ?? "",
+    ingredientSubgroupId: product.ingredientSubgroupId ?? "",
+    baseUnit: product.baseUnit ?? "gram",
+    purchaseUnit: product.purchaseUnit ?? "kg",
+    purchasePackQuantity: product.purchasePackQuantity ?? 1,
+    referencePurchasePrice: product.referencePurchasePrice ?? 0,
+    minimumStock: product.minimumStock ?? 0,
+    preferredSupplier: product.preferredSupplier ?? "",
     feedMetrics: product.feedMetrics,
     price: product.price,
     imageUrl: product.imageUrl,
@@ -213,6 +249,54 @@ export function productToForm(product: Product, fallbackCategoryId = ""): Produc
 }
 
 export function productFormToPayload(formData: ProductFormData) {
+  const internalBase = {
+    name: formData.name.trim(),
+    displayName: formData.name.trim(),
+    itemType: formData.itemType,
+    lifecycleStatus: formData.lifecycleStatus,
+    sku: formData.sku.trim(),
+    barcode: formData.barcode.trim(),
+    imageUrl: formData.imageUrl.trim(),
+    stock: Number(formData.stock) || 0,
+    shelfLife: formData.shelfLife.trim(),
+    storage: formData.storage.trim(),
+  };
+
+  if (formData.itemType === "ingredient") {
+    return {
+      ...internalBase,
+      ingredientGroup: formData.ingredientGroup.trim(),
+      ingredientGroupId: formData.ingredientGroupId,
+      ingredientSubgroupId: formData.ingredientSubgroupId,
+      baseUnit: formData.baseUnit,
+      purchaseUnit: formData.purchaseUnit.trim(),
+      purchasePackQuantity: Number(formData.purchasePackQuantity) || 0,
+      referencePurchasePrice: Number(formData.referencePurchasePrice) || 0,
+      minimumStock: Number(formData.minimumStock) || 0,
+      preferredSupplier: formData.preferredSupplier.trim(),
+    };
+  }
+
+  if (formData.itemType === "semi_finished") {
+    return {
+      ...internalBase,
+      baseUnit: formData.baseUnit,
+      productionSteps: formData.productionSteps,
+      manufacturingLeadMinutes:
+        Number(formData.manufacturingLeadMinutes) || 0,
+      manufacturingOutputQuantity:
+        Number(formData.manufacturingOutputQuantity) || 1,
+      manufacturingOutputUnit:
+        formData.manufacturingOutputUnit.trim() ||
+        inventoryBaseUnitLabel(formData.baseUnit),
+      ingredientsCost: Number(formData.ingredientsCost) || 0,
+      packagingCost: Number(formData.packagingCost) || 0,
+      laborCost: Number(formData.laborCost) || 0,
+      overheadCost: Number(formData.overheadCost) || 0,
+      wastePercent: Number(formData.wastePercent) || 0,
+    };
+  }
+
   return {
     name: formData.name.trim(),
     displayName: formData.displayName.trim(),
@@ -279,6 +363,12 @@ export function productFormToPayload(formData: ProductFormData) {
     availableToday: formData.availableToday,
     sortPriority: Number(formData.sortPriority) || 0,
   };
+}
+
+function inventoryBaseUnitLabel(unit: InventoryBaseUnit) {
+  if (unit === "millilitre") return "ml";
+  if (unit === "each") return "cái";
+  return "g";
 }
 
 export function splitTags(value: string) {

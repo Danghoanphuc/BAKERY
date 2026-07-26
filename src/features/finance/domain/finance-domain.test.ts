@@ -54,6 +54,15 @@ describe("finance domain", () => {
     expect(entries.every((entry) => entry.status === "posted")).toBe(true);
   });
 
+  it("uses actual inventory cost for COGS once fulfillment has measured it", () => {
+    const entries = buildOrderEconomicEntries(order({
+      estimatedCostOfGoods: 80_000,
+      actualCostOfGoods: 87_500,
+    }), "test");
+    expect(entries.find((entry) => entry.type === "cost_of_goods_sold")?.amount)
+      .toBe(87_500);
+  });
+
   it("keeps revenue, collections and cancellations as separate measures", () => {
     const summary = buildFinanceSummary({
       orders: [

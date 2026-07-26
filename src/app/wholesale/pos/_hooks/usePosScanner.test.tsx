@@ -112,4 +112,13 @@ describe("usePosScanner", () => {
       query: "KH-1024",
     });
   });
+
+  it("does not silently choose a product when legacy identifiers are ambiguous", () => {
+    const duplicate = { ...croissant, id: "croissant-2", name: "Croissant 2" };
+
+    expect(classifyScannerInput([croissant, duplicate], "CRO-001")).toEqual({
+      type: "unknown",
+      raw: "CRO-001",
+    });
+  });
 });

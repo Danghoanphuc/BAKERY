@@ -134,6 +134,9 @@ function getBlockTabs(block: ProductWorkspaceBlock, formData: ProductFormData): 
     { id: "identity", label: "Nhận diện" },
     { id: "storage", label: "Bảo quản" },
   ];
+  if (block === "finance" && formData.itemType !== "finished_good") return [
+    { id: "cost-source", label: "Nguồn giá vốn" },
+  ];
   if (block === "finance") return [
     { id: "performance", label: "Hiệu quả" },
     { id: "cost-source", label: "Nguồn giá vốn" },

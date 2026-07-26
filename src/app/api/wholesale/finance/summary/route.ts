@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { getOrders, getAllProducts } from "@/lib/wholesale-db";
-import { getFinanceExpenses } from "@/lib/wholesale-firebase/finance";
 import { buildFinanceSummary, type FinancePeriod } from "@/lib/finance";
 import { requireAdmin } from "@/lib/auth/require-admin";
+import { getAdminFirestore } from "@/lib/wholesale-firebase/admin";
+import { loadFinanceSummaryData } from "@/lib/server/finance-summary-data";
 
 function getPeriod(value: string | null): FinancePeriod {
   if (value === "today" || value === "month" || value === "all") return value;
@@ -15,11 +15,9 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const period = getPeriod(url.searchParams.get("period"));
-    const [orders, products, expenses] = await Promise.all([
-      getOrders(),
-      getAllProducts(),
-      getFinanceExpenses(),
-    ]);
+    const { orders, products, expenses } = await loadFinanceSummaryData(
+      getAdminFirestore(),
+    );
 
     return NextResponse.json(
       buildFinanceSummary({ orders, products, expenses, period }),

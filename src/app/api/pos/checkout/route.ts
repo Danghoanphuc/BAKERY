@@ -34,6 +34,10 @@ import {
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { fulfillPaidPosOrder } from "@/lib/pos-order-fulfillment";
 import { createReservedPosOrderOnce } from "@/lib/firebase/pos-inventory";
+import {
+  buildProductCartItem,
+  validateProductCustomization,
+} from "@/features/product/product-cart";
 
 type PosCheckoutPayload = {
   idempotencyKey?: string;
@@ -85,25 +89,17 @@ function getRepricedCartItem(
   if (product.availableToday === false || product.requiresPreorder) {
     throw new Error("PRODUCT_NOT_READY");
   }
-  if (typeof product.stock === "number" && product.stock < item.quantity) {
-    throw new Error("INSUFFICIENT_STOCK");
-  }
-
-  const sizeAdjustment =
-    product.sizeOptions?.find((size) => size.id === item.selectedSize)
-      ?.priceAdjustment ?? 0;
-
-  return {
-    productId: product.id,
-    productName: product.name,
-    imageUrl: product.imageUrl,
+  const customization = {
+    quantity: item.quantity,
     selectedSize: item.selectedSize,
     selectedFlavor: item.selectedFlavor,
     customMessage: item.customMessage,
     candles: item.candles,
-    price: product.price + sizeAdjustment,
-    quantity: item.quantity,
-  } satisfies Omit<CartItem, "cartItemId">;
+  };
+  const errors = validateProductCustomization(product, customization);
+  if (Object.values(errors).some(Boolean)) throw new Error("INVALID_VARIANT_SELECTION");
+
+  return buildProductCartItem(product, customization);
 }
 
 export async function POST(request: Request) {

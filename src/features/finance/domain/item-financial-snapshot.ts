@@ -45,6 +45,9 @@ export function buildItemFinancialSnapshots(input: {
         ? item.cartItemId
         : `${item.productId}:${index}`,
       productId: item.productId, productName: item.productName, quantity: item.quantity,
+      variantId: item.selectedVariantId,
+      variantSku: item.selectedVariantSku,
+      variantBarcode: item.selectedVariantBarcode,
       grossRevenue: grossAmounts[index], allocatedDiscount: discounts[index], netRevenue,
       ingredientCost: cost.ingredientCost * item.quantity,
       packagingCost: cost.packagingCost * item.quantity,

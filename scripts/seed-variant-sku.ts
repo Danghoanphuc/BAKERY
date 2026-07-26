@@ -5,6 +5,7 @@
 
 import admin from "firebase-admin";
 import * as fs from "fs";
+import { createHash } from "node:crypto";
 
 // Load service account
 const serviceAccountPath = "C:/Users/ADMIN/.secrets/bakery-firebase-admin.json";
@@ -29,8 +30,11 @@ function generateSku(categoryId: string, productId: string, suffix: string): str
 }
 
 function generateBarcode(sku: string): string {
-  const hash = Array.from(sku).reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  const base = `893${String(hash).padStart(10, "0").substring(0, 10)}`;
+  const hash = createHash("sha256").update(sku).digest("hex");
+  const numeric = (BigInt(`0x${hash.slice(0, 16)}`) % 10_000_000_000n)
+    .toString()
+    .padStart(10, "0");
+  const base = `20${numeric}`;
   let sum = 0;
   for (let i = 0; i < base.length; i++) {
     sum += parseInt(base[i]) * (i % 2 === 0 ? 1 : 3);

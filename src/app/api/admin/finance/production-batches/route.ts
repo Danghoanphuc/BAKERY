@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { completeProductionBatch, getProductionBatches } from "@/features/finance";
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { getAdminSession, requireAdmin } from "@/lib/auth/require-admin";
 
 export async function GET(request: Request) {
   const unauthorized = requireAdmin(request);
@@ -13,8 +13,9 @@ export async function POST(request: Request) {
   if (unauthorized) return unauthorized;
   try {
     const body = await request.json();
+    const session = getAdminSession(request);
     const batch = await completeProductionBatch({
-      ...body, occurredAt: new Date(body.occurredAt), actor: "admin",
+      ...body, occurredAt: new Date(body.occurredAt), actor: session?.id ?? "admin",
     });
     return NextResponse.json(batch, { status: batch ? 201 : 200 });
   } catch (error) {

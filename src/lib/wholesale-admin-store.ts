@@ -1,6 +1,8 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAdminFirestore } from "@/lib/wholesale-firebase/admin";
 import { normalizeCategoryReference } from "@/lib/product-category";
+import { getProductIdentifierValues } from "@/lib/product-identifiers";
+import type { Product } from "@/types";
 
 type RecordData = Record<string, unknown>;
 
@@ -51,11 +53,59 @@ export async function getWholesaleRecord(collectionName: string, id: string) {
 
 export async function updateWholesaleRecord(collectionName: string, id: string, data: RecordData) {
   const reference = db().collection(collectionName).doc(id);
+  if (collectionName === "products") {
+    await db().runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(reference);
+      if (!snapshot.exists) throw new Error("PRODUCT_NOT_FOUND");
+      const current = snapshot.data() as Product;
+      const next = clean({ ...current, ...data }) as Product;
+      const previousIdentifiers = getProductIdentifierValues(current);
+      const nextIdentifiers = getProductIdentifierValues(next);
+      const allIdentifiers = [...new Set([...previousIdentifiers, ...nextIdentifiers])];
+      const refs = allIdentifiers.map((value) =>
+        db().collection("product_identifier_registry").doc(encodeURIComponent(value)));
+      const reservations = await Promise.all(refs.map((item) => transaction.get(item)));
+      reservations.forEach((reservation, index) => {
+        const value = allIdentifiers[index];
+        if (nextIdentifiers.includes(value) &&
+            reservation.exists &&
+            reservation.data()?.productId !== id) {
+          throw new Error("PRODUCT_IDENTIFIER_EXISTS");
+        }
+      });
+      transaction.set(reference, clean({ ...data, updatedAt: FieldValue.serverTimestamp() }) as RecordData, { merge: true });
+      refs.forEach((item, index) => {
+        const value = allIdentifiers[index];
+        if (nextIdentifiers.includes(value)) {
+          transaction.set(item, { productId: id, value, updatedAt: FieldValue.serverTimestamp() });
+        } else if (reservations[index].data()?.productId === id) {
+          transaction.delete(item);
+        }
+      });
+    });
+    return getWholesaleRecord(collectionName, id);
+  }
   await reference.set(clean({ ...data, updatedAt: FieldValue.serverTimestamp() }) as RecordData, { merge: true });
   return getWholesaleRecord(collectionName, id);
 }
 
 export async function deleteWholesaleRecord(collectionName: string, id: string) {
+  if (collectionName === "products") {
+    const reference = db().collection(collectionName).doc(id);
+    await db().runTransaction(async (transaction) => {
+      const snapshot = await transaction.get(reference);
+      if (!snapshot.exists) return;
+      const identifiers = getProductIdentifierValues(snapshot.data() as Product);
+      const refs = identifiers.map((value) =>
+        db().collection("product_identifier_registry").doc(encodeURIComponent(value)));
+      const reservations = await Promise.all(refs.map((item) => transaction.get(item)));
+      transaction.delete(reference);
+      refs.forEach((item, index) => {
+        if (reservations[index].data()?.productId === id) transaction.delete(item);
+      });
+    });
+    return;
+  }
   await db().collection(collectionName).doc(id).delete();
 }
 
@@ -130,11 +180,26 @@ export async function createWholesaleCustomer(data: RecordData) {
 
 export async function createWholesaleProduct(data: RecordData) {
   const reference = db().collection("products").doc();
-  await reference.set(clean({
+  const payload = clean({
     ...data,
     createdAt: FieldValue.serverTimestamp(),
     updatedAt: FieldValue.serverTimestamp(),
-  }) as RecordData);
+  }) as RecordData;
+  const identifiers = getProductIdentifierValues(data as unknown as Product);
+  const refs = identifiers.map((value) =>
+    db().collection("product_identifier_registry").doc(encodeURIComponent(value)));
+  await db().runTransaction(async (transaction) => {
+    const reservations = await Promise.all(refs.map((item) => transaction.get(item)));
+    if (reservations.some((snapshot) => snapshot.exists)) {
+      throw new Error("PRODUCT_IDENTIFIER_EXISTS");
+    }
+    transaction.create(reference, payload);
+    refs.forEach((item, index) => transaction.create(item, {
+      productId: reference.id,
+      value: identifiers[index],
+      updatedAt: FieldValue.serverTimestamp(),
+    }));
+  });
   return getWholesaleRecord("products", reference.id);
 }
 

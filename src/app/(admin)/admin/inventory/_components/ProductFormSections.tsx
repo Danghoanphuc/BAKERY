@@ -5,8 +5,9 @@ import { clsx } from "clsx";
 import { toast } from "sonner";
 import type { Category, FinanceIngredient, FlavorOption, InventoryBalance, InventoryMovement, ProductVariantCombination, ProductWorkspaceCardConfig, ProductWorkspaceCardId, ProductionStep, RecipeVersion, SizeOption } from "@/types";
 import type { ProductCostSummary } from "@/features/finance";
+import { FormattedNumberInput } from "@/components/common/FormattedNumberInput";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
-import { createInternalBarcode, createProductSku } from "@/lib/product-identifiers";
+import { createInternalBarcode, createProductSku, createVariantSku } from "@/lib/product-identifiers";
 import type { ProductFormData } from "../_lib/product-form";
 import { splitTags } from "../_lib/product-form";
 
@@ -116,16 +117,34 @@ export function StorefrontSection({
   categories,
   formData,
   setFormData,
+  syncDisplayNameWithName = false,
 }: {
   categories: Category[];
   formData: ProductFormData;
   setFormData: Dispatch<SetStateAction<ProductFormData>>;
+  syncDisplayNameWithName?: boolean;
 }) {
   return (
     <FormSection title="Thông tin hiển thị trên cửa hàng">
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_260px]">
         <div className="grid gap-3 sm:grid-cols-2">
-          <TextField label="Tên nội bộ" required value={formData.name} onChange={(name) => setFormData((prev) => ({ ...prev, name }))} className="sm:col-span-2" />
+          <TextField
+            label="Tên nội bộ"
+            required
+            value={formData.name}
+            onChange={(name) =>
+              setFormData((prev) => ({
+                ...prev,
+                name,
+                displayName:
+                  syncDisplayNameWithName &&
+                  (!prev.displayName.trim() || prev.displayName === prev.name)
+                    ? name
+                    : prev.displayName,
+              }))
+            }
+            className="sm:col-span-2"
+          />
           <TextField label="Tên hiển thị website" required value={formData.displayName} onChange={(displayName) => setFormData((prev) => ({ ...prev, displayName }))} className="sm:col-span-2" />
           <NumberField label="Giá niêm yết (VNĐ)" required min={0} value={formData.price} onChange={(price) => setFormData((prev) => ({ ...prev, price }))} />
           <div className="rounded-lg border border-neutral-200 bg-white px-3 py-2"><p className="text-xs font-semibold text-neutral-500">Hiển thị cho khách</p><p className="mt-1 text-lg font-black text-neutral-950">{formatCurrency(formData.price)}</p></div>
@@ -536,7 +555,7 @@ export function VariantSection({
             {formData.sizeOptions.map((size, index) => (
               <div key={size.id} className="grid grid-cols-[minmax(0,1fr)_130px_40px] gap-2">
                 <input type="text" placeholder="Ví dụ: 16cm, 20cm" value={size.label} onChange={(event) => updateSizeOption(index, "label", event.target.value)} className="h-10 rounded-lg border border-neutral-300 px-3 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100" />
-                <input type="number" min={0} placeholder="Giá thêm" value={size.priceAdjustment} onChange={(event) => updateSizeOption(index, "priceAdjustment", Number(event.target.value) || 0)} className="h-10 rounded-lg border border-neutral-300 px-3 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100" />
+                <FormattedNumberInput min={0} placeholder="Giá thêm" value={size.priceAdjustment} onValueChange={(value) => updateSizeOption(index, "priceAdjustment", value ?? 0)} className="h-10 rounded-lg border border-neutral-300 px-3 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100" />
                 <IconButton label="Xóa kích thước" onClick={() => removeSizeOption(index)} />
               </div>
             ))}
@@ -552,7 +571,7 @@ export function VariantSection({
                 <div className="w-20 shrink-0"><FlavorImageUploader flavor={flavor} onChange={(imageUrl) => updateFlavorOption(index, "imageUrl", imageUrl)} /></div>
                 <div className="min-w-0 flex-1 space-y-2">
                   <input type="text" placeholder="Ví dụ: Socola, Matcha" value={flavor.label} onChange={(event) => updateFlavorOption(index, "label", event.target.value)} className="h-9 w-full rounded-lg border border-neutral-300 bg-white px-2.5 text-sm outline-none focus:border-brand-500" />
-                  <input type="number" min={0} placeholder="Giá thêm cho vị" value={flavor.priceAdjustment ?? 0} onChange={(event) => updateFlavorOption(index, "priceAdjustment", Number(event.target.value) || 0)} className="h-9 w-full rounded-lg border border-neutral-300 bg-white px-2.5 text-sm outline-none focus:border-brand-500" />
+                  <FormattedNumberInput min={0} placeholder="Giá thêm cho vị" value={flavor.priceAdjustment} onValueChange={(value) => updateFlavorOption(index, "priceAdjustment", value ?? 0)} className="h-9 w-full rounded-lg border border-neutral-300 bg-white px-2.5 text-sm outline-none focus:border-brand-500" />
                   <button type="button" onClick={() => removeFlavorOption(index)} className="inline-flex items-center gap-1 text-xs font-bold text-red-600"><Trash2 className="h-3.5 w-3.5" /> Xóa vị</button>
                 </div>
               </div>
@@ -576,7 +595,7 @@ export function VariantSection({
                       const size = formData.sizeOptions.find((item) => item.id === combination.sizeOptionId);
                       const flavor = formData.flavorOptions.find((item) => item.id === combination.flavorOptionId);
                       if (!size || !flavor) return null;
-                      return <tr key={combination.id}><td className="px-3 py-2.5 font-semibold text-neutral-800">{size.label || "Size"} <span className="text-neutral-400">×</span> {flavor.label || "Vị"}</td><td className="px-3 py-2"><input type="number" min={0} value={combination.priceAdjustment ?? 0} onChange={(event) => updateVariantCombination(combination.id, "priceAdjustment", Number(event.target.value) || 0)} className="h-8 w-28 rounded-md border border-neutral-300 px-2 text-sm outline-none focus:border-brand-500" /></td><td className="px-3 py-2"><input type="number" min={0} value={combination.stock ?? 0} onChange={(event) => updateVariantCombination(combination.id, "stock", Number(event.target.value) || 0)} className="h-8 w-20 rounded-md border border-neutral-300 px-2 text-sm outline-none focus:border-brand-500" /></td><td className="px-3 py-2"><input type="checkbox" checked={combination.isAvailable ?? true} onChange={(event) => updateVariantCombination(combination.id, "isAvailable", event.target.checked)} className="h-4 w-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-500" aria-label={`Bán ${size.label} ${flavor.label}`} /></td></tr>;
+                      return <tr key={combination.id}><td className="px-3 py-2.5 font-semibold text-neutral-800">{size.label || "Size"} <span className="text-neutral-400">×</span> {flavor.label || "Vị"}</td><td className="px-3 py-2"><FormattedNumberInput min={0} value={combination.priceAdjustment} onValueChange={(value) => updateVariantCombination(combination.id, "priceAdjustment", value ?? 0)} className="h-8 w-28 rounded-md border border-neutral-300 px-2 text-sm outline-none focus:border-brand-500" /></td><td className="px-3 py-2"><FormattedNumberInput min={0} value={combination.stock} onValueChange={(value) => updateVariantCombination(combination.id, "stock", value ?? 0)} className="h-8 w-20 rounded-md border border-neutral-300 px-2 text-sm outline-none focus:border-brand-500" /></td><td className="px-3 py-2"><input type="checkbox" checked={combination.isAvailable ?? true} onChange={(event) => updateVariantCombination(combination.id, "isAvailable", event.target.checked)} className="h-4 w-4 rounded border-neutral-300 text-brand-600 focus:ring-brand-500" aria-label={`Bán ${size.label} ${flavor.label}`} /></td></tr>;
                     })}
                   </tbody>
                 </table>
@@ -950,6 +969,9 @@ export function FinanceCostSourceSection({
   if (costingSummary?.source === "recipe" && costingSummary.recipe) {
     return <FormSection title="Nguồn giá vốn"><div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3"><p className="text-sm font-black text-blue-950">Đang lấy từ BOM v{costingSummary.recipe.version}</p><p className="mt-1 text-xs leading-5 text-blue-900/80">Giá vốn được tính từ công thức đang kích hoạt, giá nguyên liệu và hao hụt. Chỉnh ở sheet Sản xuất & BOM để tạo phiên bản mới.</p><div className="mt-3 grid gap-2 rounded-lg bg-white/80 p-3 text-sm md:grid-cols-2"><CostMetric label="Nguyên liệu / SP" value={costingSummary.unitCost.ingredientCost} /><CostMetric label="Bao bì / SP" value={costingSummary.unitCost.packagingCost} /><CostMetric label="Nhân công / SP" value={costingSummary.unitCost.directLaborCost} /><CostMetric label="Overhead / SP" value={costingSummary.unitCost.overheadCost} /></div></div></FormSection>;
   }
+  if (formData.itemType === "semi_finished") {
+    return <FormSection title="Nguồn giá vốn"><div className="rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3"><p className="text-sm font-black text-amber-950">Chưa có BOM đang hoạt động</p><p className="mt-1 text-xs leading-5 text-amber-900">Bán thành phẩm không sử dụng giá vốn nhập thủ công. Hãy mở khối Sản xuất & BOM, lập định mức nguyên liệu rồi kích hoạt BOM để hệ thống tính giá vốn.</p></div></FormSection>;
+  }
   return <FormSection title="Nguồn giá vốn tạm tính"><div className="mb-3 rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-2.5 text-xs leading-5 text-amber-900">Chưa có BOM kích hoạt. Các số dưới đây là dữ liệu legacy, chỉ dùng tạm đến khi tạo BOM ở sheet Sản xuất.</div><div className="grid gap-3 md:grid-cols-2"><NumberField label="Nguyên liệu / sản phẩm" min={0} value={formData.ingredientsCost} onChange={(ingredientsCost) => setFormData((prev) => ({ ...prev, ingredientsCost }))} /><NumberField label="Bao bì" min={0} value={formData.packagingCost} onChange={(packagingCost) => setFormData((prev) => ({ ...prev, packagingCost }))} /><NumberField label="Nhân công ước tính" min={0} value={formData.laborCost} onChange={(laborCost) => setFormData((prev) => ({ ...prev, laborCost }))} /><NumberField label="Chi phí chung phân bổ" min={0} value={formData.overheadCost} onChange={(overheadCost) => setFormData((prev) => ({ ...prev, overheadCost }))} /><NumberField label="Hao hụt (%)" min={0} value={formData.wastePercent} onChange={(wastePercent) => setFormData((prev) => ({ ...prev, wastePercent }))} /></div></FormSection>;
 }
 
@@ -1279,11 +1301,46 @@ export function LogisticsIdentitySection({
   updateVariantCombination: (id: string, field: keyof ProductVariantCombination, value: string | number | boolean) => void;
 }) {
   const createBaseIdentifiers = (replace = false) => {
-    setFormData((prev) => ({
-      ...prev,
-      sku: replace || !prev.sku.trim() ? createProductSku({ itemType: prev.itemType, name: prev.name }) : prev.sku,
-      barcode: replace || !prev.barcode.trim() ? createInternalBarcode() : prev.barcode,
-    }));
+    setFormData((prev) => {
+      const currentSequence = Number(prev.sku.match(/-(\d+)$/)?.[1] ?? 1);
+      const sku = replace || !prev.sku.trim()
+        ? createProductSku(
+            { itemType: prev.itemType, name: prev.name },
+            currentSequence,
+          )
+        : prev.sku;
+      const barcode = replace || !prev.barcode.trim() ? createInternalBarcode() : prev.barcode;
+      if (!replace) return { ...prev, sku, barcode };
+      const hasCombinations = prev.variantCombinations.length > 0;
+      return {
+        ...prev,
+        sku,
+        barcode,
+        sizeOptions: hasCombinations ? prev.sizeOptions : prev.sizeOptions.map((size) => ({
+          ...size,
+          sku: createVariantSku({ productSku: sku, sizeLabel: size.label, flavorLabel: "" }),
+          barcode: createInternalBarcode(),
+        })),
+        flavorOptions: hasCombinations ? prev.flavorOptions : prev.flavorOptions.map((flavor) => ({
+          ...flavor,
+          sku: createVariantSku({ productSku: sku, sizeLabel: "", flavorLabel: flavor.label }),
+          barcode: createInternalBarcode(),
+        })),
+        variantCombinations: prev.variantCombinations.map((combination) => {
+          const size = prev.sizeOptions.find((option) => option.id === combination.sizeOptionId);
+          const flavor = prev.flavorOptions.find((option) => option.id === combination.flavorOptionId);
+          return {
+            ...combination,
+            sku: createVariantSku({
+              productSku: sku,
+              sizeLabel: size?.label ?? "",
+              flavorLabel: flavor?.label ?? "",
+            }),
+            barcode: createInternalBarcode(),
+          };
+        }),
+      };
+    });
   };
 
   useEffect(() => {
@@ -1296,12 +1353,12 @@ export function LogisticsIdentitySection({
     <div className="space-y-4">
       <FormSection title="Mã nhận diện gốc">
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <p className="max-w-xl text-sm leading-6 text-neutral-500">Mã nội bộ được tạo tự động. Bạn vẫn có thể sửa khi cần; bấm tạo lại mới thay mã hiện có.</p>
+          <p className="max-w-xl text-sm leading-6 text-neutral-500">SKU gốc theo cấu trúc Loại–Tên rút gọn–Số thứ tự. Bạn vẫn có thể sửa khi cần; bấm tạo lại mới thay mã hiện có.</p>
           <button type="button" onClick={() => createBaseIdentifiers(true)} className="inline-flex h-9 items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 text-xs font-bold text-teal-800 transition hover:bg-teal-100"><RefreshCw className="h-3.5 w-3.5" /> Tạo lại mã gốc</button>
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_112px]">
           <div className="grid gap-3 md:grid-cols-2">
-            <TextField label="SKU gốc" placeholder="VD: TP-BANH-MI-A2K8" value={formData.sku} onChange={(sku) => setFormData((prev) => ({ ...prev, sku }))} />
+            <TextField label="SKU gốc" placeholder="VD: TP-BOTOI-01" value={formData.sku} onChange={(sku) => setFormData((prev) => ({ ...prev, sku }))} />
             <TextField label="Barcode nội bộ (EAN-13)" placeholder="VD: 2001234567890" value={formData.barcode} onChange={(barcode) => setFormData((prev) => ({ ...prev, barcode }))} />
           </div>
           <div className="overflow-hidden rounded-xl border border-neutral-200 bg-neutral-100">
@@ -1309,7 +1366,7 @@ export function LogisticsIdentitySection({
           </div>
         </div>
       </FormSection>
-      <VariantIdentifierList formData={formData} setFormData={setFormData} assignMissingVariantIdentifiers={assignMissingVariantIdentifiers} updateVariantCombination={updateVariantCombination} />
+      {formData.itemType === "finished_good" && <VariantIdentifierList formData={formData} setFormData={setFormData} assignMissingVariantIdentifiers={assignMissingVariantIdentifiers} updateVariantCombination={updateVariantCombination} />}
     </div>
   );
 }
@@ -1339,6 +1396,46 @@ function VariantIdentifierList({
       ...prev,
       [axis]: prev[axis].map((option) => option.id === id ? { ...option, [field]: value } : option),
     }));
+  };
+
+  const regenerateVariantIdentifiers = () => {
+    setFormData((prev) => {
+      const hasCombinations = prev.variantCombinations.length > 0;
+      return {
+        ...prev,
+        sizeOptions: hasCombinations ? prev.sizeOptions : prev.sizeOptions.map((size) => ({
+          ...size,
+          sku: createVariantSku({
+            productSku: prev.sku,
+            sizeLabel: size.label,
+            flavorLabel: "",
+          }),
+          barcode: createInternalBarcode(),
+        })),
+        flavorOptions: hasCombinations ? prev.flavorOptions : prev.flavorOptions.map((flavor) => ({
+          ...flavor,
+          sku: createVariantSku({
+            productSku: prev.sku,
+            sizeLabel: "",
+            flavorLabel: flavor.label,
+          }),
+          barcode: createInternalBarcode(),
+        })),
+        variantCombinations: prev.variantCombinations.map((combination) => {
+          const size = prev.sizeOptions.find((option) => option.id === combination.sizeOptionId);
+          const flavor = prev.flavorOptions.find((option) => option.id === combination.flavorOptionId);
+          return {
+            ...combination,
+            sku: createVariantSku({
+              productSku: prev.sku,
+              sizeLabel: size?.label ?? "",
+              flavorLabel: flavor?.label ?? "",
+            }),
+            barcode: createInternalBarcode(),
+          };
+        }),
+      };
+    });
   };
 
   const items: IdentifierVariantItem[] = formData.variantCombinations.length > 0
@@ -1378,9 +1475,12 @@ function VariantIdentifierList({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm leading-6 text-neutral-500">{formData.variantCombinations.length > 0 ? "Mỗi tổ hợp bán riêng có một SKU và barcode riêng." : "Mỗi Size hoặc Vị/nhân là một biến thể bán riêng, có ảnh và mã riêng."}</p>
-          <p className="mt-1 text-xs text-neutral-400">Ảnh ưu tiên của biến thể; nếu chưa có sẽ dùng ảnh sản phẩm.</p>
+          <p className="mt-1 text-xs text-neutral-400">SKU biến thể: Tên rút gọn–Số thứ tự–Size–Vị; không lặp lại mã loại hàng.</p>
         </div>
-        <button type="button" onClick={assignMissingVariantIdentifiers} disabled={items.length === 0} className="inline-flex h-9 items-center gap-2 rounded-lg bg-teal-700 px-3 text-xs font-bold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-45"><Plus className="h-3.5 w-3.5" /> Cấp mã còn thiếu</button>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={regenerateVariantIdentifiers} disabled={items.length === 0 || !formData.sku.trim()} className="inline-flex h-9 items-center gap-2 rounded-lg border border-teal-200 bg-teal-50 px-3 text-xs font-bold text-teal-800 transition hover:bg-teal-100 disabled:cursor-not-allowed disabled:opacity-45"><RefreshCw className="h-3.5 w-3.5" /> Tạo lại mã biến thể</button>
+          <button type="button" onClick={assignMissingVariantIdentifiers} disabled={items.length === 0} className="inline-flex h-9 items-center gap-2 rounded-lg bg-teal-700 px-3 text-xs font-bold text-white transition hover:bg-teal-800 disabled:cursor-not-allowed disabled:opacity-45"><Plus className="h-3.5 w-3.5" /> Cấp mã còn thiếu</button>
+        </div>
       </div>
       {items.length > 0 ? <div className="mt-4 space-y-2">{items.map((item) => <article key={item.id} className="grid gap-3 rounded-xl border border-neutral-200 bg-white p-3 sm:grid-cols-[72px_minmax(0,1fr)]"><div className="h-[72px] overflow-hidden rounded-lg bg-neutral-100"><ProductImage src={item.imageUrl} alt={item.label} /></div><div className="min-w-0"><p className="font-bold text-neutral-900">{item.label}</p><div className="mt-2 grid gap-2 md:grid-cols-2"><TextField label="SKU biến thể" value={item.sku ?? ""} onChange={(value) => item.onChange("sku", value)} /><TextField label="Barcode biến thể" value={item.barcode ?? ""} onChange={(value) => item.onChange("barcode", value)} /></div></div></article>)}</div> : <EmptyHint text="Thêm Size hoặc Vị/nhân ở tab Biến thể. Chỉ tạo tổ hợp khi bạn thực sự bán từng cặp Size × Vị." />}
     </FormSection>
@@ -1517,7 +1617,6 @@ export function ProductionBomEditor({ productId, onActivated }: { productId: str
       if (!response.ok || !("id" in created)) throw new Error("Không thể lưu BOM nháp.");
       setDraftRecipeId(created.id);
       setDraftRecipe(created);
-      toast.success(`Đã lưu BOM v${created.version} ở trạng thái nháp. Kích hoạt khi sẵn sàng áp dụng.`);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không thể lưu BOM nháp.");
     } finally {
@@ -1535,7 +1634,6 @@ export function ProductionBomEditor({ productId, onActivated }: { productId: str
       setDraftRecipeId(null);
       setDraftRecipe(null);
       await onActivated?.();
-      toast.success("BOM đã được kích hoạt; giá vốn và sheet Tài chính đã được cập nhật.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Không thể kích hoạt BOM.");
     } finally {
@@ -1546,7 +1644,7 @@ export function ProductionBomEditor({ productId, onActivated }: { productId: str
   return (
     <FormSection title="Công thức & định mức (BOM)">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3 rounded-xl border border-amber-100 bg-amber-50/60 p-3"><div><p className="text-sm font-black text-amber-950">{activeRecipe?.status === "active" ? `Đang áp dụng BOM v${activeRecipe.version}` : "Chưa có BOM đang áp dụng"}</p><p className="mt-1 text-xs leading-5 text-amber-900/80">Lưu sẽ tạo một phiên bản nháp mới; kích hoạt mới làm giá thành và nghiệp vụ dùng công thức đó.</p></div>{draftRecipeId && <button type="button" onClick={activateDraft} disabled={isSaving} className="h-9 rounded-lg bg-amber-600 px-3 text-xs font-bold text-white hover:bg-amber-700 disabled:opacity-50">Kích hoạt BOM nháp</button>}</div>
-      {isLoading ? <div className="flex h-32 items-center justify-center text-sm text-neutral-500"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Đang tải định mức…</div> : <div className="space-y-4"><div className="grid gap-3 sm:grid-cols-3"><NumberField label="Sản lượng chuẩn / mẻ" min={1} value={draft.yieldQuantity} onChange={(yieldQuantity) => setDraft((current) => ({ ...current, yieldQuantity }))} /><TextField label="Hiệu lực từ" type="date" value={draft.effectiveFrom} onChange={(effectiveFrom) => setDraft((current) => ({ ...current, effectiveFrom }))} /><NumberField label="Hao hụt (%)" min={0} value={draft.wastePercent} onChange={(wastePercent) => setDraft((current) => ({ ...current, wastePercent }))} /></div><div><div className="mb-2 flex items-center justify-between"><p className="text-sm font-bold text-neutral-900">Nguyên liệu</p><button type="button" onClick={() => setLines((current) => [...current, { ingredientId: "", quantity: 0 }])} className="text-xs font-bold text-brand-700 hover:text-brand-800">+ Thêm dòng</button></div><div className="space-y-2">{lines.map((line, index) => <div key={`${line.ingredientId}-${index}`} className="grid grid-cols-[minmax(0,1fr)_120px_36px] gap-2"><select value={line.ingredientId} onChange={(event) => updateLine(index, { ingredientId: event.target.value })} className="h-10 min-w-0 rounded-lg border border-neutral-300 bg-white px-2.5 text-sm outline-none focus:border-brand-500"><option value="">Chọn nguyên liệu</option>{ingredients.map((ingredient) => <option key={ingredient.id} value={ingredient.id}>{ingredient.name} ({unitLabel(ingredient.baseUnit)})</option>)}</select><input type="number" min={0} value={line.quantity || ""} onChange={(event) => updateLine(index, { quantity: Number(event.target.value) || 0 })} placeholder="Định lượng" className="h-10 rounded-lg border border-neutral-300 px-2.5 text-sm outline-none focus:border-brand-500" /><button type="button" onClick={() => setLines((current) => current.length > 1 ? current.filter((_, lineIndex) => lineIndex !== index) : current)} className="grid h-10 w-9 place-items-center rounded-lg text-neutral-400 hover:bg-red-50 hover:text-red-600" aria-label={`Xóa nguyên liệu ${index + 1}`}><Trash2 className="h-4 w-4" /></button></div>)}</div></div><div className="grid gap-3 sm:grid-cols-3"><NumberField label="Bao bì / mẻ" min={0} value={draft.packagingCostPerBatch} onChange={(packagingCostPerBatch) => setDraft((current) => ({ ...current, packagingCostPerBatch }))} /><NumberField label="Nhân công / mẻ" min={0} value={draft.directLaborCostPerBatch} onChange={(directLaborCostPerBatch) => setDraft((current) => ({ ...current, directLaborCostPerBatch }))} /><NumberField label="Overhead / mẻ" min={0} value={draft.overheadCostPerBatch} onChange={(overheadCostPerBatch) => setDraft((current) => ({ ...current, overheadCostPerBatch }))} /></div><button type="button" onClick={saveDraft} disabled={isSaving} className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50">{isSaving && <Loader2 className="h-4 w-4 animate-spin" />}Lưu BOM nháp</button></div>}
+      {isLoading ? <div className="flex h-32 items-center justify-center text-sm text-neutral-500"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Đang tải định mức…</div> : <div className="space-y-4"><div className="grid gap-3 sm:grid-cols-3"><NumberField label="Sản lượng chuẩn / mẻ" min={1} value={draft.yieldQuantity} onChange={(yieldQuantity) => setDraft((current) => ({ ...current, yieldQuantity }))} /><TextField label="Hiệu lực từ" type="date" value={draft.effectiveFrom} onChange={(effectiveFrom) => setDraft((current) => ({ ...current, effectiveFrom }))} /><NumberField label="Hao hụt (%)" min={0} value={draft.wastePercent} onChange={(wastePercent) => setDraft((current) => ({ ...current, wastePercent }))} /></div><div><div className="mb-2 flex items-center justify-between"><p className="text-sm font-bold text-neutral-900">Nguyên liệu</p><button type="button" onClick={() => setLines((current) => [...current, { ingredientId: "", quantity: 0 }])} className="text-xs font-bold text-brand-700 hover:text-brand-800">+ Thêm dòng</button></div><div className="space-y-2">{lines.map((line, index) => <div key={`${line.ingredientId}-${index}`} className="grid grid-cols-[minmax(0,1fr)_120px_36px] gap-2"><select value={line.ingredientId} onChange={(event) => updateLine(index, { ingredientId: event.target.value })} className="h-10 min-w-0 rounded-lg border border-neutral-300 bg-white px-2.5 text-sm outline-none focus:border-brand-500"><option value="">Chọn nguyên liệu</option>{ingredients.map((ingredient) => <option key={ingredient.id} value={ingredient.id}>{ingredient.name} ({unitLabel(ingredient.baseUnit)})</option>)}</select><FormattedNumberInput min={0} value={line.quantity} onValueChange={(value) => updateLine(index, { quantity: value ?? 0 })} placeholder="Định lượng" className="h-10 rounded-lg border border-neutral-300 px-2.5 text-sm outline-none focus:border-brand-500" /><button type="button" onClick={() => setLines((current) => current.length > 1 ? current.filter((_, lineIndex) => lineIndex !== index) : current)} className="grid h-10 w-9 place-items-center rounded-lg text-neutral-400 hover:bg-red-50 hover:text-red-600" aria-label={`Xóa nguyên liệu ${index + 1}`}><Trash2 className="h-4 w-4" /></button></div>)}</div></div><div className="grid gap-3 sm:grid-cols-3"><NumberField label="Bao bì / mẻ" min={0} value={draft.packagingCostPerBatch} onChange={(packagingCostPerBatch) => setDraft((current) => ({ ...current, packagingCostPerBatch }))} /><NumberField label="Nhân công / mẻ" min={0} value={draft.directLaborCostPerBatch} onChange={(directLaborCostPerBatch) => setDraft((current) => ({ ...current, directLaborCostPerBatch }))} /><NumberField label="Overhead / mẻ" min={0} value={draft.overheadCostPerBatch} onChange={(overheadCostPerBatch) => setDraft((current) => ({ ...current, overheadCostPerBatch }))} /></div><button type="button" onClick={saveDraft} disabled={isSaving} className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-bold text-white hover:bg-brand-700 disabled:opacity-50">{isSaving && <Loader2 className="h-4 w-4 animate-spin" />}Lưu BOM nháp</button></div>}
     </FormSection>
   );
 }
@@ -1591,7 +1689,7 @@ export function ProductionProcessSection({
               <span className="grid h-6 w-6 place-items-center rounded-full bg-amber-100 text-[11px] font-black text-amber-800">{index + 1}</span>
               <input type="text" placeholder="Ví dụ: Trộn bột, nướng, trang trí" value={step.name} onChange={(event) => updateStep(step.id, "name", event.target.value)} className="h-9 min-w-0 rounded-md border border-neutral-300 px-2.5 text-sm outline-none focus:border-brand-500" />
               <input type="text" placeholder="Trạm / khu vực" value={step.workstation ?? ""} onChange={(event) => updateStep(step.id, "workstation", event.target.value)} className="hidden h-9 min-w-0 rounded-md border border-neutral-300 px-2.5 text-sm outline-none focus:border-brand-500 sm:block" />
-              <label className="relative"><input type="number" min={0} value={step.durationMinutes} onChange={(event) => updateStep(step.id, "durationMinutes", Number(event.target.value) || 0)} className="h-9 w-full rounded-md border border-neutral-300 px-2.5 pr-9 text-sm outline-none focus:border-brand-500" /><span className="pointer-events-none absolute right-2.5 top-2.5 text-[11px] font-semibold text-neutral-400">phút</span></label>
+              <label className="relative"><FormattedNumberInput min={0} value={step.durationMinutes} onValueChange={(value) => updateStep(step.id, "durationMinutes", value ?? 0)} className="h-9 w-full rounded-md border border-neutral-300 px-2.5 pr-9 text-sm outline-none focus:border-brand-500" /><span className="pointer-events-none absolute right-2.5 top-2.5 text-[11px] font-semibold text-neutral-400">phút</span></label>
               <button type="button" onClick={() => setFormData((prev) => ({ ...prev, productionSteps: (prev.productionSteps ?? []).filter((item) => item.id !== step.id) }))} className="grid h-8 w-8 place-items-center rounded-md text-neutral-400 transition hover:bg-red-50 hover:text-red-600" aria-label={`Xóa công đoạn ${index + 1}`}><Trash2 className="h-4 w-4" /></button>
             </div>
           ))}
@@ -1609,7 +1707,61 @@ export function ProductionScheduleSection({
   setFormData: Dispatch<SetStateAction<ProductFormData>>;
 }) {
   const totalStepMinutes = (formData.productionSteps ?? []).reduce((total, step) => total + (Number(step.durationMinutes) || 0), 0);
-  return <FormSection title="Đầu ra & thời gian sản xuất"><div className="grid gap-3 md:grid-cols-3"><NumberField label="Sản lượng một mẻ" min={1} value={formData.manufacturingOutputQuantity} onChange={(manufacturingOutputQuantity) => setFormData((prev) => ({ ...prev, manufacturingOutputQuantity }))} /><TextField label="Đơn vị đầu ra" value={formData.manufacturingOutputUnit} onChange={(manufacturingOutputUnit) => setFormData((prev) => ({ ...prev, manufacturingOutputUnit }))} /><NumberField label="Lead-time sản xuất (phút)" min={0} value={formData.manufacturingLeadMinutes} onChange={(manufacturingLeadMinutes) => setFormData((prev) => ({ ...prev, manufacturingLeadMinutes }))} /></div><div className="mt-3 rounded-lg border border-amber-100 bg-amber-50/70 px-3 py-2 text-xs text-amber-900">Tổng thời lượng công đoạn: <span className="font-bold">{totalStepMinutes} phút</span>{formData.manufacturingLeadMinutes > 0 && totalStepMinutes > formData.manufacturingLeadMinutes ? " · đang dài hơn lead-time sản xuất" : ""}</div></FormSection>;
+  return (
+    <FormSection title="Đầu ra & thời gian sản xuất">
+      <div className="grid gap-3 md:grid-cols-3">
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-bold text-neutral-600">
+            Theo dõi tồn kho bằng
+          </span>
+          <select
+            value={formData.baseUnit}
+            onChange={(event) => {
+              const baseUnit = event.target.value as ProductFormData["baseUnit"];
+              setFormData((prev) => ({
+                ...prev,
+                baseUnit,
+                manufacturingOutputUnit: unitLabel(baseUnit),
+              }));
+            }}
+            className="h-10 w-full rounded-lg border border-neutral-300 bg-white px-3 text-sm outline-2 outline-transparent outline-offset-1 focus-visible:outline-brand-500"
+          >
+            <option value="gram">Gram (g)</option>
+            <option value="millilitre">Millilitre (ml)</option>
+            <option value="each">Cái / chiếc</option>
+          </select>
+        </label>
+        <NumberField
+          label={`Mỗi mẻ tạo ra (${unitLabel(formData.baseUnit)})`}
+          min={1}
+          value={formData.manufacturingOutputQuantity}
+          onChange={(manufacturingOutputQuantity) =>
+            setFormData((prev) => ({
+              ...prev,
+              manufacturingOutputQuantity,
+              manufacturingOutputUnit: unitLabel(prev.baseUnit),
+            }))
+          }
+        />
+        <NumberField
+          label="Thời gian dự kiến (phút)"
+          min={0}
+          value={formData.manufacturingLeadMinutes}
+          onChange={(manufacturingLeadMinutes) =>
+            setFormData((prev) => ({ ...prev, manufacturingLeadMinutes }))
+          }
+        />
+      </div>
+      <div className="mt-3 rounded-lg border border-amber-100 bg-amber-50/70 px-3 py-2 text-xs text-amber-900">
+        Tổng thời lượng công đoạn:{" "}
+        <span className="font-bold">{totalStepMinutes} phút</span>
+        {formData.manufacturingLeadMinutes > 0 &&
+        totalStepMinutes > formData.manufacturingLeadMinutes
+          ? " · đang dài hơn thời gian dự kiến"
+          : ""}
+      </div>
+    </FormSection>
+  );
 }
 
 function FormSection({
@@ -1712,12 +1864,11 @@ function NumberField({
         {label}
         {required && <span className="text-red-600"> *</span>}
       </span>
-      <input
-        type="number"
+      <FormattedNumberInput
         required={required}
         min={min}
-        value={Number.isFinite(value) ? value : 0}
-        onChange={(event) => onChange(Number(event.target.value) || 0)}
+        value={Number.isFinite(value) ? value : null}
+        onValueChange={(nextValue) => onChange(nextValue ?? 0)}
         className="h-10 w-full rounded-lg border border-neutral-300 px-3 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
       />
     </label>

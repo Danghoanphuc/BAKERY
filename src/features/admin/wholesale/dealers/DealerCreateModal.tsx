@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { FormattedNumberInput } from "@/components/common/FormattedNumberInput";
 
 export interface NewDealerForm {
   name: string;
@@ -205,10 +206,10 @@ export function DealerCreateModal({
               <label className="block text-sm font-semibold text-[#3d2417]">
                 Hạn mức nợ (VNĐ)
               </label>
-              <input
-                type="number"
-                value={form.creditLimit}
-                onChange={(e) => onChange({ ...form, creditLimit: e.target.value })}
+              <FormattedNumberInput
+                min={0}
+                value={form.creditLimit === "" ? null : Number(form.creditLimit)}
+                onValueChange={(value) => onChange({ ...form, creditLimit: value === null ? "" : String(value) })}
                 className="mt-1 w-full rounded-lg border border-[#f0e1d2] px-3 py-2 text-sm text-[#3d2417] focus:border-[#b84a39] focus:outline-none focus:ring-1 focus:ring-[#b84a39]"
                 placeholder="5000000"
               />

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Banknote, ChevronDown, ChevronUp, MessageSquare, QrCode, RefreshCw } from "lucide-react";
 import { clsx } from "clsx";
+import { FormattedNumberInput } from "@/components/common/FormattedNumberInput";
 import type { SelectedVoucher, VoucherPricing } from "@/types/voucher";
 import { formatCurrency, PosPaymentMethod } from "../_lib/pos-utils";
 
@@ -92,14 +93,11 @@ export function PosCheckoutPanel({
             Khách đưa
           </span>
           <div className="mt-2 grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-            <input
-              type="number"
+            <FormattedNumberInput
               min={0}
               step={1000}
-              value={cashReceived || ""}
-              onChange={(event) =>
-                onCashReceivedChange(Number(event.target.value) || 0)
-              }
+              value={cashReceived}
+              onValueChange={(value) => onCashReceivedChange(value ?? 0)}
               placeholder={formatCurrency(finalTotal)}
               className="h-11 min-w-0 rounded-xl border border-[#eadbcc] px-3 text-right text-base font-black outline-none focus:border-[#b84a39]"
             />

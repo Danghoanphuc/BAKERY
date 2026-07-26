@@ -7,6 +7,7 @@ import {
   BarChart3,
   ChevronRight,
   Factory,
+  FilePenLine,
   Loader2,
   Settings2,
   ShoppingCart,
@@ -15,14 +16,20 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
+import { AdminImageUploader } from "@/components/admin/AdminImageUploader";
 import type { Category, ProductLifecycleStatus } from "@/types";
 import type { ProductCostSummary } from "@/features/finance";
 import type { ProductFormData } from "../_lib/product-form";
 import { ProductBlockSheet, type ProductWorkspaceBlock } from "./ProductBlockSheet";
 import { ProductWorkspaceDrawer } from "./ProductWorkspaceDrawer";
 import { WorkspaceCardSettingsSection } from "./ProductFormSections";
+import { IngredientGroupSelector } from "@/features/inventory/components/IngredientGroupSelector";
 
-type WorkspacePanel = ProductWorkspaceBlock | "procurement" | "analytics";
+type WorkspacePanel =
+  | ProductWorkspaceBlock
+  | "profile"
+  | "procurement"
+  | "analytics";
 
 type ProductWorkspaceProps = {
   productId: string;
@@ -45,8 +52,8 @@ const itemTypeLabels = {
 } as const;
 
 const statusLabels: Record<ProductLifecycleStatus, string> = {
-  active: "Đang kinh doanh",
-  inactive: "Ngừng kinh doanh",
+  active: "Đang hoạt động",
+  inactive: "Ngừng hoạt động",
   draft: "Bản nháp",
 };
 
@@ -69,12 +76,6 @@ export function ProductWorkspace({
   const ledgerStock = useProductLedgerStock(productId, true);
   const analyticsSummary = useProductAnalytics(productId, 30);
 
-  useEffect(() => {
-    if (activePanel && !panels.some((panel) => panel.id === activePanel)) {
-      setActivePanel(null);
-    }
-  }, [activePanel, panels]);
-
   const categoryName = categories.find((item) => item.id === formData.categoryId)?.name;
   const margin = getMargin(formData, costingSummary);
   const activePanelInfo = panels.find((panel) => panel.id === activePanel);
@@ -86,7 +87,10 @@ export function ProductWorkspace({
     setFormData((current) => ({
       ...current,
       lifecycleStatus,
-      isAvailable: lifecycleStatus === "active" ? current.isAvailable : false,
+      isAvailable:
+        current.itemType === "finished_good" && lifecycleStatus === "active"
+          ? current.isAvailable
+          : false,
     }));
   };
 
@@ -98,11 +102,16 @@ export function ProductWorkspace({
             <button type="button" onClick={onBack} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white text-neutral-500 transition hover:border-brand-200 hover:text-brand-600" aria-label="Quay lại kho sản phẩm"><ArrowLeft className="h-4 w-4" /></button>
             <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg border border-neutral-200 bg-neutral-100"><ProductImage src={formData.imageUrl} alt={formData.name || "Sản phẩm"} /></div>
             <div className="min-w-0"><h1 className="truncate text-lg font-black tracking-tight text-neutral-950">{formData.name || "Sản phẩm chưa đặt tên"}</h1><p className="mt-0.5 truncate text-xs font-semibold text-neutral-400">SKU {formData.sku || "Chưa thiết lập"}{categoryName ? ` · ${categoryName}` : ""}</p></div>
-            <div className="hidden items-center gap-4 border-l border-neutral-200 pl-4 xl:flex"><HeaderMetric label="Giá" value={formatCurrency(formData.price)} /><HeaderMetric label="Biên" value={`${margin.toFixed(1)}%`} tone={margin < formData.targetGrossMarginPercent ? "warning" : "positive"} /><HeaderMetric label="Tồn" value={`${ledgerStock.hasLedger ? ledgerStock.quantity : formData.stock ?? 0}`} /></div>
+            <div className="hidden items-center gap-4 border-l border-neutral-200 pl-4 xl:flex">
+              {formData.itemType === "finished_good" && <><HeaderMetric label="Giá" value={formatCurrency(formData.price)} /><HeaderMetric label="Biên" value={`${margin.toFixed(1)}%`} tone={margin < formData.targetGrossMarginPercent ? "warning" : "positive"} /></>}
+              {formData.itemType === "semi_finished" && <HeaderMetric label="Đầu ra" value={`${formData.manufacturingOutputQuantity} ${formData.manufacturingOutputUnit}`} />}
+              {formData.itemType === "ingredient" && <HeaderMetric label="Đơn vị" value={formData.baseUnit} />}
+              <HeaderMetric label="Tồn" value={`${ledgerStock.hasLedger ? ledgerStock.quantity : formData.stock ?? 0}`} />
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 sm:justify-end">
-            <select value={formData.itemType} onChange={(event) => setFormData((current) => ({ ...current, itemType: event.target.value as ProductFormData["itemType"] }))} className="h-8 max-w-40 rounded-lg border border-neutral-200 bg-white px-2 text-xs font-bold text-neutral-700 outline-none focus:border-brand-500"><option value="finished_good">Thành phẩm</option><option value="semi_finished">Bán thành phẩm</option><option value="ingredient">Nguyên liệu</option></select>
-            <select value={formData.lifecycleStatus} onChange={(event) => updateLifecycleStatus(event.target.value as ProductLifecycleStatus)} className="h-8 max-w-36 rounded-lg border border-neutral-200 bg-white px-2 text-xs font-bold text-neutral-700 outline-none focus:border-brand-500">{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+            <span className="inline-flex h-8 items-center rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 text-xs font-black text-neutral-700">{itemTypeLabels[formData.itemType]}</span>
+            <select value={formData.lifecycleStatus} onChange={(event) => updateLifecycleStatus(event.target.value as ProductLifecycleStatus)} className="h-8 max-w-36 rounded-lg border border-neutral-200 bg-white px-2 text-xs font-bold text-neutral-700 outline-none focus:border-brand-500">{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value} disabled={formData.itemType === "semi_finished" && value === "active" && costingSummary?.source !== "recipe"}>{label}</option>)}</select>
             <button type="button" onClick={onBack} className="h-8 rounded-lg border border-neutral-200 bg-white px-2.5 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50">Hủy</button>
             <button type="button" onClick={onSave} disabled={isSaving} className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-neutral-950 px-3 text-xs font-bold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-45">{isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Lưu</button>
           </div>
@@ -110,7 +119,7 @@ export function ProductWorkspace({
       </section>
 
       <section>
-        <div className="mb-3 flex items-end justify-between gap-4 px-1"><div><h2 className="text-base font-black text-neutral-950">Không gian quản lý sản phẩm</h2><p className="mt-0.5 text-sm text-neutral-500">Mỗi khối là một không gian làm việc độc lập.</p></div><span className="hidden text-xs font-semibold text-neutral-400 sm:block">Chọn khối để mở sheet chuyên biệt</span></div>
+        <div className="mb-3 flex items-end justify-between gap-4 px-1"><div><h2 className="text-base font-black text-neutral-950">Không gian quản lý {itemTypeLabels[formData.itemType].toLowerCase()}</h2><p className="mt-0.5 text-sm text-neutral-500">Mỗi khối là một không gian làm việc độc lập.</p></div><span className="hidden text-xs font-semibold text-neutral-400 sm:block">Chọn khối để mở sheet chuyên biệt</span></div>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {panels.map((panel) => <WorkspaceCard key={panel.id} panel={panel} formData={formData} costingSummary={costingSummary} margin={margin} ledgerStock={ledgerStock} analyticsSummary={analyticsSummary} onClick={() => setActivePanel(panel.id)} />)}
         </div>
@@ -121,9 +130,15 @@ export function ProductWorkspace({
         title={drawerSectionLabel}
         onClose={() => { setActivePanel(null); setIsCardSettingsOpen(false); }}
         header={<DrawerHeader formData={formData} sectionLabel={drawerSectionLabel} onOpenSettings={activePanel ? () => setIsCardSettingsOpen(true) : undefined} />}
+        footer={<div className="flex justify-end"><button type="button" onClick={onSave} disabled={isSaving} className="inline-flex h-10 items-center gap-2 rounded-lg bg-neutral-950 px-4 text-sm font-bold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-45">{isSaving && <Loader2 className="h-4 w-4 animate-spin" />}Lưu thay đổi</button></div>}
       >
         {isCardSettingsOpen && activePanel && activePanelInfo ? (
           <form id="sales-card-settings-form" onSubmit={onSubmit} className="mx-auto w-full max-w-4xl px-5 py-5 sm:px-7"><WorkspaceCardSettingsSection cardId={activePanel} cardLabel={activePanelInfo.label} defaultDescription={activePanelInfo.description} formData={formData} setFormData={setFormData} /></form>
+        ) : activePanel === "profile" ? (
+          <InternalItemProfileSheet
+            formData={formData}
+            setFormData={setFormData}
+          />
         ) : editableBlock ? (
           <ProductBlockSheet
             key={editableBlock}
@@ -147,16 +162,16 @@ type DashboardPanel = { id: WorkspacePanel; label: string; description: string; 
 
 function getPanels(itemType: ProductFormData["itemType"]): DashboardPanel[] {
   const shared: DashboardPanel[] = [
-    { id: "finance", label: "Tài chính", description: "Giá vốn, COGS và biên lợi nhuận.", icon: <WalletCards /> },
     { id: "logistics", label: "Kho vận", description: "Tồn, mã hàng và khả năng phục vụ.", icon: <Warehouse /> },
-    { id: "analytics", label: "Thống kê", description: "Các chỉ số vận hành theo sản phẩm.", icon: <BarChart3 /> },
   ];
-  if (itemType === "ingredient") return [{ id: "procurement", label: "Mua hàng", description: "Nhập mua, chứng từ và giá vốn thực tế.", icon: <ShoppingCart /> }, ...shared];
-  if (itemType === "semi_finished") return [{ id: "production", label: "Sản xuất & BOM", description: "Định mức và kế hoạch sản xuất.", icon: <Factory /> }, ...shared];
+  if (itemType === "ingredient") return [{ id: "profile", label: "Hồ sơ nguyên liệu", description: "Tên, nhóm, đơn vị và quy cách mua.", icon: <FilePenLine /> }, { id: "procurement", label: "Mua hàng", description: "Nhập mua, chứng từ và giá vốn thực tế.", icon: <ShoppingCart /> }, ...shared];
+  if (itemType === "semi_finished") return [{ id: "profile", label: "Hồ sơ bán thành phẩm", description: "Tên, quy cách đầu ra và thời gian sản xuất.", icon: <FilePenLine /> }, { id: "production", label: "Sản xuất & BOM", description: "Định mức và kế hoạch sản xuất.", icon: <Factory /> }, { id: "finance", label: "Giá vốn", description: "Chi phí cấu thành và giá vốn mỗi đơn vị.", icon: <WalletCards /> }, ...shared];
   return [
     { id: "sales", label: "Bán hàng", description: "Nội dung, giá, ảnh và biến thể.", icon: <ShoppingCart /> },
     { id: "production", label: "Sản xuất & BOM", description: "Định mức và kế hoạch sản xuất.", icon: <Factory /> },
-    ...shared,
+    { id: "finance", label: "Tài chính", description: "Giá vốn, COGS và biên lợi nhuận.", icon: <WalletCards /> },
+    { id: "logistics", label: "Kho vận", description: "Tồn, mã hàng và khả năng phục vụ.", icon: <Warehouse /> },
+    { id: "analytics", label: "Thống kê", description: "Các chỉ số vận hành theo sản phẩm.", icon: <BarChart3 /> },
   ];
 }
 
@@ -228,6 +243,9 @@ function useProductLedgerStock(productId: string, enabled: boolean): LedgerStock
 function getCardContent(panel: WorkspacePanel, formData: ProductFormData, costingSummary: ProductCostSummary | null, margin: number, analytics?: ProductAnalytics | null) {
   const cost = getCost(formData, costingSummary);
   switch (panel) {
+    case "profile": return formData.itemType === "ingredient"
+      ? { value: formData.ingredientGroup || "Chưa phân nhóm", caption: `${formData.purchasePackQuantity} ${formData.purchaseUnit} / quy cách mua` }
+      : { value: `${formData.manufacturingOutputQuantity} ${formData.manufacturingOutputUnit}`, caption: `${formData.manufacturingLeadMinutes} phút / mẻ` };
     case "sales": return { value: formatCurrency(formData.price), caption: `${formData.sizeOptions.length + formData.flavorOptions.length} tuỳ chọn` };
     case "production": {
       const processCaption = `${formData.productionSteps?.length ?? 0} công đoạn${formData.manufacturingLeadMinutes ? ` · ${formData.manufacturingLeadMinutes} phút` : ""}`;
@@ -235,7 +253,9 @@ function getCardContent(panel: WorkspacePanel, formData: ProductFormData, costin
         ? { value: `BOM v${costingSummary.recipe.version}`, caption: `${costingSummary.recipe.yieldQuantity} ${formData.manufacturingOutputUnit || "cái"} / mẻ · ${processCaption}` }
         : { value: "Chưa có BOM", caption: processCaption || "Thiết lập định mức" };
     }
-    case "finance": return { value: `${margin.toFixed(1)}%`, caption: `Biên gộp · COGS ${formatCurrency(cost)}`, warning: margin < formData.targetGrossMarginPercent };
+    case "finance": return formData.itemType === "semi_finished"
+      ? { value: formatCurrency(cost / Math.max(1, formData.manufacturingOutputQuantity)), caption: `Giá vốn / ${formData.manufacturingOutputUnit || "đơn vị"}` }
+      : { value: `${margin.toFixed(1)}%`, caption: `Biên gộp · COGS ${formatCurrency(cost)}`, warning: margin < formData.targetGrossMarginPercent };
     case "logistics": return { value: `${formData.stock ?? 0} tồn`, caption: formData.storage || "Chưa thiết lập bảo quản" };
     case "procurement": return { value: "Nhập mua", caption: "Mở nghiệp vụ kho" };
     case "analytics": return analytics ? { value: `${analytics.soldQuantity} đã bán`, caption: `30 ngày · ${formatCurrency(analytics.revenue)}` } : { value: "Đang tải", caption: "Giao dịch 30 ngày" };
@@ -244,6 +264,7 @@ function getCardContent(panel: WorkspacePanel, formData: ProductFormData, costin
 
 function getCardPalette(panel: WorkspacePanel) {
   switch (panel) {
+    case "profile": return { card: "border-violet-100 from-white to-violet-50/70 hover:border-violet-300", icon: "bg-violet-600", metric: "text-violet-700", arrow: "text-violet-300 group-hover:text-violet-600", decoration: "bg-violet-100", imageFade: "from-violet-50" };
     case "sales": return { card: "border-brand-100 from-white to-brand-50/70 hover:border-brand-300", icon: "bg-brand-600", metric: "text-brand-700", arrow: "text-brand-300 group-hover:text-brand-600", decoration: "bg-brand-100", imageFade: "from-brand-50" };
     case "production": return { card: "border-amber-100 from-white to-amber-50/70 hover:border-amber-300", icon: "bg-amber-600", metric: "text-amber-700", arrow: "text-amber-300 group-hover:text-amber-600", decoration: "bg-amber-100", imageFade: "from-amber-50" };
     case "finance": return { card: "border-blue-100 from-white to-blue-50/70 hover:border-blue-300", icon: "bg-blue-600", metric: "text-blue-700", arrow: "text-blue-300 group-hover:text-blue-600", decoration: "bg-blue-100", imageFade: "from-blue-50" };
@@ -253,7 +274,7 @@ function getCardPalette(panel: WorkspacePanel) {
   }
 }
 
-export function WorkspaceHeader({ formData, sectionLabel, isSaving, setFormData, onStatusChange, onOpenSettings, onCancel, formId }: { formData: ProductFormData; sectionLabel: string; isSaving: boolean; setFormData: Dispatch<SetStateAction<ProductFormData>>; onStatusChange: (status: ProductLifecycleStatus) => void; onOpenSettings?: () => void; onCancel: () => void; formId: string | null }) {
+export function WorkspaceHeader({ formData, sectionLabel, isSaving, onStatusChange, onOpenSettings, onCancel, formId }: { formData: ProductFormData; sectionLabel: string; isSaving: boolean; setFormData: Dispatch<SetStateAction<ProductFormData>>; onStatusChange: (status: ProductLifecycleStatus) => void; onOpenSettings?: () => void; onCancel: () => void; formId: string | null }) {
   return (
     <header className="relative shrink-0 border-b border-neutral-200 bg-white px-4 py-3 sm:px-5">
       {onOpenSettings && (
@@ -267,7 +288,7 @@ export function WorkspaceHeader({ formData, sectionLabel, isSaving, setFormData,
           <div className="min-w-0"><p className="truncate text-base font-black text-neutral-950">{formData.name || "Sản phẩm chưa đặt tên"}<span className="mx-1.5 text-neutral-300">|</span><span className="text-brand-600 underline decoration-2 underline-offset-4">{sectionLabel}</span></p><p className="mt-1 truncate text-xs font-semibold text-neutral-400">SKU {formData.sku || "Chưa thiết lập"}</p></div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <select value={formData.itemType} onChange={(event) => setFormData((current) => ({ ...current, itemType: event.target.value as ProductFormData["itemType"] }))} className="h-9 rounded-lg border border-neutral-200 bg-white px-2 text-xs font-bold text-neutral-700 outline-none focus:border-neutral-950">{Object.entries(itemTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+          <span className="inline-flex h-9 items-center rounded-lg border border-neutral-200 bg-neutral-50 px-2.5 text-xs font-black text-neutral-700">{itemTypeLabels[formData.itemType]}</span>
           <select value={formData.lifecycleStatus} onChange={(event) => onStatusChange(event.target.value as ProductLifecycleStatus)} className="h-9 rounded-lg border border-neutral-200 bg-white px-2 text-xs font-bold text-neutral-700 outline-none focus:border-neutral-950">{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
           <button type="button" onClick={onCancel} className="h-9 rounded-lg border border-neutral-200 px-3 text-xs font-bold text-neutral-600 transition hover:bg-neutral-50">Hủy</button>
           {formId && <button type="submit" form={formId} disabled={isSaving} className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-neutral-950 px-3 text-xs font-bold text-white transition hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-45">{isSaving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}Lưu</button>}
@@ -371,6 +392,139 @@ function EmptyAnalytics({ text }: { text: string }) {
 function movementLabel(type: string) {
   const labels: Record<string, string> = { purchase_receipt: "Nhập mua", production_issue: "Xuất sản xuất", production_output: "Nhập thành phẩm", sale: "Xuất bán", waste: "Hao hụt", adjustment: "Điều chỉnh" };
   return labels[type] ?? "Biến động kho";
+}
+
+function InternalItemProfileSheet({
+  formData,
+  setFormData,
+}: {
+  formData: ProductFormData;
+  setFormData: Dispatch<SetStateAction<ProductFormData>>;
+}) {
+  const update = <K extends keyof ProductFormData>(
+    key: K,
+    value: ProductFormData[K],
+  ) => setFormData((current) => ({ ...current, [key]: value }));
+  const fieldClass = "h-11 w-full rounded-lg border border-neutral-300 bg-white px-3 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
+
+  return (
+    <div className="mx-auto w-full max-w-4xl space-y-6 p-5 sm:p-7">
+      <div>
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-neutral-400">
+          Hồ sơ nội bộ
+        </p>
+        <h3 className="mt-2 text-2xl font-black tracking-tight text-neutral-950">
+          {formData.itemType === "ingredient"
+            ? "Thông tin nguyên liệu"
+            : "Thông tin bán thành phẩm"}
+        </h3>
+        <p className="mt-2 text-sm leading-6 text-neutral-500">
+          Loại hàng đã được khóa. Các trường dưới đây chỉ phục vụ kho, mua hàng
+          và sản xuất.
+        </p>
+      </div>
+      <div className="grid gap-5 rounded-xl border border-neutral-200 bg-white p-5 sm:grid-cols-2">
+        <div className="grid gap-4 border-b border-neutral-200 pb-5 sm:col-span-2 sm:grid-cols-[10rem_minmax(0,1fr)] sm:items-start">
+          <AdminImageUploader
+            value={formData.imageUrl}
+            onChange={(imageUrl) => update("imageUrl", imageUrl)}
+            label={
+              formData.itemType === "ingredient"
+                ? "Ảnh nguyên liệu"
+                : "Ảnh bán thành phẩm"
+            }
+          />
+          <div className="self-center">
+            <p className="text-sm font-bold text-neutral-900">Ảnh đại diện trong kho</p>
+            <p className="mt-1 max-w-xl text-sm leading-6 text-neutral-500">
+              Ảnh giúp nhận diện mặt hàng trên danh sách kho và hồ sơ nội bộ.
+              Nguyên liệu và bán thành phẩm vẫn không được xuất bản ra cửa hàng.
+            </p>
+          </div>
+        </div>
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-bold text-neutral-800">Tên nội bộ</span>
+          <input value={formData.name} onChange={(event) => update("name", event.target.value)} className={fieldClass} />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-bold text-neutral-800">SKU</span>
+          <input readOnly value={formData.sku} className={`${fieldClass} bg-neutral-50 font-mono text-neutral-500`} />
+        </label>
+        {formData.itemType === "ingredient" ? (
+          <>
+            <div className="block sm:col-span-2">
+              <span className="mb-1.5 block text-sm font-bold text-neutral-800">Nhóm nguyên liệu</span>
+              <IngredientGroupSelector
+                groupId={formData.ingredientGroupId}
+                subgroupId={formData.ingredientSubgroupId}
+                legacyValue={formData.ingredientGroup}
+                onChange={(selection) =>
+                  setFormData((current) => ({
+                    ...current,
+                    ingredientGroup: selection.displayName,
+                    ingredientGroupId: selection.groupId,
+                    ingredientSubgroupId: selection.subgroupId,
+                    storage: current.storage || selection.defaultStorage || "",
+                    shelfLife:
+                      current.shelfLife || selection.defaultShelfLife || "",
+                  }))
+                }
+              />
+            </div>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-bold text-neutral-800">Đơn vị cơ sở</span>
+              <select value={formData.baseUnit} onChange={(event) => update("baseUnit", event.target.value as ProductFormData["baseUnit"])} className={fieldClass}>
+                <option value="gram">Gram (g)</option><option value="millilitre">Millilitre (ml)</option><option value="each">Cái</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-bold text-neutral-800">Số đơn vị cơ sở / quy cách mua</span>
+              <input type="number" min="0.001" step="any" value={formData.purchasePackQuantity} onChange={(event) => update("purchasePackQuantity", Number(event.target.value) || 0)} className={fieldClass} />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-bold text-neutral-800">Đơn vị mua</span>
+              <input value={formData.purchaseUnit} onChange={(event) => update("purchaseUnit", event.target.value)} className={fieldClass} />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-bold text-neutral-800">Giá mua tham chiếu</span>
+              <input type="number" min="0" value={formData.referencePurchasePrice} onChange={(event) => update("referencePurchasePrice", Number(event.target.value) || 0)} className={fieldClass} />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-bold text-neutral-800">Nhà cung cấp ưu tiên</span>
+              <input value={formData.preferredSupplier} onChange={(event) => update("preferredSupplier", event.target.value)} className={fieldClass} />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-bold text-neutral-800">Mức tồn tối thiểu</span>
+              <input type="number" min="0" value={formData.minimumStock} onChange={(event) => update("minimumStock", Number(event.target.value) || 0)} className={fieldClass} />
+            </label>
+          </>
+        ) : (
+          <>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-bold text-neutral-800">Sản lượng mỗi mẻ</span>
+              <input type="number" min="0.001" step="any" value={formData.manufacturingOutputQuantity} onChange={(event) => update("manufacturingOutputQuantity", Number(event.target.value) || 0)} className={fieldClass} />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-bold text-neutral-800">Đơn vị đầu ra</span>
+              <input value={formData.manufacturingOutputUnit} onChange={(event) => update("manufacturingOutputUnit", event.target.value)} className={fieldClass} />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-bold text-neutral-800">Thời gian sản xuất (phút)</span>
+              <input type="number" min="0" value={formData.manufacturingLeadMinutes} onChange={(event) => update("manufacturingLeadMinutes", Number(event.target.value) || 0)} className={fieldClass} />
+            </label>
+          </>
+        )}
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-bold text-neutral-800">Hạn sử dụng</span>
+          <input value={formData.shelfLife} onChange={(event) => update("shelfLife", event.target.value)} className={fieldClass} />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-sm font-bold text-neutral-800">Điều kiện bảo quản</span>
+          <input value={formData.storage} onChange={(event) => update("storage", event.target.value)} className={fieldClass} />
+        </label>
+      </div>
+    </div>
+  );
 }
 
 function ProcurementSheet() {

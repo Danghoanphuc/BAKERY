@@ -19,6 +19,8 @@
     "test:visual:update": "playwright test --update-snapshots",
     "seed": "tsx scripts/seed-firebase-db.ts",
     "migrate:category-ids": "tsx scripts/migrate-legacy-category-ids.ts",
+    "audit:identifiers": "tsx scripts/audit-product-identifiers.ts",
+    "migrate:inventory-ingredients": "tsx scripts/backfill-finance-ingredients-to-products.ts",
     "migrate:growth-studio:v2": "tsx scripts/migrate-growth-studio-v2.ts",
     "rollback:growth-studio:v2": "tsx scripts/rollback-growth-studio-v2.ts"
   },

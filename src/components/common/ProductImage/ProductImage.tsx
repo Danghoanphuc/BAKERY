@@ -12,8 +12,9 @@ type ProductImageProps = {
 };
 
 export function ProductImage({ src, alt, className, loading = "lazy" }: ProductImageProps) {
-  const [hasError, setHasError] = useState(false);
-  const canShowImage = Boolean(src?.trim()) && !hasError;
+  const normalizedSrc = src?.trim() ?? "";
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const canShowImage = Boolean(normalizedSrc) && failedSrc !== normalizedSrc;
 
   if (!canShowImage) {
     return (
@@ -30,11 +31,11 @@ export function ProductImage({ src, alt, className, loading = "lazy" }: ProductI
 
   return (
     <img
-      src={src}
+      src={normalizedSrc}
       alt={alt}
       loading={loading}
       referrerPolicy="no-referrer"
-      onError={() => setHasError(true)}
+      onError={() => setFailedSrc(normalizedSrc)}
       className={clsx("h-full w-full object-cover", className)}
     />
   );

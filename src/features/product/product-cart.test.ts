@@ -134,4 +134,30 @@ describe("product cart helpers", () => {
       ),
     ).toBe(false);
   });
+
+  it("snapshots the exact combination identity in the cart item", () => {
+    const matrixProduct: Product = {
+      ...product,
+      variantCombinations: [{
+        id: "small-vanilla",
+        sizeOptionId: "small",
+        flavorOptionId: "vanilla",
+        sku: "TP-CAKE-A2K8-SMALL-VANILLA",
+        barcode: "2001234567893",
+        priceAdjustment: 12_000,
+        stock: 2,
+      }],
+    };
+
+    const item = buildProductCartItem(matrixProduct, {
+      quantity: 1,
+      selectedSize: "small",
+      selectedFlavor: "vanilla",
+    });
+
+    expect(item.selectedVariantId).toBe("small-vanilla");
+    expect(item.selectedVariantSku).toBe("TP-CAKE-A2K8-SMALL-VANILLA");
+    expect(item.selectedVariantBarcode).toBe("2001234567893");
+    expect(item.price).toBe(product.price + 12_000);
+  });
 });

@@ -72,7 +72,9 @@ export interface ProductFeedMetrics {
 
 export type ProductItemType = "finished_good" | "ingredient" | "semi_finished";
 export type ProductLifecycleStatus = "active" | "inactive" | "draft";
+export type InventoryBaseUnit = "gram" | "millilitre" | "each";
 export type ProductWorkspaceCardId =
+  | "profile"
   | "sales"
   | "production"
   | "finance"
@@ -111,6 +113,18 @@ export interface Product {
   manufacturingLeadMinutes?: number;
   manufacturingOutputQuantity?: number;
   manufacturingOutputUnit?: string;
+  /** Ingredient-only procurement taxonomy and purchasing data. */
+  ingredientGroup?: string;
+  /** Stable two-level ingredient taxonomy references. */
+  ingredientGroupId?: string;
+  ingredientSubgroupId?: string;
+  /** Canonical inventory unit for ingredients and semi-finished outputs. */
+  baseUnit?: InventoryBaseUnit;
+  purchaseUnit?: string;
+  purchasePackQuantity?: number;
+  referencePurchasePrice?: number;
+  minimumStock?: number;
+  preferredSupplier?: string;
   price: number; // Base price in VND
   imageUrl: string;
   categoryId?: string;

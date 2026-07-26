@@ -21,6 +21,7 @@ import {
   Trash2,
 } from "lucide-react";
 
+import { FormattedNumberInput } from "@/components/common/FormattedNumberInput";
 import { AddressModal } from "@/components/layout/Header/AddressModal";
 import { useOrderConfigStore } from "@/store/orderConfigStore";
 import type {
@@ -571,7 +572,7 @@ export default function AccountPage() {
               <div className="grid grid-cols-2 gap-2">
                 <label className="block">
                   <span className="text-[12px] font-black text-[#7b4b34]">Số người thường dùng</span>
-                  <input type="number" min={1} max={100} value={form.typicalPartySize} onChange={(event) => setForm({ ...form, typicalPartySize: Number(event.target.value) || 1 })} className="mt-1 h-11 w-full rounded-[12px] border border-[#edd8ca] bg-[#fffaf6] px-3 text-[14px] font-semibold" />
+                  <FormattedNumberInput min={1} max={100} value={form.typicalPartySize} onValueChange={(value) => setForm({ ...form, typicalPartySize: value ?? 0 })} className="mt-1 h-11 w-full rounded-[12px] border border-[#edd8ca] bg-[#fffaf6] px-3 text-[14px] font-semibold" />
                 </label>
                 <label className="block">
                   <span className="text-[12px] font-black text-[#7b4b34]">Khoảng giá</span>

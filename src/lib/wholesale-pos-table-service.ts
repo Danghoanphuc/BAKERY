@@ -80,6 +80,7 @@ export function normalizeTableCartItems(items: CartItem[]) {
         item.candles,
         item.selectedSizeSku,
         item.selectedFlavorSku,
+        item.selectedVariantSku,
       );
     return stripUndefined({
       cartItemId,
@@ -94,6 +95,9 @@ export function normalizeTableCartItems(items: CartItem[]) {
       selectedFlavor: item.selectedFlavor,
       selectedFlavorLabel: item.selectedFlavorLabel,
       selectedFlavorSku: item.selectedFlavorSku,
+      selectedVariantId: item.selectedVariantId,
+      selectedVariantSku: item.selectedVariantSku,
+      selectedVariantBarcode: item.selectedVariantBarcode,
       customMessage: item.customMessage,
       candles: item.candles,
     }) as CartItem;

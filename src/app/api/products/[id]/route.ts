@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAllProducts, getProductByIdAdmin, updateProduct, deleteProduct } from "@/lib/db";
+import { getAdminRecord } from "@/lib/admin-record-store";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import { ensureProductIdentifiers, getIdentifierValidationError } from "@/lib/product-identifiers";
 import {
@@ -18,7 +19,7 @@ export async function GET(
 ) {
   try {
     const { id } = await context.params;
-    const product = await getProductByIdAdmin(id);
+    const product = await getAdminRecord("products", id);
     if (!product) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }

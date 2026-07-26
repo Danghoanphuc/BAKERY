@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAllProducts, createProduct, deleteProduct } from "@/lib/db";
+import { listAdminRecords } from "@/lib/admin-record-store";
 import { requireAdmin } from "@/lib/auth/require-admin";
 import {
   createNextProductSku,
@@ -18,7 +19,7 @@ import { getIngredientGroupSelectionError } from "@/lib/ingredient-groups";
 
 export async function GET() {
   try {
-    const products = await getAllProducts();
+    const products = await listAdminRecords("products");
     return NextResponse.json(products);
   } catch (error) {
     console.error("Error fetching products:", error);

@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth/require-admin";
-import { getAllProducts } from "@/lib/wholesale-db";
+import { listWholesaleRecords } from "@/lib/wholesale-admin-store";
 import { buildProductCostSummaries } from "@/features/wholesale-finance";
+import type { Product } from "@/types";
 
 export async function GET(request: Request) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
 
   try {
-    const products = await getAllProducts();
+    const products = await listWholesaleRecords("products") as unknown as Product[];
     const byProductId = await buildProductCostSummaries(products);
     const values = Object.values(byProductId);
     return NextResponse.json({

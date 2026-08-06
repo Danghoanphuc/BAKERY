@@ -12,15 +12,19 @@ export async function GET(request: Request) {
     const products = await listWholesaleRecords("products") as unknown as Product[];
     const byProductId = await buildProductCostSummaries(products);
     const values = Object.values(byProductId);
-    return NextResponse.json({
-      byProductId,
-      coverage: {
-        total: products.length,
-        recipe: values.filter((item) => item.source === "recipe").length,
-        legacy: values.filter((item) => item.source === "legacy").length,
-        missing: values.filter((item) => item.source === "missing").length,
+    return NextResponse.json(
+      {
+        schemaVersion: 2,
+        byProductId,
+        coverage: {
+          total: products.length,
+          recipe: values.filter((item) => item.source === "recipe").length,
+          legacy: values.filter((item) => item.source === "legacy").length,
+          missing: values.filter((item) => item.source === "missing").length,
+        },
       },
-    });
+      { headers: { "Cache-Control": "private, no-store, max-age=0" } },
+    );
   } catch (error) {
     console.error("Failed to build costing summary:", error);
     return NextResponse.json(

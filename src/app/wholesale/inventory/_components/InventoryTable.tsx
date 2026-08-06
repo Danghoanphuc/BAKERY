@@ -4,18 +4,24 @@ import { ProductShareButton } from "@/features/product/components/ProductShareBu
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import type { ProductCostSummary } from "@/features/wholesale-finance";
 import { isProductListed } from "@/lib/product-availability";
-import type { Category, Product } from "@/types";
+import type { Category, Product, WholesaleProduct } from "@/types";
 import type { ProductFilter } from "../_lib/product-form";
 import {
   formatPrice,
   getStockStatus,
   resolveInventoryCategoryName,
 } from "../_lib/inventory-utils";
+import type {
+  InventoryLedgerByItemId,
+  InventoryLedgerSummary,
+} from "../_lib/inventory-utils";
 
 type InventoryTableProps = {
   products: Product[];
   categories: Category[];
   costingByProductId?: Record<string, ProductCostSummary>;
+  wholesaleOffersByProductId?: Record<string, WholesaleProduct[]>;
+  ledgerByProductId?: InventoryLedgerByItemId;
   isLoading: boolean;
   searchTerm: string;
   filter: ProductFilter;
@@ -31,6 +37,8 @@ export function InventoryTable({
   products,
   categories,
   costingByProductId = {},
+  wholesaleOffersByProductId = {},
+  ledgerByProductId = {},
   isLoading,
   searchTerm,
   filter,
@@ -98,6 +106,8 @@ export function InventoryTable({
                     "Chưa phân loại"
                   }
                   costing={costingByProductId[product.id]}
+                  wholesaleOffers={wholesaleOffersByProductId[product.id]}
+                  ledger={ledgerByProductId[product.id]}
                   onEdit={onEdit}
                   onDelete={onDelete}
                   onToggleAvailability={onToggleAvailability}
@@ -116,6 +126,8 @@ function InventoryTableRow({
   product,
   categoryName,
   costing,
+  wholesaleOffers,
+  ledger,
   onEdit,
   onDelete,
   onToggleAvailability,
@@ -124,6 +136,8 @@ function InventoryTableRow({
   product: Product;
   categoryName: string;
   costing?: ProductCostSummary;
+  wholesaleOffers?: WholesaleProduct[];
+  ledger?: InventoryLedgerSummary;
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
   onToggleAvailability: (product: Product) => void;
@@ -134,6 +148,13 @@ function InventoryTableRow({
   const costSource = costing?.source ?? "missing";
   const type = product.itemType ?? "finished_good";
   const isFinishedGood = type === "finished_good";
+  const wholesaleOffer =
+    wholesaleOffers?.find((offer) => offer.isAvailable) ??
+    wholesaleOffers?.[0];
+  const formattedUnitCost =
+    typeof costing?.totalCost === "number"
+      ? formatUnitCost(costing.totalCost, product)
+      : null;
 
   return (
     <tr onClick={() => onEdit(product)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onEdit(product); } }} tabIndex={0} className="cursor-pointer transition hover:bg-brand-50/40 focus:bg-brand-50/40 focus:outline-none">
@@ -178,20 +199,32 @@ function InventoryTableRow({
           {type === "ingredient"
             ? formatPrice(product.referencePurchasePrice ?? 0)
             : isFinishedGood
-              ? formatPrice(product.price)
-              : typeof costing?.totalCost === "number"
-                ? formatPrice(costing.totalCost)
+              ? formatPrice(wholesaleOffer?.wholesalePrice ?? product.price)
+              : formattedUnitCost
+                ? formattedUnitCost
                 : "Chưa tính"}
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           {type === "ingredient" ? (
             <span className="text-xs text-neutral-500">Giá mua tham chiếu</span>
           ) : (
-            <CostSourceBadge source={costSource} />
+            <>
+              {isFinishedGood && wholesaleOffer && (
+                <span className="text-xs text-neutral-500">
+                  Giá sỉ
+                  {wholesaleOffer.sellUnitLabel
+                    ? ` / ${wholesaleOffer.sellUnitLabel}`
+                    : ""}
+                </span>
+              )}
+              <CostSourceBadge source={costSource} />
+            </>
           )}
-          {typeof costing?.totalCost === "number" && costing.totalCost > 0 && (
+          {isFinishedGood &&
+            typeof costing?.totalCost === "number" &&
+            costing.totalCost > 0 && (
             <span className="text-xs text-neutral-500">
-              cost {formatPrice(costing.totalCost)}
+              cost {formattedUnitCost}
             </span>
           )}
         </div>
@@ -208,6 +241,11 @@ function InventoryTableRow({
         >
           <StockIcon className="h-3.5 w-3.5" />
           {stockStatus.label}
+        </div>
+        <div className="mt-1 text-[11px] font-medium text-neutral-500">
+          {ledger
+            ? `Sổ kho · ${formatPrice(ledger.inventoryValue)} giá vốn`
+            : "Dữ liệu cũ · chưa có sổ kho"}
         </div>
       </td>
       <td className="px-4 py-3">
@@ -266,6 +304,16 @@ function InventoryTableRow({
       </td>
     </tr>
   );
+}
+
+function formatUnitCost(cost: number, product: Product) {
+  const unit =
+    product.baseUnit === "gram"
+      ? "g"
+      : product.baseUnit === "millilitre"
+        ? "ml"
+        : "cái";
+  return `${formatPrice(cost)} / ${unit}`;
 }
 
 function ItemTypeBadge({

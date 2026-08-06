@@ -16,8 +16,8 @@ const items = [
 export function FinanceNav() {
   const pathname = usePathname();
   return (
-    <nav className="overflow-x-auto rounded-2xl border border-neutral-200 bg-white p-2 shadow-sm">
-      <div className="flex min-w-max gap-1">
+    <nav aria-label="Điều hướng tài chính" className="overflow-x-auto border-b border-sand [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex min-w-max gap-5">
         {items.map((item) => {
           const active = item.href === "/wholesale/finance"
             ? pathname === item.href
@@ -27,19 +27,18 @@ export function FinanceNav() {
             <Link
               key={item.href}
               href={item.href}
+              aria-current={active ? "page" : undefined}
               className={clsx(
-                "flex min-w-[148px] items-center gap-3 rounded-xl px-3 py-2.5 transition",
+                "group flex min-h-12 items-center gap-2 whitespace-nowrap border-b-2 px-1 py-2 transition-colors duration-200 ease-[var(--ease-out)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 active:text-brand-700",
                 active
-                  ? "bg-neutral-950 text-white shadow-md"
-                  : "text-neutral-600 hover:bg-neutral-50 hover:text-neutral-950",
+                  ? "border-brand-600 text-neutral-950"
+                  : "border-transparent text-neutral-500 hover:border-sand hover:text-neutral-950",
               )}
             >
-              <span className={clsx("grid h-9 w-9 place-items-center rounded-lg", active ? "bg-white/15" : "bg-brand-50 text-brand-700")}>
-                <Icon className="h-4 w-4" />
-              </span>
+              <Icon className={clsx("h-4 w-4 shrink-0", active ? "text-brand-700" : "text-neutral-400")} />
               <span>
                 <span className="block text-sm font-bold">{item.label}</span>
-                <span className={clsx("block text-[11px]", active ? "text-white/60" : "text-neutral-400")}>{item.description}</span>
+                <span className="hidden text-[11px] text-neutral-400 sm:block">{item.description}</span>
               </span>
             </Link>
           );
@@ -48,4 +47,3 @@ export function FinanceNav() {
     </nav>
   );
 }
-

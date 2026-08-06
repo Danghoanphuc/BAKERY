@@ -22,8 +22,13 @@ import type {
   FinanceIngredient,
   InventoryBaseUnit,
   Product,
+  RecipeDirectLaborCostLine,
+  RecipePackagingCostLine,
   RecipeVersion,
+  RecipeWasteCalculation,
 } from "@/types";
+import { calculateRecipeDraftStandardUnitCost } from "@/features/wholesale-finance/domain/standard-costing";
+import { RecipeSupplementalCostEditor } from "@/app/wholesale/finance/costing/_components/RecipeSupplementalCostEditor";
 import { CreateItemShell } from "./CreateItemShell";
 import { Field, NumberInput, inputClass } from "./IngredientCreateForm";
 
@@ -73,6 +78,9 @@ export function SemiFinishedCreateForm({
   const [bomLines, setBomLines] = useState<BomLine[]>([
     { ingredientId: "", quantity: 0 },
   ]);
+  const [packagingCostLines, setPackagingCostLines] = useState<RecipePackagingCostLine[]>([]);
+  const [directLaborCostLines, setDirectLaborCostLines] = useState<RecipeDirectLaborCostLine[]>([]);
+  const [wasteCalculation, setWasteCalculation] = useState<RecipeWasteCalculation>();
   const [isLoadingIngredients, setIsLoadingIngredients] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -92,28 +100,21 @@ export function SemiFinishedCreateForm({
   const validBomLines = bomLines.filter(
     (line) => line.ingredientId && line.quantity > 0,
   );
-  const ingredientBatchCost = validBomLines.reduce((total, line) => {
-    const ingredient = ingredients.find(
-      (item) => item.id === line.ingredientId,
-    );
-    return (
-      total +
-      (ingredient
-        ? (line.quantity * ingredient.costPerBaseUnitMicros) / 1_000_000
-        : 0)
-    );
-  }, 0);
-  const directBatchCost =
-    ingredientBatchCost +
-    data.packagingCostPerBatch +
-    data.directLaborCostPerBatch +
-    data.overheadCostPerBatch;
-  const estimatedBatchCost =
-    directBatchCost * (1 + Math.max(0, data.wastePercent) / 100);
-  const estimatedUnitCost =
-    data.manufacturingOutputQuantity > 0
-      ? estimatedBatchCost / data.manufacturingOutputQuantity
-      : 0;
+  const estimatedCost = useMemo(() => {
+    try {
+      return calculateRecipeDraftStandardUnitCost({
+        yieldQuantity: data.manufacturingOutputQuantity,
+        ingredients: validBomLines,
+        packagingCostPerBatch: data.packagingCostPerBatch,
+        directLaborCostPerBatch: data.directLaborCostPerBatch,
+        overheadCostPerBatch: data.overheadCostPerBatch,
+        wasteBasisPoints: Math.round(data.wastePercent * 100),
+      }, ingredients);
+    } catch {
+      return null;
+    }
+  }, [data, ingredients, validBomLines]);
+  const estimatedUnitCost = estimatedCost?.totalCost ?? 0;
 
   useEffect(() => {
     let cancelled = false;
@@ -228,6 +229,19 @@ export function SemiFinishedCreateForm({
           shelfLife: data.shelfLife,
           storage: data.storage,
           productionSteps: [],
+          ...(isWholesale ? {
+            bom: {
+              yieldQuantity: data.manufacturingOutputQuantity,
+              ingredients: validBomLines,
+              packagingCostPerBatch: data.packagingCostPerBatch,
+              directLaborCostPerBatch: data.directLaborCostPerBatch,
+              overheadCostPerBatch: data.overheadCostPerBatch,
+              wasteBasisPoints: Math.round(data.wastePercent * 100),
+              ...(packagingCostLines.length > 0 ? { packagingCostLines } : {}),
+              ...(directLaborCostLines.length > 0 ? { directLaborCostLines } : {}),
+              ...(wasteCalculation ? { wasteCalculation } : {}),
+            },
+          } : {}),
         }),
       });
       const productPayload = (await productResponse
@@ -244,6 +258,12 @@ export function SemiFinishedCreateForm({
       }
       createdProduct = productPayload as Product;
 
+      if (isWholesale) {
+        router.push(`${inventoryPath}/${createdProduct.id}`);
+        router.refresh();
+        return;
+      }
+
       const recipeResponse = await fetch(`${financePath}/recipes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -256,6 +276,9 @@ export function SemiFinishedCreateForm({
           directLaborCostPerBatch: data.directLaborCostPerBatch,
           overheadCostPerBatch: data.overheadCostPerBatch,
           wasteBasisPoints: Math.round(data.wastePercent * 100),
+          ...(packagingCostLines.length > 0 ? { packagingCostLines } : {}),
+          ...(directLaborCostLines.length > 0 ? { directLaborCostLines } : {}),
+          ...(wasteCalculation ? { wasteCalculation } : {}),
         }),
       });
       const recipePayload = (await recipeResponse
@@ -552,41 +575,20 @@ export function SemiFinishedCreateForm({
                 Chi phí nguyên liệu được hệ thống tự tính từ định lượng BOM và
                 giá mua hiện hành.
               </p>
-              <div className="mt-4 grid min-w-0 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-                <Field label="Bao bì">
-                  <NumberInput
-                    value={data.packagingCostPerBatch}
-                    onChange={(value) =>
-                      update("packagingCostPerBatch", value)
-                    }
-                    suffix="đ"
-                  />
-                </Field>
-                <Field label="Nhân công">
-                  <NumberInput
-                    value={data.directLaborCostPerBatch}
-                    onChange={(value) =>
-                      update("directLaborCostPerBatch", value)
-                    }
-                    suffix="đ"
-                  />
-                </Field>
-                <Field label="Chi phí chung">
-                  <NumberInput
-                    value={data.overheadCostPerBatch}
-                    onChange={(value) =>
-                      update("overheadCostPerBatch", value)
-                    }
-                    suffix="đ"
-                  />
-                </Field>
-                <Field label="Hao hụt">
-                  <NumberInput
-                    value={data.wastePercent}
-                    onChange={(value) => update("wastePercent", value)}
-                    suffix="%"
-                  />
-                </Field>
+              <div className="mt-4">
+                <RecipeSupplementalCostEditor
+                  values={data}
+                  onChange={(patch) => setData((current) => ({ ...current, ...patch }))}
+                  packagingCostLines={packagingCostLines}
+                  onPackagingCostLinesChange={setPackagingCostLines}
+                  directLaborCostLines={directLaborCostLines}
+                  onDirectLaborCostLinesChange={setDirectLaborCostLines}
+                  wasteCalculation={wasteCalculation}
+                  onWasteCalculationChange={setWasteCalculation}
+                  batchCycleMinutes={data.manufacturingLeadMinutes}
+                  yieldQuantity={data.manufacturingOutputQuantity}
+                  enableOverheadCalculator={isWholesale}
+                />
               </div>
             </div>
           </FormSection>
@@ -644,7 +646,7 @@ export function SemiFinishedCreateForm({
                 icon={<Wheat className="h-4 w-4" />}
                 label="Giá vốn dự kiến"
                 value={
-                  estimatedBatchCost > 0
+                  estimatedUnitCost > 0
                     ? `${formatCurrency(estimatedUnitCost)} / ${outputUnit}`
                     : "Chưa có dữ liệu chi phí"
                 }

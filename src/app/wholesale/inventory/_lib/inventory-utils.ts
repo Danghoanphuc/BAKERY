@@ -1,5 +1,6 @@
 import { AlertTriangle, PackageCheck, PackageX } from "lucide-react";
-import type { Category, Product } from "@/types";
+import type { Category, InventoryBalance, Product } from "@/types";
+import type { ProductCostSummary } from "@/features/wholesale-finance";
 import { getProductIdentifierValues } from "@/lib/product-identifiers";
 import {
   getProductStockQty,
@@ -55,17 +56,72 @@ export function resolveInventoryCategoryName(
 }
 
 export function getInventoryStats(products: Product[]) {
+  return getInventoryStatsFromLedger(products, {}, {});
+}
+
+export type InventoryLedgerSummary = {
+  quantity: number;
+  inventoryValue: number;
+  locationCount: number;
+};
+
+export type InventoryLedgerByItemId = Record<string, InventoryLedgerSummary>;
+
+export function summarizeInventoryBalances(
+  balances: Array<InventoryBalance & { id?: string }>,
+): InventoryLedgerByItemId {
+  return balances.reduce<InventoryLedgerByItemId>((summaries, balance) => {
+    const current = summaries[balance.itemId] ?? {
+      quantity: 0,
+      inventoryValue: 0,
+      locationCount: 0,
+    };
+    summaries[balance.itemId] = {
+      quantity: current.quantity + Number(balance.quantity || 0),
+      inventoryValue:
+        current.inventoryValue + Number(balance.inventoryValue || 0),
+      locationCount: current.locationCount + 1,
+    };
+    return summaries;
+  }, {});
+}
+
+export function applyInventoryLedger(
+  products: Product[],
+  ledgerByItemId: InventoryLedgerByItemId,
+) {
+  return products.map((product) => {
+    const ledger = ledgerByItemId[product.id];
+    return ledger ? { ...product, stock: ledger.quantity } : product;
+  });
+}
+
+export function getInventoryStatsFromLedger(
+  products: Product[],
+  ledgerByItemId: InventoryLedgerByItemId,
+  costingByProductId: Record<string, ProductCostSummary>,
+) {
+  const ledgerItems = products.filter((product) => ledgerByItemId[product.id])
+    .length;
   return {
     selling: products.filter(isProductListed).length,
     lowStock: products.filter((product) => {
       const stock = getProductStockQty(product);
       return stock > 0 && stock < 10;
     }).length,
-    inventoryValue: products.reduce(
-      (total, product) =>
-        total + (product.price || 0) * getProductStockQty(product),
-      0,
-    ),
+    inventoryValue: products.reduce((total, product) => {
+      const ledger = ledgerByItemId[product.id];
+      if (ledger) return total + ledger.inventoryValue;
+
+      const quantity = getProductStockQty(product);
+      const unitCost = (product.itemType ?? "finished_good") === "ingredient"
+        ? Number(product.referencePurchasePrice || 0) /
+          Math.max(1, Number(product.purchasePackQuantity || 1))
+        : Number(costingByProductId[product.id]?.totalCost || 0);
+      return total + quantity * unitCost;
+    }, 0),
+    ledgerItems,
+    legacyItems: products.length - ledgerItems,
   };
 }
 

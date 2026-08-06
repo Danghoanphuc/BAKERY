@@ -1,7 +1,7 @@
 "use client";
 
-import { ProductEditor } from "../../_components/ProductEditor";
+import { WholesaleFinishedProductComposer } from "../../_components/WholesaleFinishedProductComposer";
 
 export default function NewFinishedProductPage() {
-  return <ProductEditor mode="create" />;
+  return <WholesaleFinishedProductComposer />;
 }

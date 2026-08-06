@@ -1,13 +1,13 @@
 "use client";
 
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Factory, Loader2, PackageCheck, ShoppingCart, SlidersHorizontal, Warehouse } from "lucide-react";
+import { AlertTriangle, Factory, Loader2, PackageCheck, Plus, ShoppingCart, SlidersHorizontal, Trash2, Warehouse } from "lucide-react";
 import { toast } from "sonner";
 import { FormattedNumberInput } from "@/components/common/FormattedNumberInput";
-import type { FinanceIngredient, IngredientPurchaseUnit, InventoryBalance, Product, RecipeVersion, WasteReason } from "@/types";
+import type { FinanceIngredient, IngredientPurchaseUnit, InventoryBalance, InventoryMovement, Product, RecipeVersion, WasteReason } from "@/types";
 
 type Mode = "purchase" | "production" | "waste" | "adjustment";
-type PurchaseLine = { ingredientId: string; purchaseQuantity: number; purchaseUnit: IngredientPurchaseUnit; lineAmount: number };
+type PurchaseLine = { ingredientId: string; purchasePackCount: number; lineAmount: number };
 type BatchRow = { id: string; productId: string; actualGoodQuantity: number; damagedQuantity: number; totalActualCost: number; occurredAt: unknown };
 
 export default function OperationsPage() {
@@ -17,9 +17,15 @@ export default function OperationsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [balances, setBalances] = useState<Array<InventoryBalance & { id: string }>>([]);
   const [batches, setBatches] = useState<BatchRow[]>([]);
+  const [movements, setMovements] = useState<InventoryMovement[]>([]);
+  const [requestedReferenceId] = useState(() =>
+    typeof window === "undefined"
+      ? ""
+      : new URLSearchParams(window.location.search).get("referenceId")?.trim() ?? "",
+  );
   const [saving, setSaving] = useState(false);
   const [purchase, setPurchase] = useState({ supplierId: "", documentNumber: "", occurredAt: today() });
-  const [purchaseLines, setPurchaseLines] = useState<PurchaseLine[]>([{ ingredientId: "", purchaseQuantity: 0, purchaseUnit: "kilogram", lineAmount: 0 }]);
+  const [purchaseLines, setPurchaseLines] = useState<PurchaseLine[]>([emptyPurchaseLine()]);
   const [purchaseKey, setPurchaseKey] = useState(() => `purchase:${crypto.randomUUID()}`);
   const [batchKey, setBatchKey] = useState(() => `batch:${crypto.randomUUID()}`);
   const [wasteKey, setWasteKey] = useState(() => `waste:${crypto.randomUUID()}`);
@@ -30,19 +36,21 @@ export default function OperationsPage() {
   const [adjustment, setAdjustment] = useState({ itemType: "ingredient" as "product" | "ingredient", itemId: "", direction: "in" as "in" | "out", quantity: 1, inventoryValue: 0, reason: "", occurredAt: today() });
 
   const load = useCallback(async () => {
-    const [ingredientRes, recipeRes, productRes, balanceRes, batchRes] = await Promise.all([
+    const [ingredientRes, recipeRes, productRes, balanceRes, batchRes, movementRes] = await Promise.all([
       fetch("/api/wholesale/finance/ingredients", { cache: "no-store" }),
       fetch("/api/wholesale/finance/recipes", { cache: "no-store" }),
       fetch("/api/wholesale/products", { cache: "no-store" }),
       fetch("/api/wholesale/finance/inventory/balances", { cache: "no-store" }),
       fetch("/api/wholesale/finance/production-batches", { cache: "no-store" }),
+      fetch(`/api/wholesale/finance/inventory/movements${requestedReferenceId ? `?referenceId=${encodeURIComponent(requestedReferenceId)}` : ""}`, { cache: "no-store" }),
     ]);
     setIngredients(ingredientRes.ok ? await ingredientRes.json() : []);
     setRecipes(recipeRes.ok ? await recipeRes.json() : []);
     setProducts(productRes.ok ? await productRes.json() : []);
     setBalances(balanceRes.ok ? await balanceRes.json() : []);
     setBatches(batchRes.ok ? await batchRes.json() : []);
-  }, []);
+    setMovements(movementRes.ok ? await movementRes.json() : []);
+  }, [requestedReferenceId]);
 
   useEffect(() => {
     // Initial remote data synchronization is intentionally effect-driven.
@@ -67,22 +75,33 @@ export default function OperationsPage() {
       directLaborCost: recipe?.directLaborCostPerBatch ?? 0,
       overheadCost: recipe?.overheadCostPerBatch ?? 0,
     }));
-    setUsages(recipe?.ingredients.map((line) => ({ ingredientId: line.ingredientId, actualQuantity: line.quantity })) ?? []);
+    setUsages(recipe?.ingredients.map((line) => ({
+      ingredientId: line.ingredientId,
+      actualQuantity: line.quantity,
+    })) ?? []);
   }
 
   async function submitPurchase(event: FormEvent) {
-    event.preventDefault(); setSaving(true);
-    const response = await post("/api/wholesale/finance/purchases", {
-      idempotencyKey: purchaseKey, ...purchase,
-      locationId: "main", lines: purchaseLines, occurredAt: new Date(purchase.occurredAt),
-    });
-    await notifyResponse(response, "Đã nhập kho nguyên liệu và cập nhật giá trị tồn.");
-    if (response.ok) {
-      setPurchaseLines([{ ingredientId: "", purchaseQuantity: 0, purchaseUnit: "kilogram", lineAmount: 0 }]);
-      setPurchaseKey(`purchase:${crypto.randomUUID()}`);
-      await load();
+    event.preventDefault();
+    setSaving(true);
+    try {
+      const response = await post("/api/wholesale/finance/purchases", {
+        idempotencyKey: purchaseKey, ...purchase,
+        locationId: "main",
+        lines: purchaseLines.map((line) => purchasePayload(line, ingredients, products)),
+        occurredAt: new Date(purchase.occurredAt),
+      });
+      await notifyResponse(response, "Đã nhập kho nguyên liệu và cập nhật giá trị tồn.");
+      if (response.ok) {
+        setPurchaseLines([emptyPurchaseLine()]);
+        setPurchaseKey(`purchase:${crypto.randomUUID()}`);
+        await load();
+      }
+    } catch {
+      toast.error("Không thể kết nối để nhập kho. Vui lòng thử lại.");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   }
 
   async function submitBatch(event: FormEvent) {
@@ -92,7 +111,13 @@ export default function OperationsPage() {
       ...batch,
       productId: selectedRecipe?.productId,
       locationId: "main",
-      ingredientUsages: usages,
+      ingredientUsages: usages.map((usage) => ({
+        ...usage,
+        componentType:
+          selectedRecipe?.ingredients.find(
+            (line) => line.ingredientId === usage.ingredientId,
+          )?.componentType ?? "ingredient",
+      })),
       occurredAt: new Date(batch.occurredAt),
     });
     await notifyResponse(response, "Đã hoàn tất mẻ, xuất nguyên liệu và nhập thành phẩm.");
@@ -134,31 +159,207 @@ export default function OperationsPage() {
         <Stat label="Tồn thành phẩm" value={`${balances.filter((item) => item.itemType === "product").reduce((sum, item) => sum + item.quantity, 0)} SP`} detail={formatMoney(balances.filter((item) => item.itemType === "product").reduce((sum, item) => sum + item.inventoryValue, 0))} icon={<PackageCheck />} />
         <Stat label="Mẻ đã hoàn tất" value={`${batches.length} mẻ`} detail={`Gần nhất ${batches[0] ? displayDate(batches[0].occurredAt) : "—"}`} icon={<Factory />} />
       </div>
-      <div className="grid gap-5 xl:grid-cols-[420px_1fr]">
-        <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex rounded-xl bg-neutral-100 p-1">
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[420px_minmax(0,1fr)]">
+        <section className="min-w-0 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+          <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl bg-neutral-100 p-1 sm:flex">
             {([[
               "purchase", "Nhập mua", ShoppingCart,
             ], ["production", "Sản xuất", Factory], ["waste", "Hao hụt", AlertTriangle], ["adjustment", "Điều chỉnh", SlidersHorizontal]] as Array<[Mode, string, typeof ShoppingCart]>).map(([value, label, Icon]) => (
               <button key={value} onClick={() => setMode(value)} className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-black ${mode === value ? "bg-white text-neutral-950 shadow-sm" : "text-neutral-500"}`}><Icon className="h-3.5 w-3.5" />{label}</button>
             ))}
           </div>
-          {mode === "purchase" && <PurchaseForm data={purchase} setData={setPurchase} lines={purchaseLines} setLines={setPurchaseLines} ingredients={ingredients.filter((item) => item.isActive)} saving={saving} onSubmit={submitPurchase} />}
+          {mode === "purchase" && <PurchaseForm data={purchase} setData={setPurchase} lines={purchaseLines} setLines={setPurchaseLines} ingredients={ingredients.filter((item) => item.isActive)} products={products} saving={saving} onSubmit={submitPurchase} />}
           {mode === "production" && <ProductionForm data={batch} setData={setBatch} recipes={activeRecipes} products={products} ingredients={ingredients} usages={usages} setUsages={setUsages} saving={saving} onSelectRecipe={selectRecipe} onSubmit={submitBatch} />}
           {mode === "waste" && <WasteForm data={waste} setData={setWaste} items={wasteItems} saving={saving} onSubmit={submitWaste} />}
           {mode === "adjustment" && <AdjustmentForm data={adjustment} setData={setAdjustment} ingredients={ingredients} products={products} saving={saving} onSubmit={submitAdjustment} />}
         </section>
-        <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
+        <section className="min-w-0 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
           <div className="mb-4"><h2 className="font-black text-neutral-950">Sổ tồn kho hiện tại</h2><p className="text-xs text-neutral-500">Số lượng và giá trị tồn theo bình quân gia quyền.</p></div>
           <div className="overflow-x-auto"><table className="w-full min-w-[620px] text-left text-sm"><thead><tr className="border-b border-neutral-200 text-xs uppercase tracking-wide text-neutral-400"><th className="py-2">Loại</th><th>Mặt hàng</th><th className="text-right">Số lượng</th><th className="text-right">Giá trị tồn</th><th className="text-right">Bình quân</th></tr></thead><tbody>{balances.map((row) => <tr key={row.id} className="border-b border-neutral-100"><td className="py-3"><span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${row.itemType === "ingredient" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700"}`}>{row.itemType === "ingredient" ? "Nguyên liệu" : "Thành phẩm"}</span></td><td className="font-bold text-neutral-800">{nameOf(row.itemType, row.itemId, ingredients, products)}</td><td className="text-right font-semibold">{row.quantity}</td><td className="text-right font-semibold">{formatMoney(row.inventoryValue)}</td><td className="text-right text-neutral-500">{formatMoney(row.quantity > 0 ? Math.round(row.inventoryValue / row.quantity) : 0)}</td></tr>)}</tbody></table>{balances.length === 0 && <div className="py-16 text-center text-sm text-neutral-400">Chưa có biến động kho. Bắt đầu bằng một phiếu nhập mua.</div>}</div>
         </section>
       </div>
+      <section id="inventory-transactions" className="scroll-mt-5 rounded-2xl border border-neutral-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="font-black text-neutral-950">
+              {requestedReferenceId ? "Giao dịch của mẻ vừa hoàn tất" : "Giao dịch tồn kho gần đây"}
+            </h2>
+            <p className="mt-1 text-xs text-neutral-500">
+              {requestedReferenceId
+                ? `Mã tham chiếu ${requestedReferenceId}`
+                : "Các giao dịch xuất–nhập được ghi từ nghiệp vụ vận hành."}
+            </p>
+          </div>
+          {requestedReferenceId && (
+            <a href="/wholesale/finance/operations#inventory-transactions" className="text-xs font-bold text-neutral-600 hover:text-neutral-950">
+              Xem tất cả giao dịch
+            </a>
+          )}
+        </div>
+        {movements.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[620px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-neutral-200 text-xs uppercase tracking-wide text-neutral-400">
+                  <th className="py-2">Nghiệp vụ</th>
+                  <th>Mặt hàng</th>
+                  <th>Ngày</th>
+                  <th className="text-right">Số lượng</th>
+                  <th className="text-right">Giá trị tồn</th>
+                </tr>
+              </thead>
+              <tbody>
+                {movements.map((movement) => (
+                  <tr key={movement.id} className="border-b border-neutral-100 last:border-0">
+                    <td className="py-3 font-bold text-neutral-700">
+                      {movement.type === "production_issue" ? "Xuất cho sản xuất" : movement.type === "production_output" ? "Nhập từ sản xuất" : movement.type}
+                    </td>
+                    <td className="font-semibold text-neutral-800">
+                      {nameOf(movement.itemType, movement.itemId, ingredients, products)}
+                    </td>
+                    <td className="text-neutral-500">{displayDate(movement.occurredAt)}</td>
+                    <td className={`text-right font-black ${movement.direction === "in" ? "text-emerald-700" : "text-red-700"}`}>
+                      {movement.direction === "in" ? "+" : "−"}{movement.quantity}
+                    </td>
+                    <td className="text-right font-semibold">{formatMoney(movement.inventoryValue)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-dashed border-neutral-200 py-10 text-center text-sm text-neutral-400">
+            {requestedReferenceId ? "Không tìm thấy giao dịch cho mã tham chiếu này." : "Chưa có giao dịch tồn kho."}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
 
-function PurchaseForm({ data, setData, lines, setLines, ingredients, saving, onSubmit }: { data: { supplierId: string; documentNumber: string; occurredAt: string }; setData: React.Dispatch<React.SetStateAction<typeof data>>; lines: PurchaseLine[]; setLines: React.Dispatch<React.SetStateAction<PurchaseLine[]>>; ingredients: FinanceIngredient[]; saving: boolean; onSubmit: (event: FormEvent) => void }) {
-  return <form onSubmit={onSubmit} className="space-y-3"><h2 className="font-black">Nhập mua nguyên liệu</h2><div className="grid grid-cols-2 gap-2"><Input label="Nhà cung cấp" value={data.supplierId} onChange={(supplierId) => setData((v) => ({ ...v, supplierId }))} /><Input label="Số chứng từ" value={data.documentNumber} onChange={(documentNumber) => setData((v) => ({ ...v, documentNumber }))} /></div><Input label="Ngày nhập" type="date" value={data.occurredAt} onChange={(occurredAt) => setData((v) => ({ ...v, occurredAt }))} />{lines.map((line, index) => { const ingredient = ingredients.find((item) => item.id === line.ingredientId); return <div key={index} className="grid grid-cols-[1fr_72px_76px_105px_24px] gap-1.5"><select required value={line.ingredientId} onChange={(event) => setLines((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, ingredientId: event.target.value, purchaseUnit: defaultPurchaseUnit(ingredients.find((item) => item.id === event.target.value)?.baseUnit) } : row))} className="h-10 rounded-lg border border-neutral-200 px-2 text-xs"><option value="">Nguyên liệu</option>{ingredients.map((item) => <option key={item.id} value={item.id}>{item.name} · {unitLabel(item.baseUnit)}</option>)}</select><FormattedNumberInput required min="0.001" step="0.001" placeholder="SL mua" value={line.purchaseQuantity} onValueChange={(value) => setLines((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, purchaseQuantity: value ?? 0 } : row))} className="h-10 rounded-lg border border-neutral-200 px-2 text-xs" /><select value={line.purchaseUnit} onChange={(event) => setLines((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, purchaseUnit: event.target.value as IngredientPurchaseUnit } : row))} className="h-10 rounded-lg border border-neutral-200 px-1 text-xs">{purchaseUnitOptions(ingredient?.baseUnit).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><FormattedNumberInput required min={0} placeholder="Thành tiền" value={line.lineAmount} onValueChange={(value) => setLines((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, lineAmount: value ?? 0 } : row))} className="h-10 rounded-lg border border-neutral-200 px-2 text-xs" /><button type="button" onClick={() => setLines((rows) => rows.filter((_, rowIndex) => rowIndex !== index))}>×</button></div>; })}<button type="button" onClick={() => setLines((rows) => [...rows, { ingredientId: "", purchaseQuantity: 0, purchaseUnit: "kilogram", lineAmount: 0 }])} className="text-xs font-bold text-brand-700">+ Thêm dòng</button><Submit saving={saving} label="Nhập kho" /></form>;
+function PurchaseForm({ data, setData, lines, setLines, ingredients, products, saving, onSubmit }: { data: { supplierId: string; documentNumber: string; occurredAt: string }; setData: React.Dispatch<React.SetStateAction<typeof data>>; lines: PurchaseLine[]; setLines: React.Dispatch<React.SetStateAction<PurchaseLine[]>>; ingredients: FinanceIngredient[]; products: Product[]; saving: boolean; onSubmit: (event: FormEvent) => void }) {
+  const totalAmount = lines.reduce((sum, line) => sum + line.lineAmount, 0);
+  return (
+    <form onSubmit={onSubmit} className="min-w-0 space-y-4">
+      <div>
+        <h2 className="font-black text-neutral-950">Nhập mua nguyên liệu</h2>
+        <p className="mt-1 text-xs leading-5 text-neutral-500">Số lượng mua sẽ được quy đổi về đơn vị tồn kho của từng nguyên liệu.</p>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Input label="Nhà cung cấp" value={data.supplierId} onChange={(supplierId) => setData((v) => ({ ...v, supplierId }))} />
+        <Input label="Số chứng từ" value={data.documentNumber} onChange={(documentNumber) => setData((v) => ({ ...v, documentNumber }))} />
+      </div>
+      <Input label="Ngày nhập" type="date" value={data.occurredAt} onChange={(occurredAt) => setData((v) => ({ ...v, occurredAt }))} />
+      <div className="space-y-3">
+        {lines.map((line, index) => {
+          const spec = purchaseSpec(line.ingredientId, ingredients, products);
+          const normalizedQuantity = line.purchasePackCount * spec.packQuantity;
+          return (
+            <div key={index} className="min-w-0 rounded-xl border border-neutral-200 bg-neutral-50/70 p-3">
+              <div className="flex min-w-0 items-end gap-2">
+                <label className="min-w-0 flex-1">
+                  <span className="mb-1 block text-[11px] font-bold text-neutral-500">Nguyên liệu</span>
+                  <select
+                    required
+                    value={line.ingredientId}
+                    onChange={(event) => {
+                      const nextSpec = purchaseSpec(event.target.value, ingredients, products);
+                      setLines((rows) => rows.map((row, rowIndex) => rowIndex === index ? {
+                        ...row,
+                        ingredientId: event.target.value,
+                        purchasePackCount: 1,
+                        lineAmount: nextSpec.referencePrice,
+                      } : row));
+                    }}
+                    className="h-10 w-full min-w-0 rounded-lg border border-neutral-200 bg-white px-2 text-xs font-semibold text-neutral-800"
+                  >
+                    <option value="">Chọn nguyên liệu</option>
+                    {ingredients.map((item) => <option key={item.id} value={item.id}>{item.name} · {unitLabel(item.baseUnit)}</option>)}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  aria-label={`Xoá dòng nhập ${index + 1}`}
+                  disabled={lines.length === 1}
+                  onClick={() => setLines((rows) => rows.filter((_, rowIndex) => rowIndex !== index))}
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-lg border border-neutral-200 bg-white text-neutral-400 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-35"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+              {line.ingredientId && (
+                <div className="mt-3 rounded-lg border border-amber-100 bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-900">
+                  <strong>Quy cách đã lưu:</strong> 1 {spec.label} = {formatBaseQuantity(spec.packQuantity, spec.baseUnit)}
+                  {spec.referencePrice > 0 && <> · {formatMoney(spec.referencePrice)}/{spec.label}</>}
+                </div>
+              )}
+              <div className="mt-3 grid min-w-0 gap-2 sm:grid-cols-2">
+                <label className="min-w-0">
+                  <span className="mb-1 block text-[11px] font-bold text-neutral-500">Số {spec.label} nhập</span>
+                  <FormattedNumberInput
+                    required
+                    min="0.001"
+                    step={spec.packQuantity === 1 ? 1 : "0.001"}
+                    placeholder="0"
+                    value={line.purchasePackCount}
+                    onValueChange={(value) => setLines((rows) => rows.map((row, rowIndex) => {
+                      if (rowIndex !== index) return row;
+                      const nextCount = value ?? 0;
+                      const currentUnitPrice = row.purchasePackCount > 0
+                        ? row.lineAmount / row.purchasePackCount
+                        : spec.referencePrice;
+                      return {
+                        ...row,
+                        purchasePackCount: nextCount,
+                        lineAmount: Math.round(currentUnitPrice * nextCount),
+                      };
+                    }))}
+                    className="h-10 w-full min-w-0 rounded-lg border border-neutral-200 bg-white px-2 text-sm"
+                  />
+                </label>
+                <label className="min-w-0">
+                  <span className="mb-1 block text-[11px] font-bold text-neutral-500">Tổng tiền thực tế (VND)</span>
+                  <FormattedNumberInput
+                    required
+                    min={0}
+                    placeholder="0"
+                    value={line.lineAmount}
+                    onValueChange={(value) => setLines((rows) => rows.map((row, rowIndex) => rowIndex === index ? { ...row, lineAmount: value ?? 0 } : row))}
+                    className="h-10 w-full rounded-lg border border-neutral-200 bg-white px-2 text-sm font-semibold"
+                  />
+                </label>
+              </div>
+              {line.ingredientId && normalizedQuantity > 0 && (
+                <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-white p-2.5 text-xs">
+                  <div>
+                    <span className="block text-neutral-400">Tăng tồn</span>
+                    <strong className="mt-0.5 block text-neutral-800">{formatBaseQuantity(normalizedQuantity, spec.baseUnit)}</strong>
+                  </div>
+                  <div className="text-right">
+                    <span className="block text-neutral-400">Đơn giá quy đổi</span>
+                    <strong className="mt-0.5 block text-neutral-800">{formatUnitCost(line.lineAmount, normalizedQuantity, spec.baseUnit)}</strong>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <button
+        type="button"
+        onClick={() => setLines((rows) => [...rows, emptyPurchaseLine()])}
+        className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-dashed border-brand-300 px-3 text-xs font-bold text-brand-700 transition hover:bg-brand-50"
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Thêm nguyên liệu
+      </button>
+      <div className="flex items-center justify-between rounded-xl bg-neutral-950 px-4 py-3 text-white">
+        <span className="text-xs font-semibold text-white/65">Tổng phiếu nhập</span>
+        <strong className="text-sm">{formatMoney(totalAmount)}</strong>
+      </div>
+      <Submit saving={saving} label="Nhập kho" />
+    </form>
+  );
 }
 function ProductionForm({ data, setData, recipes, products, ingredients, usages, setUsages, saving, onSelectRecipe, onSubmit }: { data: { recipeVersionId: string; plannedQuantity: number; actualGoodQuantity: number; damagedQuantity: number; packagingCost: number; directLaborCost: number; overheadCost: number; occurredAt: string }; setData: React.Dispatch<React.SetStateAction<typeof data>>; recipes: RecipeVersion[]; products: Product[]; ingredients: FinanceIngredient[]; usages: Array<{ ingredientId: string; actualQuantity: number }>; setUsages: React.Dispatch<React.SetStateAction<typeof usages>>; saving: boolean; onSelectRecipe: (id: string) => void; onSubmit: (event: FormEvent) => void }) { return <form onSubmit={onSubmit} className="space-y-3"><h2 className="font-black">Hoàn tất mẻ sản xuất</h2><Select label="BOM đang hoạt động" value={data.recipeVersionId} options={[["", "Chọn BOM"], ...recipes.map((r) => [r.id, `${products.find((p) => p.id === r.productId)?.name ?? r.productId} · v${r.version}`] as [string, string])]} onChange={onSelectRecipe} /><div className="grid grid-cols-3 gap-2"><NumberInput label="Kế hoạch" value={data.plannedQuantity} onChange={(plannedQuantity) => setData((v) => ({ ...v, plannedQuantity }))} /><NumberInput label="Đạt chuẩn" value={data.actualGoodQuantity} onChange={(actualGoodQuantity) => setData((v) => ({ ...v, actualGoodQuantity }))} /><NumberInput label="Hỏng" value={data.damagedQuantity} onChange={(damagedQuantity) => setData((v) => ({ ...v, damagedQuantity }))} /></div><div className="rounded-xl bg-neutral-50 p-3"><p className="mb-2 text-xs font-black uppercase text-neutral-400">Tiêu hao thực tế</p>{usages.map((usage, index) => <div key={usage.ingredientId} className="mb-1 flex items-center justify-between gap-3"><span className="truncate text-xs font-semibold">{ingredients.find((item) => item.id === usage.ingredientId)?.name ?? usage.ingredientId}</span><FormattedNumberInput min={1} value={usage.actualQuantity} onValueChange={(value) => setUsages((rows) => rows.map((row, i) => i === index ? { ...row, actualQuantity: value ?? 0 } : row))} className="h-9 w-28 rounded-lg border border-neutral-200 px-2 text-sm" /></div>)}</div><div className="grid grid-cols-3 gap-2"><NumberInput label="Bao bì" value={data.packagingCost} onChange={(packagingCost) => setData((v) => ({ ...v, packagingCost }))} /><NumberInput label="Nhân công" value={data.directLaborCost} onChange={(directLaborCost) => setData((v) => ({ ...v, directLaborCost }))} /><NumberInput label="Overhead" value={data.overheadCost} onChange={(overheadCost) => setData((v) => ({ ...v, overheadCost }))} /></div><Input label="Ngày sản xuất" type="date" value={data.occurredAt} onChange={(occurredAt) => setData((v) => ({ ...v, occurredAt }))} /><Submit saving={saving} label="Hoàn tất mẻ" /></form>; }
 function WasteForm({ data, setData, items, saving, onSubmit }: { data: { itemType: "product" | "ingredient"; itemId: string; quantity: number; reason: WasteReason; occurredAt: string }; setData: React.Dispatch<React.SetStateAction<typeof data>>; items: Array<[string, string]>; saving: boolean; onSubmit: (event: FormEvent) => void }) { return <form onSubmit={onSubmit} className="space-y-3"><h2 className="font-black">Ghi nhận hao hụt</h2><Select label="Loại tồn" value={data.itemType} options={[["product", "Thành phẩm"], ["ingredient", "Nguyên liệu"]]} onChange={(itemType) => setData((v) => ({ ...v, itemType: itemType as typeof v.itemType, itemId: "" }))} /><Select label="Mặt hàng" value={data.itemId} options={[["", "Chọn mặt hàng"], ...items]} onChange={(itemId) => setData((v) => ({ ...v, itemId }))} /><NumberInput label="Số lượng" value={data.quantity} onChange={(quantity) => setData((v) => ({ ...v, quantity }))} /><Select label="Nguyên nhân" value={data.reason} options={[["expired", "Hết hạn"], ["production_defect", "Lỗi sản xuất"], ["damaged", "Hư hỏng"], ["overproduction", "Sản xuất dư"], ["cancelled_order", "Đơn bị huỷ"], ["stocktake_variance", "Lệch kiểm kê"], ["internal_use", "Dùng nội bộ"], ["sample", "Hàng mẫu"]]} onChange={(reason) => setData((v) => ({ ...v, reason: reason as WasteReason }))} /><Input label="Ngày ghi nhận" type="date" value={data.occurredAt} onChange={(occurredAt) => setData((v) => ({ ...v, occurredAt }))} /><Submit saving={saving} label="Ghi nhận hao hụt" /></form>; }
@@ -176,16 +377,58 @@ async function errorText(response: Response) { const body = await response.json(
 async function notifyResponse(response: Response, successMessage: string) { response.ok ? toast.success(successMessage) : toast.error(await errorText(response)); }
 function today() { return new Date().toISOString().slice(0, 10); }
 function nameOf(type: string, id: string, ingredients: FinanceIngredient[], products: Product[]) { return type === "ingredient" ? ingredients.find((item) => item.id === id)?.name ?? id : products.find((item) => item.id === id)?.name ?? id; }
-function defaultPurchaseUnit(baseUnit?: FinanceIngredient["baseUnit"]): IngredientPurchaseUnit {
-  return baseUnit === "millilitre" ? "litre" : baseUnit === "each" ? "each" : "kilogram";
+function emptyPurchaseLine(): PurchaseLine {
+  return { ingredientId: "", purchasePackCount: 1, lineAmount: 0 };
 }
-function purchaseUnitOptions(baseUnit?: FinanceIngredient["baseUnit"]): Array<[IngredientPurchaseUnit, string]> {
-  if (baseUnit === "millilitre") return [["litre", "lít"], ["millilitre", "ml"]];
-  if (baseUnit === "each") return [["each", "cái"]];
-  return [["kilogram", "kg"], ["gram", "gram"]];
+function purchaseSpec(ingredientId: string, ingredients: FinanceIngredient[], products: Product[]) {
+  const ingredient = ingredients.find((item) => item.id === ingredientId);
+  const product = products.find((item) => item.id === ingredientId && item.itemType === "ingredient");
+  const baseUnit = ingredient?.baseUnit ?? product?.baseUnit ?? "gram";
+  const storedPackQuantity = product?.purchasePackQuantity ?? ingredient?.purchasePackQuantity;
+  const packQuantity = typeof storedPackQuantity === "number" && storedPackQuantity > 0
+    ? storedPackQuantity
+    : 1;
+  return {
+    baseUnit,
+    label: ingredientId
+      ? product?.purchaseUnit?.trim() || ingredient?.purchaseUnit?.trim() || unitLabel(baseUnit)
+      : "quy cách",
+    packQuantity,
+    referencePrice: Math.max(
+      0,
+      Number(product?.referencePurchasePrice ?? ingredient?.referencePurchasePrice ?? 0),
+    ),
+  };
+}
+function purchasePayload(line: PurchaseLine, ingredients: FinanceIngredient[], products: Product[]) {
+  const spec = purchaseSpec(line.ingredientId, ingredients, products);
+  const normalizedQuantity = line.purchasePackCount * spec.packQuantity;
+  return {
+    ingredientId: line.ingredientId,
+    purchaseQuantity: normalizedQuantity,
+    purchaseUnit: spec.baseUnit as IngredientPurchaseUnit,
+    purchaseUnitLabel: spec.label,
+    purchasePackQuantity: spec.packQuantity,
+    purchasePackCount: line.purchasePackCount,
+    lineAmount: line.lineAmount,
+  };
 }
 function unitLabel(unit: FinanceIngredient["baseUnit"]) {
-  return unit === "millilitre" ? "ml" : unit === "each" ? "cái" : "gram";
+  return unit === "millilitre" ? "ml" : unit === "each" ? "cái" : "g";
+}
+function formatBaseQuantity(quantity: number, unit: FinanceIngredient["baseUnit"]) {
+  const formatter = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 3 });
+  if (unit === "gram" && quantity >= 1_000) return `${formatter.format(quantity / 1_000)} kg`;
+  if (unit === "millilitre" && quantity >= 1_000) return `${formatter.format(quantity / 1_000)} lít`;
+  return `${formatter.format(quantity)} ${unitLabel(unit)}`;
+}
+function formatUnitCost(amount: number, normalizedQuantity: number, unit: FinanceIngredient["baseUnit"]) {
+  if (normalizedQuantity <= 0) return "—";
+  const baseCost = amount / normalizedQuantity;
+  if (unit === "gram") return `${formatMoneyPrecise(baseCost * 1_000)}/kg · ${formatMoneyPrecise(baseCost)}/g`;
+  if (unit === "millilitre") return `${formatMoneyPrecise(baseCost * 1_000)}/lít · ${formatMoneyPrecise(baseCost)}/ml`;
+  return `${formatMoneyPrecise(baseCost)}/cái`;
 }
 function formatMoney(value: number) { return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(value); }
+function formatMoneyPrecise(value: number) { return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 2 }).format(value); }
 function displayDate(value: unknown) { if (typeof value === "string") return new Date(value).toLocaleDateString("vi-VN"); if (value && typeof value === "object" && "seconds" in value) return new Date(Number((value as { seconds: number }).seconds) * 1000).toLocaleDateString("vi-VN"); return "—"; }

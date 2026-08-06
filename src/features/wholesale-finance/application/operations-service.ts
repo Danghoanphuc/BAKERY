@@ -40,6 +40,9 @@ export async function receiveIngredientPurchase(input: {
     quantity?: number;
     purchaseQuantity?: number;
     purchaseUnit?: IngredientPurchaseUnit;
+    purchaseUnitLabel?: string;
+    purchasePackQuantity?: number;
+    purchasePackCount?: number;
     lineAmount: number;
   }>;
   occurredAt: Date;
@@ -68,11 +71,35 @@ export async function receiveIngredientPurchase(input: {
     if (converted.unit !== ingredient.baseUnit) {
       throw new Error("PURCHASE_UNIT_MISMATCH");
     }
+    const hasPackMetadata =
+      line.purchasePackQuantity !== undefined ||
+      line.purchasePackCount !== undefined ||
+      line.purchaseUnitLabel !== undefined;
+    if (hasPackMetadata) {
+      const normalizedFromPack =
+        Number(line.purchasePackQuantity) * Number(line.purchasePackCount);
+      if (
+        !line.purchaseUnitLabel?.trim() ||
+        typeof line.purchasePackQuantity !== "number" ||
+        typeof line.purchasePackCount !== "number" ||
+        line.purchasePackQuantity <= 0 ||
+        line.purchasePackCount <= 0 ||
+        !Number.isSafeInteger(normalizedFromPack) ||
+        normalizedFromPack !== converted.value
+      ) {
+        throw new Error("INVALID_PURCHASE_RECEIPT");
+      }
+    }
     return {
       ingredientId: line.ingredientId,
       quantity: converted.value,
       purchaseQuantity,
       purchaseUnit,
+      ...(hasPackMetadata ? {
+        purchaseUnitLabel: line.purchaseUnitLabel!.trim(),
+        purchasePackQuantity: line.purchasePackQuantity!,
+        purchasePackCount: line.purchasePackCount!,
+      } : {}),
       lineAmount: line.lineAmount,
     };
   });
@@ -98,7 +125,12 @@ export async function completeProductionBatch(input: {
 }) {
   const recipe = await getRecipeVersionById(input.recipeVersionId);
   const uniqueIngredients = new Set(input.ingredientUsages.map((usage) => usage.ingredientId));
-  const allowedIngredients = new Set(recipe?.ingredients.map((line) => line.ingredientId));
+  const allowedIngredients = new Map(
+    recipe?.ingredients.map((line) => [
+      line.ingredientId,
+      line.componentType ?? "ingredient",
+    ]),
+  );
   const costs = [input.packagingCost, input.directLaborCost, input.overheadCost, input.damagedQuantity];
   if (!recipe || recipe.productId !== input.productId || recipe.status !== "active" ||
       !input.idempotencyKey || !input.locationId || !validOperationalDate(input.occurredAt) || !positiveInteger(input.plannedQuantity) ||
@@ -107,7 +139,10 @@ export async function completeProductionBatch(input: {
       uniqueIngredients.size !== input.ingredientUsages.length || input.ingredientUsages.length === 0 ||
       uniqueIngredients.size !== allowedIngredients.size ||
       input.ingredientUsages.some((usage) =>
-        !allowedIngredients.has(usage.ingredientId) || !positiveInteger(usage.actualQuantity))) {
+        !allowedIngredients.has(usage.ingredientId) ||
+        (usage.componentType ?? "ingredient") !==
+          allowedIngredients.get(usage.ingredientId) ||
+        !positiveInteger(usage.actualQuantity))) {
     throw new Error("INVALID_PRODUCTION_BATCH");
   }
   const batch = await persistCompletedProductionBatch({
@@ -197,6 +232,7 @@ export async function recordProductSaleInventory(input: {
     selectedVariantId?: string;
     selectedVariantSku?: string;
     selectedVariantBarcode?: string;
+    inventoryQuantityPerUnit?: number;
   }>;
   occurredAt?: Date; actor: string;
 }) {
@@ -209,11 +245,17 @@ export async function recordProductSaleInventory(input: {
     quantity: number;
   }>>();
   for (const item of input.items) {
+    const inventoryQuantityPerUnit = item.inventoryQuantityPerUnit ?? 1;
     if (!item.productId || !positiveInteger(item.quantity) ||
+        !positiveInteger(inventoryQuantityPerUnit) ||
         (item.unitStandardCost !== undefined && !nonNegativeInteger(item.unitStandardCost))) {
       throw new Error("INVALID_SALE_INVENTORY");
     }
-    quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + item.quantity);
+    const inventoryQuantity = item.quantity * inventoryQuantityPerUnit;
+    quantities.set(
+      item.productId,
+      (quantities.get(item.productId) ?? 0) + inventoryQuantity,
+    );
     if (item.unitStandardCost !== undefined) unitCosts.set(item.productId, item.unitStandardCost);
     if (item.selectedVariantId || item.selectedVariantSku || item.selectedVariantBarcode) {
       const productVariants = variants.get(item.productId) ?? new Map();
@@ -223,7 +265,7 @@ export async function recordProductSaleInventory(input: {
         variantId: item.selectedVariantId,
         variantSku: item.selectedVariantSku,
         variantBarcode: item.selectedVariantBarcode,
-        quantity: (existing?.quantity ?? 0) + item.quantity,
+        quantity: (existing?.quantity ?? 0) + inventoryQuantity,
       });
       variants.set(item.productId, productVariants);
     }

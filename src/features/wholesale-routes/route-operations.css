@@ -1,0 +1,293 @@
+/* Hallmark · genre: editorial · macrostructure: Workbench (today-first routes) · tone: warm utilitarian · anchor hue: brick · design-system: DESIGN.md · designed-as-app · contrast: pass (40–41) · slop: pass (42–48) · mobile: pass (34, 49–57) */
+/* Hallmark · pre-emit critique: P5 H5 E5 S5 R5 V5 */
+
+.route-shell {
+  color: var(--color-ink);
+  font-family: var(--font-body);
+}
+
+.route-shell :where(button, a, summary):focus-visible {
+  outline: 3px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.route-shell :where(h1, h2, h3) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.route-shell :where(button, a) {
+  white-space: nowrap;
+}
+
+.route-shell :where(button, input, select, textarea) {
+  min-height: 44px;
+}
+
+.route-shell input,
+.route-shell select,
+.route-shell textarea {
+  border: 1px solid var(--color-rule-2);
+  background: var(--color-paper-3);
+  color: var(--color-ink);
+  outline: 2px solid transparent;
+  outline-offset: 1px;
+}
+
+.route-shell input:hover,
+.route-shell select:hover,
+.route-shell textarea:hover {
+  background: var(--color-paper-2);
+}
+
+.route-shell input:focus-visible,
+.route-shell select:focus-visible,
+.route-shell textarea:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+
+.route-shell input:active,
+.route-shell select:active,
+.route-shell textarea:active {
+  border-color: var(--color-accent);
+}
+
+.route-shell input:disabled,
+.route-shell select:disabled,
+.route-shell textarea:disabled,
+.route-shell button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.route-control {
+  border-radius: var(--radius-control);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.route-primary,
+.route-secondary,
+.route-quiet {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  border-radius: var(--radius-control);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--text-sm);
+  font-weight: 800;
+  transition:
+    background-color var(--dur-short) var(--ease-out),
+    color var(--dur-short) var(--ease-out),
+    transform var(--dur-micro) var(--ease-out);
+}
+
+.route-primary {
+  border: 1px solid var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+
+.route-secondary {
+  border: 1px solid var(--color-rule-2);
+  background: var(--color-paper-3);
+  color: var(--color-ink);
+}
+
+.route-quiet {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-accent-strong);
+}
+
+.route-primary:active,
+.route-secondary:active,
+.route-quiet:active {
+  transform: translateY(1px);
+}
+
+.route-number {
+  font-variant-numeric: tabular-nums;
+}
+
+.route-card {
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  background: var(--color-paper-3);
+}
+
+.route-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  border-radius: 999px;
+  padding: var(--space-2xs) var(--space-sm);
+  font-size: var(--text-xs);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.route-status[data-tone="active"] {
+  background: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
+
+.route-status[data-tone="success"] {
+  background: var(--color-paper-2);
+  color: var(--color-success);
+}
+
+.route-status[data-tone="neutral"] {
+  background: var(--color-paper-2);
+  color: var(--color-ink-2);
+}
+
+.route-progress {
+  height: var(--space-2xs);
+  overflow: clip;
+  border-radius: 999px;
+  background: var(--color-paper-2);
+}
+
+.route-progress > span {
+  display: block;
+  height: 100%;
+  transform-origin: left;
+  background: var(--color-success);
+}
+
+.route-dialog {
+  position: fixed;
+  inset: 0;
+  width: min(42rem, calc(100% - 2rem));
+  max-height: min(88dvh, 48rem);
+  margin: auto;
+  overflow-y: auto;
+  border: 1px solid var(--color-rule-2);
+  border-radius: var(--radius-card);
+  background: var(--color-paper-3);
+  color: var(--color-ink);
+  padding: 0;
+}
+
+.route-dialog::backdrop {
+  background: var(--color-overlay);
+}
+
+.route-overlay {
+  position: fixed;
+  z-index: var(--z-modal);
+  inset: 0;
+  display: grid;
+  min-width: 0;
+  place-items: end center;
+  padding: var(--space-2xs);
+}
+
+.route-overlay-dismiss {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  min-height: 100%;
+  border: 0;
+  background: var(--color-overlay);
+  cursor: default;
+}
+
+.route-template-drawer {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: min(58rem, 100%);
+  max-height: calc(100dvh - var(--space-sm));
+  overflow: clip;
+  border: 1px solid var(--color-rule-2);
+  border-radius: var(--radius-card);
+  background: var(--color-paper-3);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-float);
+}
+
+.route-order-button {
+  display: inline-grid;
+  min-height: 40px;
+  width: 40px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-ink-2);
+  transition:
+    background-color var(--dur-short) var(--ease-out),
+    color var(--dur-short) var(--ease-out),
+    transform var(--dur-micro) var(--ease-out);
+}
+
+.route-order-button:active {
+  transform: translateY(1px);
+}
+
+.route-order-button:disabled {
+  opacity: 0.3;
+}
+
+.route-dialog-header {
+  z-index: var(--z-raised);
+}
+
+.route-mobile-footer {
+  padding-bottom: max(var(--space-md), env(safe-area-inset-bottom));
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .route-primary:hover {
+    background: var(--color-accent-strong);
+  }
+
+  .route-secondary:hover,
+  .route-quiet:hover {
+    background: var(--color-paper-2);
+  }
+
+  .route-order-button:hover {
+    background: var(--color-paper-2);
+    color: var(--color-accent-strong);
+  }
+}
+
+@media (pointer: coarse) {
+  .route-primary,
+  .route-secondary,
+  .route-quiet,
+  .route-shell :where(button, a, input, select) {
+    min-height: 48px;
+  }
+
+  .route-order-button {
+    min-height: 44px;
+    width: 44px;
+  }
+}
+
+@media (min-width: 640px) {
+  .route-overlay {
+    place-items: center;
+    padding: var(--space-md);
+  }
+
+  .route-template-drawer {
+    max-height: min(90dvh, 52rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-shell *,
+  .route-shell *::before,
+  .route-shell *::after {
+    animation-duration: 150ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 150ms !important;
+  }
+}

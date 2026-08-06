@@ -1,6 +1,6 @@
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { getAdminFirestore } from "@/lib/wholesale-firebase/admin";
-import type { FinanceIngredient, IngredientBaseUnit, RecipeVersion } from "@/types";
+import type { FinanceIngredient, IngredientBaseUnit, Product, RecipeVersion } from "@/types";
 import { formatIngredientCode, normalizeIngredientGroup } from "../domain/ingredient-code";
 
 const INGREDIENTS_COLLECTION = "finance_ingredients";
@@ -28,6 +28,9 @@ function mapIngredient(id: string, data: Record<string, unknown>): FinanceIngred
     groupCode: typeof data.groupCode === "string" ? data.groupCode : undefined,
     name: String(data.name ?? ""),
     baseUnit: data.baseUnit as IngredientBaseUnit,
+    purchaseUnit: typeof data.purchaseUnit === "string" ? data.purchaseUnit : undefined,
+    purchasePackQuantity: Number(data.purchasePackQuantity ?? 0) || undefined,
+    referencePurchasePrice: Number(data.referencePurchasePrice ?? 0) || undefined,
     costPerBaseUnitMicros: Number(data.costPerBaseUnitMicros ?? 0),
     isActive: data.isActive !== false,
     createdAt: data.createdAt ? toDate(data.createdAt) : undefined,
@@ -48,6 +51,18 @@ function mapRecipe(id: string, data: Record<string, unknown>): RecipeVersion {
     directLaborCostPerBatch: Number(data.directLaborCostPerBatch ?? 0),
     overheadCostPerBatch: Number(data.overheadCostPerBatch ?? 0),
     wasteBasisPoints: Number(data.wasteBasisPoints ?? 0),
+    packagingCostLines: Array.isArray(data.packagingCostLines)
+      ? (data.packagingCostLines as RecipeVersion["packagingCostLines"])
+      : undefined,
+    directLaborCostLines: Array.isArray(data.directLaborCostLines)
+      ? (data.directLaborCostLines as RecipeVersion["directLaborCostLines"])
+      : undefined,
+    wasteCalculation:
+      data.wasteCalculation &&
+      typeof data.wasteCalculation === "object" &&
+      !Array.isArray(data.wasteCalculation)
+        ? (data.wasteCalculation as RecipeVersion["wasteCalculation"])
+        : undefined,
     createdAt: data.createdAt ? toDate(data.createdAt) : undefined,
     updatedAt: data.updatedAt ? toDate(data.updatedAt) : undefined,
   };
@@ -56,6 +71,14 @@ function mapRecipe(id: string, data: Record<string, unknown>): RecipeVersion {
 export async function getFinanceIngredients() {
   const snapshot = await db().collection(INGREDIENTS_COLLECTION).get();
   return snapshot.docs.map((item) => mapIngredient(item.id, item.data()));
+}
+
+export async function getCostingProducts() {
+  const snapshot = await db().collection("products").get();
+  return snapshot.docs.map((item) => ({
+    id: item.id,
+    ...item.data(),
+  })) as Product[];
 }
 
 export async function getFinanceIngredientById(ingredientId: string) {
@@ -69,6 +92,7 @@ export async function upsertFinanceIngredientProjection(input: {
   name: string;
   groupCode: string;
   baseUnit: IngredientBaseUnit;
+  purchaseUnit?: string;
   purchasePackQuantity: number;
   referencePurchasePrice: number;
   isActive: boolean;
@@ -80,6 +104,11 @@ export async function upsertFinanceIngredientProjection(input: {
       Math.max(0.000001, input.purchasePackQuantity)) *
       1_000_000,
   );
+  const previous = snapshot.data();
+  const purchaseCostChanged =
+    !snapshot.exists ||
+    Number(previous?.purchasePackQuantity ?? 0) !== input.purchasePackQuantity ||
+    Number(previous?.referencePurchasePrice ?? 0) !== input.referencePurchasePrice;
   const batch = db().batch();
   batch.set(
     reference,
@@ -88,7 +117,10 @@ export async function upsertFinanceIngredientProjection(input: {
       name: input.name,
       groupCode: normalizeIngredientGroup(input.groupCode),
       baseUnit: input.baseUnit,
-      costPerBaseUnitMicros,
+      ...(input.purchaseUnit?.trim() ? { purchaseUnit: input.purchaseUnit.trim() } : {}),
+      purchasePackQuantity: input.purchasePackQuantity,
+      referencePurchasePrice: input.referencePurchasePrice,
+      ...(purchaseCostChanged ? { costPerBaseUnitMicros } : {}),
       isActive: input.isActive,
       ...(snapshot.exists ? {} : { createdAt: FieldValue.serverTimestamp() }),
       updatedAt: FieldValue.serverTimestamp(),
@@ -96,8 +128,8 @@ export async function upsertFinanceIngredientProjection(input: {
     { merge: true },
   );
 
-  const previousCost = Number(snapshot.data()?.costPerBaseUnitMicros ?? -1);
-  if (!snapshot.exists || previousCost !== costPerBaseUnitMicros) {
+  const previousCost = Number(previous?.costPerBaseUnitMicros ?? -1);
+  if (purchaseCostChanged && previousCost !== costPerBaseUnitMicros) {
     batch.create(db().collection(INGREDIENT_COSTS_COLLECTION).doc(), {
       ingredientId: input.productId,
       costPerBaseUnitMicros,

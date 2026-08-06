@@ -68,6 +68,12 @@ export interface FinanceIngredient {
   groupCode?: string;
   name: string;
   baseUnit: IngredientBaseUnit;
+  /** Supplier-facing package name, for example "bao", "thùng", or "chai". */
+  purchaseUnit?: string;
+  /** Quantity contained in one purchase package, normalized to baseUnit. */
+  purchasePackQuantity?: number;
+  /** Reference price for one purchase package, in VND. */
+  referencePurchasePrice?: number;
   costPerBaseUnitMicros: number;
   isActive: boolean;
   createdAt?: Date;
@@ -85,10 +91,33 @@ export interface IngredientCostVersion {
 }
 
 export type RecipeVersionStatus = "draft" | "active" | "retired";
+export type RecipeComponentType = "ingredient" | "semi_finished";
 
 export interface RecipeIngredientLine {
   ingredientId: string;
   quantity: number;
+  /** Omitted on legacy BOM rows, which are always raw ingredients. */
+  componentType?: RecipeComponentType;
+}
+
+export interface RecipePackagingCostLine {
+  id: string;
+  name: string;
+  quantity: number;
+  unitCost: number;
+}
+
+export interface RecipeDirectLaborCostLine {
+  id: string;
+  role: string;
+  people: number;
+  minutes: number;
+  hourlyRate: number;
+}
+
+export interface RecipeWasteCalculation {
+  plannedQuantity: number;
+  goodQuantity: number;
 }
 
 export interface RecipeVersion {
@@ -103,8 +132,24 @@ export interface RecipeVersion {
   directLaborCostPerBatch: number;
   overheadCostPerBatch: number;
   wasteBasisPoints: number;
+  packagingCostLines?: RecipePackagingCostLine[];
+  directLaborCostLines?: RecipeDirectLaborCostLine[];
+  wasteCalculation?: RecipeWasteCalculation;
   createdAt?: Date;
   updatedAt?: Date;
+}
+
+/**
+ * Monthly indirect production costs used to derive a standard overhead rate.
+ * Direct ingredients, packaging, and direct labor intentionally do not belong here.
+ */
+export interface ManufacturingOverheadSettings {
+  utilitiesPerMonth: number;
+  equipmentDepreciationPerMonth: number;
+  premisesPerMonth: number;
+  maintenancePerMonth: number;
+  otherIndirectCostsPerMonth: number;
+  productiveHoursPerMonth: number;
 }
 
 export interface OrderItemFinancialSnapshot {

@@ -43,6 +43,10 @@ export interface PurchaseReceiptLine {
   lineAmount: number;
   purchaseQuantity?: number;
   purchaseUnit?: IngredientPurchaseUnit;
+  /** Supplier-facing package metadata kept for audit and receipt display. */
+  purchaseUnitLabel?: string;
+  purchasePackQuantity?: number;
+  purchasePackCount?: number;
 }
 
 export interface PurchaseReceipt {
@@ -60,6 +64,8 @@ export interface ProductionIngredientUsage {
   ingredientId: string;
   actualQuantity: number;
   actualCost?: number;
+  /** Omitted on legacy batches, which always consume raw-ingredient inventory. */
+  componentType?: "ingredient" | "semi_finished";
 }
 
 export interface ProductionBatch {

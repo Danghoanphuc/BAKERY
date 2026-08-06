@@ -72,6 +72,7 @@ export interface ProductFeedMetrics {
 
 export type ProductItemType = "finished_good" | "ingredient" | "semi_finished";
 export type ProductLifecycleStatus = "active" | "inactive" | "draft";
+export type ProductCatalogScope = "retail" | "wholesale" | "shared";
 export type InventoryBaseUnit = "gram" | "millilitre" | "each";
 export type ProductWorkspaceCardId =
   | "profile"
@@ -106,6 +107,8 @@ export interface Product {
   itemType?: ProductItemType;
   /** Lifecycle is distinct from storefront availability. */
   lifecycleStatus?: ProductLifecycleStatus;
+  /** Determines whether selling metadata belongs to retail, wholesale, or both. */
+  catalogScope?: ProductCatalogScope;
   /** Presentation metadata for cards in the admin product workspace. */
   workspaceCards?: Partial<Record<ProductWorkspaceCardId, ProductWorkspaceCardConfig>>;
   productionSteps?: ProductionStep[];

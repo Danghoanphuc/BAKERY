@@ -40,6 +40,7 @@
   --text-2xl: 2.441rem;
   --text-3xl: 3.052rem;
   --text-display: clamp(2.75rem, 5vw + 1rem, 5.25rem);
+  --type-admin-title: clamp(1.75rem, 2.4vw, 2.25rem);
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in: cubic-bezier(0.7, 0, 0.84, 0);

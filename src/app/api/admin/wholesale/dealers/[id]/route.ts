@@ -32,6 +32,13 @@ export async function GET(
       address: data.address,
       district: data.district,
       city: data.city,
+      lat: typeof data.lat === "number" ? data.lat : undefined,
+      lng: typeof data.lng === "number" ? data.lng : undefined,
+      placeId: data.placeId,
+      assignedRepId: data.assignedRepId,
+      visitCadenceDays: data.visitCadenceDays,
+      lastVisitAt: data.lastVisitAt?.toDate(),
+      nextVisitAt: data.nextVisitAt?.toDate(),
       type: data.type,
       status: data.status,
       tier: data.tier,
@@ -95,6 +102,15 @@ export async function PUT(
     if (body.address) updateData.address = body.address;
     if (body.district) updateData.district = body.district;
     if (body.city) updateData.city = body.city;
+    if (body.lat !== undefined) updateData.lat = Number.isFinite(body.lat) ? body.lat : null;
+    if (body.lng !== undefined) updateData.lng = Number.isFinite(body.lng) ? body.lng : null;
+    if (body.placeId !== undefined) updateData.placeId = body.placeId || null;
+    if (body.assignedRepId !== undefined) updateData.assignedRepId = body.assignedRepId || null;
+    if (body.visitCadenceDays !== undefined) {
+      updateData.visitCadenceDays = Number.isFinite(body.visitCadenceDays)
+        ? body.visitCadenceDays
+        : null;
+    }
     if (body.type) updateData.type = body.type;
     if (body.businessLicense !== undefined) updateData.businessLicense = body.businessLicense || null;
     if (body.taxId !== undefined) updateData.taxId = body.taxId || null;

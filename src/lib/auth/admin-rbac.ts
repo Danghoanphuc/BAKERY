@@ -1,7 +1,7 @@
-export const ADMIN_ROLES = ["owner", "manager", "marketing", "finance", "cashier", "warehouse"] as const;
+export const ADMIN_ROLES = ["owner", "manager", "sales", "marketing", "finance", "cashier", "warehouse"] as const;
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 
-export const ADMIN_PERMISSIONS = ["dashboard", "pos", "orders", "customers", "marketing", "growth_studio", "finance", "catalog", "inventory", "wholesale", "security"] as const;
+export const ADMIN_PERMISSIONS = ["dashboard", "pos", "orders", "customers", "route_sales", "marketing", "growth_studio", "finance", "catalog", "inventory", "wholesale", "security"] as const;
 export type AdminPermission = (typeof ADMIN_PERMISSIONS)[number];
 
 export type AdminPrincipal = {
@@ -13,6 +13,7 @@ export type AdminPrincipal = {
 export const ADMIN_ROLE_LABELS: Record<AdminRole, string> = {
   owner: "Chủ sở hữu",
   manager: "Quản lý vận hành",
+  sales: "Nhân viên thị trường",
   marketing: "Marketing",
   finance: "Tài chính",
   cashier: "Thu ngân",
@@ -21,7 +22,8 @@ export const ADMIN_ROLE_LABELS: Record<AdminRole, string> = {
 
 const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
   owner: ADMIN_PERMISSIONS,
-  manager: ["dashboard", "pos", "orders", "customers", "marketing", "growth_studio", "catalog", "inventory", "wholesale"],
+  manager: ["dashboard", "pos", "orders", "customers", "route_sales", "marketing", "growth_studio", "catalog", "inventory", "wholesale"],
+  sales: ["route_sales", "orders"],
   marketing: ["dashboard", "customers", "marketing", "growth_studio"],
   finance: ["dashboard", "finance"],
   cashier: ["dashboard", "pos", "orders", "customers"],
@@ -44,8 +46,10 @@ export function getAdminPermissionForPath(pathname: string): AdminPermission {
     [/^\/admin\/pos(?:\/|$)|^\/api\/pos(?:\/|$)|^\/api\/vouchers\/pos-redeem/, "pos"],
     [/^\/admin\/orders(?:\/|$)|^\/api\/admin\/orders(?:\/|$)/, "orders"],
     [/^\/admin\/customers(?:\/|$)|^\/api\/customers(?:\/|$)/, "customers"],
+    [/^\/admin\/routes(?:\/|$)|^\/api\/admin\/field-routes(?:\/|$)/, "route_sales"],
     [/^\/admin\/growth-studio(?:\/|$)|^\/api\/admin\/growth-studio(?:\/|$)/, "growth_studio"],
     [/^\/admin\/marketing(?:\/|$)|^\/api\/admin\/(?:loyalty|vouchers)(?:\/|$)|^\/api\/marketing(?:\/|$)/, "marketing"],
+    [/^\/admin\/production-plan(?:\/|$)|^\/api\/admin\/production-plan(?:\/|$)/, "inventory"],
     [/^\/admin\/finance(?:\/|$)|^\/api\/(?:admin\/)?finance(?:\/|$)/, "finance"],
     [/^\/admin\/categories(?:\/|$)|^\/api\/(?:categories|products|uploads)(?:\/|$)|^\/api\/admin\/products(?:\/|$)/, "catalog"],
     [/^\/admin\/inventory(?:\/|$)|^\/api\/admin\/inventory(?:\/|$)/, "inventory"],
@@ -62,6 +66,7 @@ export function canAdminAccessPath(role: AdminRole, pathname: string) {
 export function getAdminHomeForRole(role: AdminRole) {
   if (role === "finance") return "/admin/finance";
   if (role === "cashier") return "/admin/pos";
+  if (role === "sales") return "/admin/routes/today";
   if (role === "warehouse") return "/admin/inventory";
   if (role === "marketing") return "/admin/marketing";
   return "/admin";

@@ -51,6 +51,10 @@ function configuredAccounts(): AdminAccountConfig[] {
   }
 }
 
+export function getConfiguredAdminPrincipals(): AdminPrincipal[] {
+  return configuredAccounts().map(({ password: _password, ...principal }) => principal);
+}
+
 export function verifyAdminCredentials(password: string): AdminPrincipal | null {
   const account = configuredAccounts().find((item) => passwordsMatch(password, item.password));
   if (account) return { id: account.id, name: account.name, role: account.role };

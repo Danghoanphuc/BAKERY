@@ -102,7 +102,7 @@ export function ProductBlockSheet({
         {block === "sales" && activeTab === "variants" && <VariantSection formData={formData} {...variantEditor} />}
         {block === "sales" && activeTab === "publishing" && <PublishingMetadataSection formData={formData} setFormData={setFormData} />}
 
-        {block === "production" && activeTab === "bom" && <ProductionBomEditor productId={productId} onActivated={onCostingSummaryChange} />}
+        {block === "production" && activeTab === "bom" && <ProductionBomEditor productId={productId} batchCycleMinutes={formData.manufacturingLeadMinutes} onActivated={onCostingSummaryChange} />}
         {block === "production" && activeTab === "schedule" && <><ScrollStep label="Công đoạn"><ProductionProcessSection formData={formData} setFormData={setFormData} /></ScrollStep><ScrollStep label="Thời gian & quy cách"><ProductionScheduleSection formData={formData} setFormData={setFormData} /></ScrollStep></>}
 
         {block === "finance" && activeTab === "performance" && <FinancePerformanceSection formData={formData} setFormData={setFormData} costingSummary={costingSummary} />}

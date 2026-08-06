@@ -67,6 +67,7 @@ export function IngredientCreateForm({
 }) {
   const router = useRouter();
   const [data, setData] = useState(initialData);
+  const [purchaseMeasureUnit, setPurchaseMeasureUnit] = useState<PurchaseMeasureUnit>("kilogram");
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const skuPreview = useMemo(
@@ -81,6 +82,10 @@ export function IngredientCreateForm({
   const purchaseQuantity = isDirectPurchase
     ? 1
     : data.purchasePackQuantity;
+  const purchaseDisplayQuantity = fromBaseQuantity(
+    data.purchasePackQuantity,
+    purchaseMeasureUnit,
+  );
   const unitCost =
     purchaseQuantity > 0
       ? data.referencePurchasePrice / purchaseQuantity
@@ -241,9 +246,11 @@ export function IngredientCreateForm({
               <Field label="Theo dõi tồn kho bằng" required>
                 <select
                   value={data.baseUnit}
-                  onChange={(event) =>
-                    update("baseUnit", event.target.value as InventoryBaseUnit)
-                  }
+                  onChange={(event) => {
+                    const baseUnit = event.target.value as InventoryBaseUnit;
+                    update("baseUnit", baseUnit);
+                    setPurchaseMeasureUnit(preferredPurchaseMeasureUnit(baseUnit));
+                  }}
                   className={inputClass}
                   aria-required="true"
                 >
@@ -269,18 +276,29 @@ export function IngredientCreateForm({
                 </div>
               ) : (
                 <Field label={`Mỗi ${purchaseUnitName} chứa`} required>
-                  <div className="grid grid-cols-[minmax(0,1fr)_4.5rem]">
+                  <div className="grid grid-cols-[minmax(0,1fr)_6.5rem]">
                     <NumberInput
-                      value={data.purchasePackQuantity}
+                      value={purchaseDisplayQuantity}
                       onChange={(value) =>
-                        update("purchasePackQuantity", value)
+                        update(
+                          "purchasePackQuantity",
+                          toBaseQuantity(value, purchaseMeasureUnit),
+                        )
                       }
                       min={0.001}
                       className="rounded-r-none"
                     />
-                    <span className="grid h-12 place-items-center rounded-r-xl border border-l-0 border-neutral-300 bg-neutral-50 text-sm font-bold text-neutral-700">
-                      {baseUnitLabel(data.baseUnit)}
-                    </span>
+                    <select
+                      value={purchaseMeasureUnit}
+                      onChange={(event) =>
+                        setPurchaseMeasureUnit(event.target.value as PurchaseMeasureUnit)
+                      }
+                      className={`${inputClass} rounded-l-none border-l-0 bg-neutral-50 px-2 font-bold`}
+                    >
+                      {purchaseMeasureUnitOptions(data.baseUnit).map(([value, label]) => (
+                        <option key={value} value={value}>{label}</option>
+                      ))}
+                    </select>
                   </div>
                 </Field>
               )}
@@ -384,7 +402,7 @@ export function IngredientCreateForm({
                 value={
                   isDirectPurchase
                     ? "Không cần quy đổi"
-                    : `1 ${purchaseUnitName} = ${formatNumber(purchaseQuantity)} ${baseUnitLabel(data.baseUnit)}`
+                    : `1 ${purchaseUnitName} = ${formatPurchaseQuantity(purchaseQuantity, data.baseUnit)}`
                 }
               />
               <SummaryRow
@@ -477,6 +495,38 @@ function SummaryRow({
       </div>
     </div>
   );
+}
+
+type PurchaseMeasureUnit = "gram" | "kilogram" | "millilitre" | "litre" | "each";
+
+function purchaseMeasureUnitOptions(baseUnit: InventoryBaseUnit): Array<[PurchaseMeasureUnit, string]> {
+  if (baseUnit === "millilitre") return [["litre", "Lít"], ["millilitre", "ml"]];
+  if (baseUnit === "each") return [["each", "Cái"]];
+  return [["kilogram", "kg"], ["gram", "g"]];
+}
+
+function preferredPurchaseMeasureUnit(baseUnit: InventoryBaseUnit): PurchaseMeasureUnit {
+  if (baseUnit === "millilitre") return "litre";
+  if (baseUnit === "each") return "each";
+  return "kilogram";
+}
+
+function purchaseMeasureFactor(unit: PurchaseMeasureUnit) {
+  return unit === "kilogram" || unit === "litre" ? 1_000 : 1;
+}
+
+function fromBaseQuantity(quantity: number, unit: PurchaseMeasureUnit) {
+  return quantity / purchaseMeasureFactor(unit);
+}
+
+function toBaseQuantity(quantity: number, unit: PurchaseMeasureUnit) {
+  return quantity * purchaseMeasureFactor(unit);
+}
+
+function formatPurchaseQuantity(quantity: number, baseUnit: InventoryBaseUnit) {
+  if (baseUnit === "gram" && quantity >= 1_000) return `${formatNumber(quantity / 1_000)} kg`;
+  if (baseUnit === "millilitre" && quantity >= 1_000) return `${formatNumber(quantity / 1_000)} lít`;
+  return `${formatNumber(quantity)} ${baseUnitLabel(baseUnit)}`;
 }
 
 function baseUnitLabel(unit: InventoryBaseUnit) {

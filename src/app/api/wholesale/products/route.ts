@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createWholesaleProduct, deleteWholesaleRecord, listWholesaleRecords } from "@/lib/wholesale-admin-store";
-import { requireAdmin } from "@/lib/auth/require-admin";
+import { createWholesaleProduct, deleteWholesaleRecord, listWholesaleRecords, updateWholesaleRecord } from "@/lib/wholesale-admin-store";
+import { getAdminSession, requireAdmin } from "@/lib/auth/require-admin";
 import {
   createNextProductSku,
   createProductSku,
@@ -16,6 +16,8 @@ import type { Product } from "@/types";
 import { upsertFinanceIngredientProjection } from "@/features/wholesale-finance/infrastructure/firestore-costing-repository";
 import { getAdminFirestore } from "@/lib/wholesale-firebase/admin";
 import { getIngredientGroupSelectionError } from "@/lib/ingredient-groups";
+import { activateRecipe, addRecipeVersion } from "@/features/wholesale-finance";
+import type { RecipeVersion } from "@/types";
 
 export async function GET() {
   try {
@@ -34,8 +36,14 @@ export async function POST(request: Request) {
   const unauthorized = requireAdmin(request);
   if (unauthorized) return unauthorized;
 
+  let createdProductId: string | null = null;
+  let createdRecipeId: string | null = null;
   try {
-    const normalized = prepareProductItemForCreate(await request.json());
+    const raw = await request.json() as Record<string, unknown>;
+    const rawBom = raw.bom && typeof raw.bom === "object"
+      ? raw.bom as Record<string, unknown>
+      : null;
+    const normalized = prepareProductItemForCreate(raw);
     const validationError = getProductItemValidationError(normalized);
     if (validationError) {
       return NextResponse.json({ error: validationError }, { status: 400 });
@@ -74,6 +82,7 @@ export async function POST(request: Request) {
       ),
     });
     if (!product) throw new Error("PRODUCT_CREATE_FAILED");
+    createdProductId = product.id;
     if (data.itemType === "ingredient") {
       try {
         await upsertFinanceIngredientProjection({
@@ -82,6 +91,7 @@ export async function POST(request: Request) {
           name: data.name,
           groupCode: data.ingredientGroup,
           baseUnit: data.baseUnit,
+          purchaseUnit: data.purchaseUnit,
           purchasePackQuantity: data.purchasePackQuantity,
           referencePurchasePrice: data.referencePurchasePrice,
           isActive: data.lifecycleStatus === "active",
@@ -91,8 +101,50 @@ export async function POST(request: Request) {
         throw projectionError;
       }
     }
+    if (data.itemType === "semi_finished" && rawBom) {
+      const actor = getAdminSession(request)?.id ?? "admin";
+      const recipe = await addRecipeVersion({
+        productId: product.id,
+        effectiveFrom: new Date(),
+        yieldQuantity: Number(rawBom.yieldQuantity ?? 0),
+        ingredients: Array.isArray(rawBom.ingredients)
+          ? rawBom.ingredients as RecipeVersion["ingredients"]
+          : [],
+        packagingCostPerBatch: Number(rawBom.packagingCostPerBatch ?? 0),
+        directLaborCostPerBatch: Number(rawBom.directLaborCostPerBatch ?? 0),
+        overheadCostPerBatch: Number(rawBom.overheadCostPerBatch ?? 0),
+        wasteBasisPoints: Number(rawBom.wasteBasisPoints ?? 0),
+        ...(Array.isArray(rawBom.packagingCostLines)
+          ? { packagingCostLines: rawBom.packagingCostLines as RecipeVersion["packagingCostLines"] }
+          : {}),
+        ...(Array.isArray(rawBom.directLaborCostLines)
+          ? { directLaborCostLines: rawBom.directLaborCostLines as RecipeVersion["directLaborCostLines"] }
+          : {}),
+        ...(rawBom.wasteCalculation && typeof rawBom.wasteCalculation === "object"
+          ? { wasteCalculation: rawBom.wasteCalculation as RecipeVersion["wasteCalculation"] }
+          : {}),
+      }, actor);
+      createdRecipeId = recipe.id;
+      await activateRecipe(recipe.id, actor);
+      await updateWholesaleRecord("products", product.id, {
+        lifecycleStatus: "active",
+        manufacturingOutputQuantity: recipe.yieldQuantity,
+      });
+      return NextResponse.json({
+        ...product,
+        lifecycleStatus: "active",
+        manufacturingOutputQuantity: recipe.yieldQuantity,
+      }, { status: 201 });
+    }
     return NextResponse.json(product, { status: 201 });
   } catch (error) {
+    if (createdRecipeId) {
+      await getAdminFirestore().collection("finance_recipe_versions")
+        .doc(createdRecipeId).delete().catch(() => undefined);
+    }
+    if (createdProductId) {
+      await deleteWholesaleRecord("products", createdProductId).catch(() => undefined);
+    }
     console.error("Error creating product:", error);
     if ((error as Error).message === "PRODUCT_IDENTIFIER_EXISTS") {
       return NextResponse.json({ error: "SKU hoặc barcode đã được sử dụng." }, { status: 409 });

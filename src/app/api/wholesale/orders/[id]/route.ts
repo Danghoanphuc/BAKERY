@@ -117,6 +117,7 @@ export async function PUT(
           const orderForInventory = order;
           const inventorySale = await recordProductSaleInventory({
             orderId: orderForInventory.id,
+            locationId: orderForInventory.inventoryLocationId,
             items: orderForInventory.items.map((item) => ({
               ...item,
               unitStandardCost: orderForInventory.itemFinancialSnapshots?.find(

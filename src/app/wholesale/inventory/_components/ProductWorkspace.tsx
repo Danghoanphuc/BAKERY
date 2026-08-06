@@ -17,6 +17,7 @@ import {
 import { clsx } from "clsx";
 import { ProductImage } from "@/components/common/ProductImage/ProductImage";
 import { AdminImageUploader } from "@/components/admin/AdminImageUploader";
+import { FormattedNumberInput } from "@/components/common/FormattedNumberInput";
 import type { Category, ProductLifecycleStatus } from "@/types";
 import type { ProductCostSummary } from "@/features/wholesale-finance";
 import type { ProductFormData } from "../_lib/product-form";
@@ -244,7 +245,10 @@ function getCardContent(panel: WorkspacePanel, formData: ProductFormData, costin
   const cost = getCost(formData, costingSummary);
   switch (panel) {
     case "profile": return formData.itemType === "ingredient"
-      ? { value: formData.ingredientGroup || "Chưa phân nhóm", caption: `${formData.purchasePackQuantity} ${formData.purchaseUnit} / quy cách mua` }
+      ? {
+          value: formData.ingredientGroup || "Chưa phân nhóm",
+          caption: `1 ${formData.purchaseUnit || "đơn vị mua"} = ${formatPurchaseQuantity(formData.purchasePackQuantity, formData.baseUnit)}`,
+        }
       : { value: `${formData.manufacturingOutputQuantity} ${formData.manufacturingOutputUnit}`, caption: `${formData.manufacturingLeadMinutes} phút / mẻ` };
     case "sales": return { value: formatCurrency(formData.price), caption: `${formData.sizeOptions.length + formData.flavorOptions.length} tuỳ chọn` };
     case "production": {
@@ -254,7 +258,7 @@ function getCardContent(panel: WorkspacePanel, formData: ProductFormData, costin
         : { value: "Chưa có BOM", caption: processCaption || "Thiết lập định mức" };
     }
     case "finance": return formData.itemType === "semi_finished"
-      ? { value: formatCurrency(cost / Math.max(1, formData.manufacturingOutputQuantity)), caption: `Giá vốn / ${formData.manufacturingOutputUnit || "đơn vị"}` }
+      ? { value: formatCurrency(cost), caption: `Giá vốn / ${formData.manufacturingOutputUnit || "đơn vị"}` }
       : { value: `${margin.toFixed(1)}%`, caption: `Biên gộp · COGS ${formatCurrency(cost)}`, warning: margin < formData.targetGrossMarginPercent };
     case "logistics": return { value: `${formData.stock ?? 0} tồn`, caption: formData.storage || "Chưa thiết lập bảo quản" };
     case "procurement": return { value: "Nhập mua", caption: "Mở nghiệp vụ kho" };
@@ -406,6 +410,17 @@ function InternalItemProfileSheet({
     value: ProductFormData[K],
   ) => setFormData((current) => ({ ...current, [key]: value }));
   const fieldClass = "h-11 w-full rounded-lg border border-neutral-300 bg-white px-3 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100";
+  const [purchaseMeasureUnit, setPurchaseMeasureUnit] = useState<PurchaseMeasureUnit>(
+    () => preferredPurchaseMeasureUnit(formData.baseUnit, formData.purchasePackQuantity),
+  );
+  const purchaseUnitName = formData.purchaseUnit.trim() || "đơn vị mua";
+  const purchaseDisplayQuantity = fromBaseQuantity(
+    formData.purchasePackQuantity,
+    purchaseMeasureUnit,
+  );
+  const costPerBaseUnit = formData.purchasePackQuantity > 0
+    ? formData.referencePurchasePrice / formData.purchasePackQuantity
+    : 0;
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-6 p-5 sm:p-7">
@@ -472,23 +487,62 @@ function InternalItemProfileSheet({
               />
             </div>
             <label className="block">
-              <span className="mb-1.5 block text-sm font-bold text-neutral-800">Đơn vị cơ sở</span>
-              <select value={formData.baseUnit} onChange={(event) => update("baseUnit", event.target.value as ProductFormData["baseUnit"])} className={fieldClass}>
+              <span className="mb-1.5 block text-sm font-bold text-neutral-800">Theo dõi tồn kho bằng</span>
+              <select value={formData.baseUnit} onChange={(event) => {
+                const baseUnit = event.target.value as ProductFormData["baseUnit"];
+                update("baseUnit", baseUnit);
+                setPurchaseMeasureUnit(preferredPurchaseMeasureUnit(baseUnit, formData.purchasePackQuantity));
+              }} className={fieldClass}>
                 <option value="gram">Gram (g)</option><option value="millilitre">Millilitre (ml)</option><option value="each">Cái</option>
               </select>
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-sm font-bold text-neutral-800">Số đơn vị cơ sở / quy cách mua</span>
-              <input type="number" min="0.001" step="any" value={formData.purchasePackQuantity} onChange={(event) => update("purchasePackQuantity", Number(event.target.value) || 0)} className={fieldClass} />
+              <span className="mb-1.5 block text-sm font-bold text-neutral-800">Nhà cung cấp đóng gói theo</span>
+              <input value={formData.purchaseUnit} onChange={(event) => update("purchaseUnit", event.target.value)} className={fieldClass} placeholder="Ví dụ: bao, túi, thùng, chai" />
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-sm font-bold text-neutral-800">Đơn vị mua</span>
-              <input value={formData.purchaseUnit} onChange={(event) => update("purchaseUnit", event.target.value)} className={fieldClass} />
+              <span className="mb-1.5 block text-sm font-bold text-neutral-800">Khối lượng / thể tích mỗi {purchaseUnitName}</span>
+              <div className="grid grid-cols-[minmax(0,1fr)_6.5rem]">
+                <FormattedNumberInput
+                  min={0.001}
+                  step="0.001"
+                  value={purchaseDisplayQuantity}
+                  onValueChange={(value) => update(
+                    "purchasePackQuantity",
+                    toBaseQuantity(value ?? 0, purchaseMeasureUnit),
+                  )}
+                  className={`${fieldClass} rounded-r-none`}
+                />
+                <select
+                  value={purchaseMeasureUnit}
+                  onChange={(event) => setPurchaseMeasureUnit(event.target.value as PurchaseMeasureUnit)}
+                  className={`${fieldClass} rounded-l-none border-l-0 bg-neutral-50 px-2 font-bold`}
+                >
+                  {purchaseMeasureUnitOptions(formData.baseUnit).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </div>
             </label>
             <label className="block">
-              <span className="mb-1.5 block text-sm font-bold text-neutral-800">Giá mua tham chiếu</span>
-              <input type="number" min="0" value={formData.referencePurchasePrice} onChange={(event) => update("referencePurchasePrice", Number(event.target.value) || 0)} className={fieldClass} />
+              <span className="mb-1.5 block text-sm font-bold text-neutral-800">Giá một {purchaseUnitName}</span>
+              <FormattedNumberInput
+                min={0}
+                value={formData.referencePurchasePrice}
+                onValueChange={(value) => update("referencePurchasePrice", value ?? 0)}
+                className={fieldClass}
+              />
             </label>
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 sm:col-span-2">
+              <p className="text-xs font-black uppercase tracking-wide text-amber-700">Hệ thống tự quy đổi</p>
+              <p className="mt-2 text-sm font-bold text-amber-950">
+                1 {purchaseUnitName} = {formatPurchaseQuantity(formData.purchasePackQuantity, formData.baseUnit)}
+                {formData.referencePurchasePrice > 0 && <> · {formatCurrency(formData.referencePurchasePrice)}</>}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-amber-800">
+                Giá vốn chuẩn: {formatConvertedUnitCost(costPerBaseUnit, formData.baseUnit)}. BOM và tồn kho luôn dùng đơn vị cơ sở.
+              </p>
+            </div>
             <label className="block">
               <span className="mb-1.5 block text-sm font-bold text-neutral-800">Nhà cung cấp ưu tiên</span>
               <input value={formData.preferredSupplier} onChange={(event) => update("preferredSupplier", event.target.value)} className={fieldClass} />
@@ -534,4 +588,48 @@ function ProcurementSheet() {
 function HeaderMetric({ label, value, tone }: { label: string; value: string; tone?: "positive" | "warning" }) { return <div><p className="text-[11px] font-bold uppercase tracking-wide text-neutral-400">{label}</p><p className={clsx("mt-0.5 font-black", tone === "warning" ? "text-amber-600" : tone === "positive" ? "text-emerald-600" : "text-neutral-950")}>{value}</p></div>; }
 function getCost(formData: ProductFormData, costingSummary: ProductCostSummary | null) { return costingSummary?.source === "recipe" ? costingSummary.totalCost : Math.round((formData.ingredientsCost + formData.packagingCost + formData.laborCost + formData.overheadCost) * (1 + Math.max(0, formData.wastePercent) / 100)); }
 function getMargin(formData: ProductFormData, costingSummary: ProductCostSummary | null) { return formData.price <= 0 ? 0 : Math.max(0, ((formData.price - getCost(formData, costingSummary)) / formData.price) * 100); }
+type PurchaseMeasureUnit = "gram" | "kilogram" | "millilitre" | "litre" | "each";
+
+function purchaseMeasureUnitOptions(baseUnit: ProductFormData["baseUnit"]): Array<[PurchaseMeasureUnit, string]> {
+  if (baseUnit === "millilitre") return [["litre", "Lít"], ["millilitre", "ml"]];
+  if (baseUnit === "each") return [["each", "Cái"]];
+  return [["kilogram", "kg"], ["gram", "g"]];
+}
+
+function preferredPurchaseMeasureUnit(
+  baseUnit: ProductFormData["baseUnit"],
+  normalizedQuantity: number,
+): PurchaseMeasureUnit {
+  if (baseUnit === "gram") return normalizedQuantity >= 1_000 ? "kilogram" : "gram";
+  if (baseUnit === "millilitre") return normalizedQuantity >= 1_000 ? "litre" : "millilitre";
+  return "each";
+}
+
+function purchaseMeasureFactor(unit: PurchaseMeasureUnit) {
+  return unit === "kilogram" || unit === "litre" ? 1_000 : 1;
+}
+
+function fromBaseQuantity(quantity: number, unit: PurchaseMeasureUnit) {
+  return quantity / purchaseMeasureFactor(unit);
+}
+
+function toBaseQuantity(quantity: number, unit: PurchaseMeasureUnit) {
+  return quantity * purchaseMeasureFactor(unit);
+}
+
+function formatPurchaseQuantity(quantity: number, baseUnit: ProductFormData["baseUnit"]) {
+  const formatter = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 3 });
+  if (baseUnit === "gram" && quantity >= 1_000) return `${formatter.format(quantity / 1_000)} kg`;
+  if (baseUnit === "millilitre" && quantity >= 1_000) return `${formatter.format(quantity / 1_000)} lít`;
+  return `${formatter.format(quantity)} ${baseUnit === "gram" ? "g" : baseUnit === "millilitre" ? "ml" : "cái"}`;
+}
+
+function formatConvertedUnitCost(costPerBaseUnit: number, baseUnit: ProductFormData["baseUnit"]) {
+  if (costPerBaseUnit <= 0) return "chưa có giá mua";
+  if (baseUnit === "gram") return `${formatCurrency(costPerBaseUnit * 1_000)}/kg · ${formatPreciseCurrency(costPerBaseUnit)}/g`;
+  if (baseUnit === "millilitre") return `${formatCurrency(costPerBaseUnit * 1_000)}/lít · ${formatPreciseCurrency(costPerBaseUnit)}/ml`;
+  return `${formatPreciseCurrency(costPerBaseUnit)}/cái`;
+}
+
 function formatCurrency(value: number) { return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 }).format(value); }
+function formatPreciseCurrency(value: number) { return new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 2 }).format(value); }

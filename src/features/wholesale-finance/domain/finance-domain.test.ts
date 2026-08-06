@@ -5,7 +5,11 @@ import { quantity } from "./quantity";
 import { buildOrderEconomicEntries } from "./order-financial-events";
 import { isOrderCancelled, isRevenueRecognized } from "./revenue-policy";
 import { buildFinanceSummary } from "@/lib/finance";
-import { calculateRecipeStandardUnitCost } from "./standard-costing";
+import {
+  calculateRecipeDraftStandardUnitCost,
+  calculateRecipeStandardUnitCost,
+  calculateRecipeStandardUnitCostGraph,
+} from "./standard-costing";
 import { allocateDiscountByLargestRemainder, buildItemFinancialSnapshots } from "./item-financial-snapshot";
 import type { FinanceIngredient, RecipeVersion } from "@/types";
 import { calculateCostPerBaseUnitMicros, convertToBaseQuantity } from "./unit-conversion";
@@ -104,6 +108,83 @@ describe("finance domain", () => {
     });
   });
 
+  it("uses the persisted costing formula for an unsaved BOM preview", () => {
+    const flour = {
+      id: "flour", code: "NL-FLOUR", name: "Bột mì", baseUnit: "gram" as const,
+      costPerBaseUnitMicros: 25_000_000, isActive: true,
+    };
+    const preview = calculateRecipeDraftStandardUnitCost({
+      yieldQuantity: 10,
+      ingredients: [{ ingredientId: flour.id, quantity: 1_000 }],
+      packagingCostPerBatch: 10_000,
+      directLaborCostPerBatch: 20_000,
+      overheadCostPerBatch: 5_000,
+      wasteBasisPoints: 1_000,
+    }, [flour]);
+
+    expect(preview).toMatchObject({
+      ingredientCost: 2_500,
+      packagingCost: 1_000,
+      directLaborCost: 2_000,
+      overheadCost: 500,
+      wasteCost: 600,
+      totalCost: 6_600,
+    });
+  });
+
+  it("rolls an active semi-finished BOM into its parent recipe cost", () => {
+    const flour: FinanceIngredient = {
+      id: "flour", code: "NL-BOT", name: "Bột mì", baseUnit: "gram",
+      costPerBaseUnitMicros: 20_000_000, isActive: true,
+    };
+    const sauce: RecipeVersion = {
+      id: "sauce-v1", productId: "sauce", version: 1, status: "active",
+      effectiveFrom: new Date("2026-07-01"), yieldQuantity: 100,
+      ingredients: [{ ingredientId: "flour", quantity: 100 }],
+      packagingCostPerBatch: 0, directLaborCostPerBatch: 0,
+      overheadCostPerBatch: 0, wasteBasisPoints: 0,
+    };
+    const bun: RecipeVersion = {
+      id: "bun-v1", productId: "bun", version: 1, status: "active",
+      effectiveFrom: new Date("2026-07-01"), yieldQuantity: 10,
+      ingredients: [{
+        ingredientId: "sauce",
+        componentType: "semi_finished",
+        quantity: 200,
+      }],
+      packagingCostPerBatch: 0, directLaborCostPerBatch: 0,
+      overheadCostPerBatch: 0, wasteBasisPoints: 0,
+    };
+    const cost = calculateRecipeStandardUnitCostGraph(
+      bun,
+      new Map([[flour.id, flour]]),
+      new Map([["sauce", sauce], ["bun", bun]]),
+    );
+    expect(cost.ingredientCost).toBe(400);
+    expect(cost.totalCost).toBe(400);
+  });
+
+  it("rejects cycles in nested semi-finished BOMs", () => {
+    const recipe = (id: string, componentId: string): RecipeVersion => ({
+      id: `${id}-v1`, productId: id, version: 1, status: "active",
+      effectiveFrom: new Date("2026-07-01"), yieldQuantity: 1,
+      ingredients: [{
+        ingredientId: componentId,
+        componentType: "semi_finished",
+        quantity: 1,
+      }],
+      packagingCostPerBatch: 0, directLaborCostPerBatch: 0,
+      overheadCostPerBatch: 0, wasteBasisPoints: 0,
+    });
+    const first = recipe("first", "second");
+    const second = recipe("second", "first");
+    expect(() => calculateRecipeStandardUnitCostGraph(
+      first,
+      new Map(),
+      new Map([["first", first], ["second", second]]),
+    )).toThrow(/RECIPE_COMPONENT_CYCLE/);
+  });
+
   it("normalizes bakery purchasing units without floating point money", () => {
     expect(convertToBaseQuantity(2.5, "kilogram")).toEqual({ value: 2_500, unit: "gram" });
     expect(calculateCostPerBaseUnitMicros({
@@ -123,6 +204,38 @@ describe("finance domain", () => {
       grossRevenue: 200_000, allocatedDiscount: 20_000, netRevenue: 180_000,
       unitCost: 30_000, totalCost: 60_000, grossProfit: 120_000,
       costingSource: "legacy",
+    });
+  });
+
+  it("costs a wholesale selling unit from its base inventory quantity", () => {
+    const snapshots = buildItemFinancialSnapshots({
+      items: [{
+        cartItemId: "wholesale:tray",
+        productId: "cake",
+        productName: "Bánh",
+        imageUrl: "",
+        price: 240_000,
+        quantity: 2,
+        sellUnitLabel: "Khay 6",
+        inventoryQuantityPerUnit: 6,
+      }],
+      discountAmount: 0,
+      products: [{
+        id: "cake",
+        name: "Bánh",
+        price: 0,
+        imageUrl: "",
+        ingredientsCost: 30_000,
+      }],
+      recipes: [],
+      ingredients: [],
+    });
+    expect(snapshots[0]).toMatchObject({
+      quantity: 2,
+      grossRevenue: 480_000,
+      unitCost: 180_000,
+      totalCost: 360_000,
+      grossProfit: 120_000,
     });
   });
 

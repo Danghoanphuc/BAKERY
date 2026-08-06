@@ -22,9 +22,11 @@ export function financeIngredientToProduct(
     lifecycleStatus: ingredient.isActive ? "active" : "inactive",
     ingredientGroup: groupCode,
     baseUnit: ingredient.baseUnit,
-    purchaseUnit: purchaseUnitByBaseUnit[ingredient.baseUnit],
-    purchasePackQuantity: 1,
-    referencePurchasePrice: ingredient.costPerBaseUnitMicros / 1_000_000,
+    purchaseUnit: ingredient.purchaseUnit || purchaseUnitByBaseUnit[ingredient.baseUnit],
+    purchasePackQuantity: ingredient.purchasePackQuantity ?? 1,
+    referencePurchasePrice:
+      ingredient.referencePurchasePrice ??
+      ingredient.costPerBaseUnitMicros / 1_000_000,
     minimumStock: 0,
     preferredSupplier: "",
     price: 0,

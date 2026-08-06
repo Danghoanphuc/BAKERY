@@ -5,6 +5,10 @@ export interface CartItem {
   quantity: number;
   price: number; // Final price including size adjustment
   imageUrl: string;
+  /** Wholesale display unit, e.g. "thùng 24". */
+  sellUnitLabel?: string;
+  /** Base inventory units consumed by one wholesale selling unit. */
+  inventoryQuantityPerUnit?: number;
   // Customization fields
   selectedSize?: string; // Size option ID
   selectedSizeLabel?: string; // Human-readable size name

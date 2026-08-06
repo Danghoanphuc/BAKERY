@@ -9,11 +9,13 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const itemType = searchParams.get("itemType");
   const itemId = searchParams.get("itemId");
+  const referenceId = searchParams.get("referenceId")?.trim();
   const filter = itemId && (itemType === "product" || itemType === "ingredient")
     ? { itemType: itemType as "product" | "ingredient", itemId }
     : undefined;
   const movements = await getInventoryMovements(filter);
   const filtered = movements
+    .filter((movement) => !referenceId || movement.referenceId === referenceId)
     .sort((left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime())
     .slice(0, 30);
 

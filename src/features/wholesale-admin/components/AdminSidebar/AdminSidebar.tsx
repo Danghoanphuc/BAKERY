@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ChevronLeft,
   ChevronRight,
   CircleDollarSign,
+  Factory,
   Home,
   Layers,
+  MapPinned,
   Megaphone,
   Package,
   ShieldCheck,
@@ -41,10 +43,22 @@ const menuItems = [
     href: "/wholesale/orders",
   },
   {
+    id: "production-plan",
+    label: "Kế hoạch sản xuất",
+    icon: Factory,
+    href: "/wholesale/production-plan",
+  },
+  {
     id: "customers",
     label: "Khách hàng",
     icon: Users,
     href: "/wholesale/customers",
+  },
+  {
+    id: "routes",
+    label: "Đi tuyến",
+    icon: MapPinned,
+    href: "/wholesale/routes",
   },
   {
     id: "marketing",
@@ -84,18 +98,27 @@ const menuItems = [
   },
 ];
 
+const mobileMenuItemIds = new Set([
+  "dashboard",
+  "orders",
+  "production-plan",
+  "finance",
+  "inventory",
+]);
+
 export function AdminSidebar({ admin }: { admin: AdminPrincipal }) {
   const pathname = usePathname();
   const [isExpanded, setIsExpanded] = useState(false);
 
-  useEffect(() => {
-    setIsExpanded(false);
-  }, [pathname]);
+  const visibleItems = menuItems.filter((item) =>
+    canAdminAccessPath(admin.role, item.href),
+  );
 
   return (
+    <>
     <aside
       className={clsx(
-        "sticky top-0 flex h-screen shrink-0 flex-col border-r border-sand bg-bg-card",
+        "sticky top-0 hidden h-screen shrink-0 flex-col border-r border-sand bg-bg-card md:flex",
         isExpanded ? "w-64" : "w-[76px]",
       )}
     >
@@ -138,19 +161,25 @@ export function AdminSidebar({ admin }: { admin: AdminPrincipal }) {
         </button>
       </div>
 
-      <nav className="flex-1 px-3 py-4">
+      <nav className="flex-1 overflow-y-auto px-3 py-4">
         <ul className="space-y-2">
-          {menuItems.filter((item) => canAdminAccessPath(admin.role, item.href)).map((item) => {
+          {visibleItems.map((item) => {
             const Icon = item.icon;
+            const href =
+              item.id === "routes" && admin.role === "sales"
+                ? "/wholesale/routes/today"
+                : item.href;
             const isActive =
-              pathname === item.href ||
-              (item.href !== "/wholesale" && pathname.startsWith(`${item.href}/`));
+              pathname === href ||
+              (href !== "/wholesale" && pathname.startsWith(`${href}/`));
 
             return (
               <li key={item.id}>
                 <Link
-                  href={item.href}
+                  href={href}
+                  onClick={() => setIsExpanded(false)}
                   title={!isExpanded ? item.label : undefined}
+                  aria-current={isActive ? "page" : undefined}
                   className={clsx(
                     "group relative flex h-12 items-center rounded-xl border text-sm font-bold transition-colors duration-200 ease-[var(--ease-out)]",
                     isExpanded ? "gap-3 px-3" : "justify-center px-0",
@@ -186,5 +215,38 @@ export function AdminSidebar({ admin }: { admin: AdminPrincipal }) {
         </div>
       </div>
     </aside>
+    <nav
+      aria-label="Điều hướng quản trị"
+      className="fixed inset-x-3 bottom-3 z-[var(--z-navigation)] grid min-h-16 grid-flow-col auto-cols-fr items-stretch rounded-2xl border border-sand bg-bg-card p-1 shadow-[var(--shadow-float)] md:hidden"
+    >
+      {visibleItems.filter((item) => mobileMenuItemIds.has(item.id)).map((item) => {
+        const Icon = item.icon;
+        const href =
+          item.id === "routes" && admin.role === "sales"
+            ? "/wholesale/routes/today"
+            : item.href;
+        const isActive =
+          pathname === href ||
+          (href !== "/wholesale" && pathname.startsWith(`${href}/`));
+
+        return (
+          <Link
+            key={item.id}
+            href={href}
+            aria-current={isActive ? "page" : undefined}
+            className={clsx(
+              "flex min-w-0 flex-col items-center justify-center gap-1 rounded-xl px-1 py-2 text-[11px] font-bold transition-colors duration-200 ease-[var(--ease-out)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700",
+              isActive
+                ? "bg-bg-soft text-navy"
+                : "text-text-muted active:bg-bg-main active:text-navy",
+            )}
+          >
+            <Icon className="h-5 w-5 shrink-0" />
+            <span className="max-w-full truncate">{item.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+    </>
   );
 }

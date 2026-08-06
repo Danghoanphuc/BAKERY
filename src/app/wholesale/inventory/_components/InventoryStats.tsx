@@ -12,6 +12,7 @@ type InventoryStatsProps = {
   sellingProducts: number;
   lowStockProducts: number;
   inventoryValue: number;
+  inventoryValueHint?: string;
   bomCoverage?: BomCoverage;
 };
 
@@ -20,6 +21,7 @@ export function InventoryStats({
   sellingProducts,
   lowStockProducts,
   inventoryValue,
+  inventoryValueHint,
   bomCoverage,
 }: InventoryStatsProps) {
   const bomLabel = bomCoverage
@@ -31,7 +33,11 @@ export function InventoryStats({
       <StatBlock label="Tổng sản phẩm" value={totalProducts.toString()} />
       <StatBlock label="Đang bán" value={sellingProducts.toString()} />
       <StatBlock label="Cảnh báo tồn thấp" value={lowStockProducts.toString()} />
-      <StatBlock label="Giá trị tồn kho" value={formatPrice(inventoryValue)} />
+      <StatBlock
+        label="Giá trị tồn theo giá vốn"
+        value={formatPrice(inventoryValue)}
+        hint={inventoryValueHint}
+      />
       <StatBlock
         label="Có BOM active"
         value={bomLabel}

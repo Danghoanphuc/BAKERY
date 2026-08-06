@@ -1,11 +1,16 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import type { Category, Product } from "@/types";
+import type {
+  Category,
+  InventoryBalance,
+  Product,
+  WholesaleProduct,
+} from "@/types";
 import type { ProductCostSummary } from "@/features/wholesale-finance";
 import { findCategoryForProduct } from "@/lib/product-category";
 import { applyProductAssistant } from "../_lib/inventory-utils";
@@ -17,6 +22,7 @@ import {
 } from "../_lib/product-form";
 import { ProductForm } from "./ProductForm";
 import { ProductWorkspace } from "./ProductWorkspace";
+import { WholesaleFinishedProductWorkspace } from "./WholesaleFinishedProductWorkspace";
 
 type CostingSummaryResponse = {
   byProductId: Record<string, ProductCostSummary>;
@@ -29,12 +35,20 @@ type ProductEditorProps = {
 
 export function ProductEditor({ mode, productId }: ProductEditorProps) {
   const router = useRouter();
+  const retriedLegacyCostSummary = useRef(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [costingSummary, setCostingSummary] = useState<ProductCostSummary | null>(
     null,
   );
   const [formData, setFormData] = useState<ProductFormData>(
     createEmptyProductForm(),
+  );
+  const [productRecord, setProductRecord] = useState<Product | null>(null);
+  const [wholesaleOffer, setWholesaleOffer] = useState<WholesaleProduct | null>(
+    null,
+  );
+  const [inventoryBalances, setInventoryBalances] = useState<InventoryBalance[]>(
+    [],
   );
   const [productName, setProductName] = useState<string | null>(null);
   const [assistantNote, setAssistantNote] = useState<string | null>(null);
@@ -79,12 +93,41 @@ export function ProductEditor({ mode, productId }: ProductEditorProps) {
           }
           const product = (await productRes.json()) as Product;
           if (cancelled) return;
+          let nextWholesaleOffer: WholesaleProduct | null = null;
+          let nextInventoryBalances: InventoryBalance[] = [];
+          if (product.itemType === "finished_good") {
+            const [offersRes, balancesRes] = await Promise.all([
+              fetch(
+                `/api/wholesale/catalog/offers?productId=${encodeURIComponent(product.id)}`,
+                { cache: "no-store" },
+              ),
+              fetch(
+                `/api/wholesale/finance/inventory/balances?itemType=product&itemId=${encodeURIComponent(product.id)}`,
+                { cache: "no-store" },
+              ),
+            ]);
+            if (!offersRes.ok) {
+              throw new Error("Không thể tải quy cách bán sỉ.");
+            }
+            const offers = await offersRes.json() as WholesaleProduct[];
+            nextWholesaleOffer = offers[0] ?? null;
+            nextInventoryBalances = balancesRes.ok
+              ? await balancesRes.json() as InventoryBalance[]
+              : [];
+          }
+          if (cancelled) return;
           setProductName(product.name);
+          setProductRecord(product);
+          setWholesaleOffer(nextWholesaleOffer);
+          setInventoryBalances(nextInventoryBalances);
           setFormData(productToForm(product, nextCategories[0]?.id ?? ""));
           setCostingSummary(costingByProductId[product.id] ?? null);
         } else {
           if (cancelled) return;
           setProductName(null);
+          setProductRecord(null);
+          setWholesaleOffer(null);
+          setInventoryBalances([]);
           setFormData(createEmptyProductForm());
           setCostingSummary(null);
         }
@@ -134,6 +177,34 @@ export function ProductEditor({ mode, productId }: ProductEditorProps) {
         current.manufacturingOutputQuantity,
     }));
   };
+
+  useEffect(() => {
+    if (
+      !productId ||
+      retriedLegacyCostSummary.current ||
+      costingSummary?.source !== "recipe" ||
+      !costingSummary.recipe?.lines.some(
+        (line) =>
+          !Number.isFinite(line.unitCost) || !Number.isFinite(line.lineCost),
+      )
+    ) {
+      return;
+    }
+
+    retriedLegacyCostSummary.current = true;
+    void fetch(
+      `/api/wholesale/finance/costing-summary?detail=lines&v=2&productId=${encodeURIComponent(productId)}`,
+      { cache: "no-store" },
+    )
+      .then(async (response) => {
+        if (!response.ok) return;
+        const costing = (await response.json()) as CostingSummaryResponse;
+        setCostingSummary(costing.byProductId?.[productId] ?? null);
+      })
+      .catch((refreshError) => {
+        console.error("Failed to refresh BOM line costs:", refreshError);
+      });
+  }, [costingSummary, productId]);
 
   const saveProduct = async () => {
     setIsSaving(true);
@@ -208,6 +279,22 @@ export function ProductEditor({ mode, productId }: ProductEditorProps) {
     (categories.length === 0 || (mode === "edit" && !productName));
 
   if (mode === "edit" && productId) {
+    if (
+      productRecord?.itemType === "finished_good" &&
+      (productRecord.catalogScope === "wholesale" || wholesaleOffer)
+    ) {
+      return (
+        <WholesaleFinishedProductWorkspace
+          key={productRecord.id}
+          product={productRecord}
+          offer={wholesaleOffer}
+          costingSummary={costingSummary}
+          balances={inventoryBalances}
+          onBack={goBack}
+          onOfferChange={setWholesaleOffer}
+        />
+      );
+    }
     return loadFailed ? (
       <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
         {error}

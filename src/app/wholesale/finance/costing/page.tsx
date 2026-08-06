@@ -1,20 +1,48 @@
+/* Hallmark · genre: editorial commerce · macrostructure: Workbench · design-system: design.md · designed-as-app
+ * mobile: pass (34, 49, 50–57) · tokens: pass (48) · icons: pass (30)
+ */
+/* Hallmark · pre-emit critique: P5 H5 E4 S5 R5 V4 */
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
   Beaker,
   CheckCircle2,
   FlaskConical,
+  Gauge,
+  PackageOpen,
   Plus,
   RefreshCw,
+  Settings2,
+  UsersRound,
 } from "lucide-react";
 import { toast } from "sonner";
 import { FormattedNumberInput } from "@/components/common/FormattedNumberInput";
-import type { FinanceIngredient, Product, RecipeVersion } from "@/types";
+import {
+  calculateManufacturingOverheadRate,
+  EMPTY_MANUFACTURING_OVERHEAD_SETTINGS,
+} from "@/features/wholesale-finance/domain/manufacturing-overhead";
+import type {
+  FinanceIngredient,
+  ManufacturingOverheadSettings,
+  Product,
+  RecipeDirectLaborCostLine,
+  RecipePackagingCostLine,
+  RecipeVersion,
+  RecipeWasteCalculation,
+} from "@/types";
+import { DirectLaborCalculatorModal } from "./_components/DirectLaborCalculatorModal";
+import { OverheadSettingsModal } from "./_components/OverheadSettingsModal";
+import { PackagingCostCalculatorModal } from "./_components/PackagingCostCalculatorModal";
+import { WasteCalculatorModal } from "./_components/WasteCalculatorModal";
 
-type RecipeLine = { ingredientId: string; quantity: number };
+type RecipeLine = {
+  ingredientId: string;
+  quantity: number;
+  componentType?: "ingredient" | "semi_finished";
+};
 
 type RecipeFormState = {
   productId: string;
@@ -76,6 +104,7 @@ function recipeToEditor(recipe: RecipeVersion): {
         ? recipe.ingredients.map((line) => ({
             ingredientId: line.ingredientId,
             quantity: line.quantity,
+            componentType: line.componentType ?? "ingredient",
           }))
         : [{ ingredientId: "", quantity: 0 }],
   };
@@ -89,6 +118,12 @@ export default function CostingPage() {
   const [ingredients, setIngredients] = useState<FinanceIngredient[]>([]);
   const [recipes, setRecipes] = useState<RecipeVersion[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [overheadSettings, setOverheadSettings] =
+    useState<ManufacturingOverheadSettings>(
+      EMPTY_MANUFACTURING_OVERHEAD_SETTINGS,
+    );
+  const [overheadModalOpen, setOverheadModalOpen] = useState(false);
+  const [directLaborModalOpen, setDirectLaborModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [recipeForm, setRecipeForm] = useState<RecipeFormState>(() =>
@@ -97,6 +132,15 @@ export default function CostingPage() {
   const [recipeLines, setRecipeLines] = useState<RecipeLine[]>([
     { ingredientId: "", quantity: 0 },
   ]);
+  const [packagingCostLines, setPackagingCostLines] = useState<
+    RecipePackagingCostLine[]
+  >([]);
+  const [directLaborCostLines, setDirectLaborCostLines] = useState<
+    RecipeDirectLaborCostLine[]
+  >([]);
+  const [wasteCalculation, setWasteCalculation] =
+    useState<RecipeWasteCalculation>();
+  const [packagingModalOpen, setPackagingModalOpen] = useState(false);
   const [loadedFromRecipe, setLoadedFromRecipe] = useState<{
     id: string;
     version: number;
@@ -105,11 +149,15 @@ export default function CostingPage() {
   const [filterVersionsByProduct, setFilterVersionsByProduct] = useState(
     Boolean(requestedProductId),
   );
+  const [wasteModalOpen, setWasteModalOpen] = useState(false);
 
   const applyRecipe = useCallback((recipe: RecipeVersion) => {
     const editor = recipeToEditor(recipe);
     setRecipeForm(editor.form);
     setRecipeLines(editor.lines);
+    setPackagingCostLines(recipe.packagingCostLines ?? []);
+    setDirectLaborCostLines(recipe.directLaborCostLines ?? []);
+    setWasteCalculation(recipe.wasteCalculation);
     setLoadedFromRecipe({
       id: recipe.id,
       version: recipe.version,
@@ -123,11 +171,23 @@ export default function CostingPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [ingredientResponse, recipeResponse, productResponse] =
+    const [
+      ingredientResponse,
+      recipeResponse,
+      productResponse,
+      overheadResponse,
+      costingResponse,
+    ] =
       await Promise.all([
         fetch("/api/wholesale/finance/ingredients", { cache: "no-store" }),
         fetch("/api/wholesale/finance/recipes", { cache: "no-store" }),
         fetch("/api/wholesale/products", { cache: "no-store" }),
+        fetch("/api/wholesale/finance/overhead-settings", {
+          cache: "no-store",
+        }),
+        fetch("/api/wholesale/finance/costing-summary", {
+          cache: "no-store",
+        }),
       ]);
     const ingredientRows: FinanceIngredient[] = ingredientResponse.ok
       ? await ingredientResponse.json()
@@ -138,13 +198,45 @@ export default function CostingPage() {
     const productRows: Product[] = productResponse.ok
       ? await productResponse.json()
       : [];
+    const savedOverheadSettings: ManufacturingOverheadSettings =
+      overheadResponse.ok
+        ? await overheadResponse.json()
+        : EMPTY_MANUFACTURING_OVERHEAD_SETTINGS;
+    const costing = costingResponse.ok
+      ? await costingResponse.json() as {
+          byProductId?: Record<string, { totalCost?: number }>;
+        }
+      : {};
     const recipeProducts = productRows.filter(
       (product) => (product.itemType ?? "finished_good") !== "ingredient",
     );
 
-    setIngredients(ingredientRows);
+    const activeRecipeProductIds = new Set(
+      recipeRows
+        .filter((recipe) => recipe.status === "active")
+        .map((recipe) => recipe.productId),
+    );
+    const availableSemiFinished = productRows.filter((product) =>
+      product.itemType === "semi_finished" &&
+      activeRecipeProductIds.has(product.id));
+    setIngredients([
+      ...ingredientRows,
+      ...availableSemiFinished.map((product) => ({
+        id: product.id,
+        code: product.sku ?? `BTP-${product.id}`,
+        name: `[Bán thành phẩm] ${product.name}`,
+        baseUnit: product.baseUnit ?? "each",
+        costPerBaseUnitMicros:
+          Math.round(
+            Number(costing.byProductId?.[product.id]?.totalCost ?? 0) *
+              1_000_000,
+          ),
+        isActive: true,
+      } satisfies FinanceIngredient)),
+    ]);
     setRecipes(recipeRows);
     setProducts(recipeProducts);
+    setOverheadSettings(savedOverheadSettings);
 
     const fromQuery =
       requestedProductId &&
@@ -173,6 +265,9 @@ export default function CostingPage() {
           effectiveFrom: current.effectiveFrom,
         }));
         setRecipeLines([{ ingredientId: "", quantity: 0 }]);
+        setPackagingCostLines([]);
+        setDirectLaborCostLines([]);
+        setWasteCalculation(undefined);
         setLoadedFromRecipe(null);
       }
       autoSeededKeyRef.current = seedProductId;
@@ -240,6 +335,9 @@ export default function CostingPage() {
     } else {
       setRecipeForm(emptyRecipeForm(productId));
       setRecipeLines([{ ingredientId: "", quantity: 0 }]);
+      setPackagingCostLines([]);
+      setDirectLaborCostLines([]);
+      setWasteCalculation(undefined);
       clearLoadedSource();
       toast.info("Sản phẩm chưa có BOM — điền định lượng rồi lưu nháp.");
     }
@@ -254,8 +352,18 @@ export default function CostingPage() {
       body: JSON.stringify({
         ...recipeForm,
         effectiveFrom: new Date(recipeForm.effectiveFrom),
-        ingredients: recipeLines,
-        wasteBasisPoints: recipeForm.wastePercent * 100,
+        ingredients: recipeLines.map((line) => ({
+          ...line,
+          componentType:
+            products.find((product) => product.id === line.ingredientId)
+              ?.itemType === "semi_finished"
+              ? "semi_finished"
+              : "ingredient",
+        })),
+        wasteBasisPoints: Math.round(recipeForm.wastePercent * 100),
+        ...(packagingCostLines.length > 0 ? { packagingCostLines } : {}),
+        ...(directLaborCostLines.length > 0 ? { directLaborCostLines } : {}),
+        ...(wasteCalculation ? { wasteCalculation } : {}),
       }),
     });
     if (response.ok) {
@@ -285,17 +393,17 @@ export default function CostingPage() {
   }
 
   return (
-    <div className="space-y-5">
-      <div className="grid gap-5 2xl:grid-cols-[0.8fr_1.2fr]">
-        <section className="space-y-5">
+    <div className="min-w-0 space-y-5">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(260px,0.72fr)_minmax(0,1.28fr)]">
+        <section className="order-2 min-w-0 space-y-5 lg:order-1">
           <Panel
             title="Danh mục nguyên liệu"
             subtitle={`${ingredients.length} nguyên liệu đồng bộ từ Kho / Sản phẩm`}
             icon={<Beaker />}
             action={
               <div className="flex items-center gap-1">
-                <Link href="/wholesale/inventory" className="rounded-lg border border-neutral-200 px-2.5 py-1.5 text-xs font-bold text-neutral-700 hover:bg-neutral-50">Tạo tại kho</Link>
-                <button onClick={() => void load()} className="rounded-lg p-2 hover:bg-neutral-100"><RefreshCw className="h-4 w-4" /></button>
+                <Link href="/wholesale/inventory" aria-label="Tạo nguyên liệu tại kho" className="inline-flex min-h-11 items-center whitespace-nowrap rounded-lg border border-neutral-200 px-3 py-2 text-xs font-bold text-neutral-700 hover:bg-neutral-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 active:bg-neutral-100">Tạo NL</Link>
+                <button type="button" aria-label="Tải lại dữ liệu giá thành" onClick={() => void load()} className="grid h-11 w-11 place-items-center rounded-lg hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 active:bg-neutral-200"><RefreshCw className="h-4 w-4" /></button>
               </div>
             }
           >
@@ -312,7 +420,7 @@ export default function CostingPage() {
                         {item.code} · /{unitLabel(item.baseUnit)} · {item.isActive ? "đang dùng" : "đã ngưng"}
                       </p>
                     </div>
-                    <p className="text-sm font-black text-neutral-800">
+                    <p className="shrink-0 text-sm font-black tabular-nums text-neutral-800">
                       {formatMicros(item.costPerBaseUnitMicros)}
                     </p>
                   </div>
@@ -325,7 +433,7 @@ export default function CostingPage() {
           </Panel>
         </section>
 
-        <section className="space-y-5">
+        <section className="order-1 min-w-0 space-y-5 lg:order-2">
           <Panel
             title="Lập phiên bản BOM"
             subtitle="Định lượng theo một mẻ và sản lượng đạt chuẩn."
@@ -373,7 +481,7 @@ export default function CostingPage() {
               <div className="rounded-xl border border-neutral-200 bg-neutral-50 p-3">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-xs font-black uppercase tracking-wide text-neutral-500">
-                    Định lượng nguyên liệu
+                    Thành phần BOM
                   </p>
                   <button
                     type="button"
@@ -383,7 +491,7 @@ export default function CostingPage() {
                         { ingredientId: "", quantity: 0 },
                       ])
                     }
-                    className="text-xs font-bold text-brand-700"
+                    className="inline-flex min-h-11 items-center whitespace-nowrap rounded-lg px-2 text-xs font-bold text-brand-700 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 active:bg-brand-100"
                   >
                     + Thêm dòng
                   </button>
@@ -392,7 +500,7 @@ export default function CostingPage() {
                   {recipeLines.map((line, index) => (
                     <div
                       key={index}
-                      className="grid grid-cols-[1fr_120px_32px] gap-2"
+                      className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(84px,120px)_44px] gap-2"
                     >
                       <select
                         value={line.ingredientId}
@@ -408,10 +516,12 @@ export default function CostingPage() {
                             ),
                           )
                         }
-                        className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm"
+                        className="h-11 min-w-0 rounded-lg border border-neutral-200 bg-white px-3 text-sm"
                       >
-                        <option value="">Chọn nguyên liệu</option>
-                        {ingredients.filter((item) => item.isActive).map((item) => (
+                        <option value="">Chọn nguyên liệu / bán thành phẩm</option>
+                        {ingredients.filter((item) =>
+                          item.isActive &&
+                          item.id !== recipeForm.productId).map((item) => (
                           <option key={item.id} value={item.id}>
                             {item.name} ({unitLabel(item.baseUnit)})
                           </option>
@@ -433,16 +543,17 @@ export default function CostingPage() {
                             ),
                           )
                         }
-                        className="h-10 rounded-lg border border-neutral-200 bg-white px-3 text-sm"
+                        className="h-11 min-w-0 rounded-lg border border-neutral-200 bg-white px-3 text-sm tabular-nums"
                       />
                       <button
                         type="button"
+                        aria-label={`Xóa dòng nguyên liệu ${index + 1}`}
                         onClick={() =>
                           setRecipeLines((rows) =>
                             rows.filter((_, rowIndex) => rowIndex !== index),
                           )
                         }
-                        className="text-neutral-400 hover:text-red-600"
+                        className="grid h-11 w-11 place-items-center rounded-lg text-neutral-400 hover:bg-red-50 hover:text-red-600 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
                       >
                         ×
                       </button>
@@ -450,53 +561,124 @@ export default function CostingPage() {
                   ))}
                 </div>
               </div>
-              <div className="grid gap-3 sm:grid-cols-4">
-                <Input
-                  label="Bao bì/mẻ"
-                  type="number"
-                  value={recipeForm.packagingCostPerBatch}
-                  onChange={(packagingCostPerBatch) =>
-                    setRecipeForm((v) => ({
-                      ...v,
-                      packagingCostPerBatch: Number(packagingCostPerBatch),
-                    }))
-                  }
-                />
-                <Input
-                  label="Nhân công/mẻ"
-                  type="number"
-                  value={recipeForm.directLaborCostPerBatch}
-                  onChange={(directLaborCostPerBatch) =>
-                    setRecipeForm((v) => ({
-                      ...v,
-                      directLaborCostPerBatch: Number(directLaborCostPerBatch),
-                    }))
-                  }
-                />
-                <Input
-                  label="Overhead/mẻ"
-                  type="number"
-                  value={recipeForm.overheadCostPerBatch}
-                  onChange={(overheadCostPerBatch) =>
-                    setRecipeForm((v) => ({
-                      ...v,
-                      overheadCostPerBatch: Number(overheadCostPerBatch),
-                    }))
-                  }
-                />
-                <Input
-                  label="Hao hụt (%)"
-                  type="number"
-                  value={recipeForm.wastePercent}
-                  onChange={(wastePercent) =>
-                    setRecipeForm((v) => ({
-                      ...v,
-                      wastePercent: Number(wastePercent),
-                    }))
-                  }
-                />
-              </div>
-              <div className="grid gap-3 rounded-xl bg-neutral-950 p-4 text-white sm:grid-cols-3">
+              <section
+                aria-labelledby="batch-cost-heading"
+                className="border-y border-neutral-200 py-4"
+              >
+                <div className="mb-4 border-b border-neutral-200 pb-3">
+                  <div>
+                    <h3
+                      id="batch-cost-heading"
+                      className="text-sm font-black text-neutral-950"
+                    >
+                      Chi phí bổ sung của cả mẻ
+                    </h3>
+                    <p className="mt-1 text-xs text-neutral-500">
+                      Các khoản này được cộng vào giá vốn của mẻ.
+                    </p>
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <CostInput
+                    label="Chi phí bao bì của cả mẻ"
+                    helper="Tổng tiền túi, hộp, tem, khay dùng cho mẻ này."
+                    value={recipeForm.packagingCostPerBatch}
+                    onChange={(packagingCostPerBatch) => {
+                      setPackagingCostLines([]);
+                      setRecipeForm((v) => ({
+                        ...v,
+                        packagingCostPerBatch,
+                      }));
+                    }}
+                    action={
+                      <CalculatorActionButton
+                        icon={<PackageOpen />}
+                        label="Tính bao bì"
+                        onClick={() => setPackagingModalOpen(true)}
+                      />
+                    }
+                  />
+                  <CostInput
+                    label="Chi phí nhân công trực tiếp của cả mẻ"
+                    helper="Tổng tiền công làm trực tiếp cho mẻ này."
+                    value={recipeForm.directLaborCostPerBatch}
+                    onChange={(directLaborCostPerBatch) => {
+                      setDirectLaborCostLines([]);
+                      setRecipeForm((v) => ({
+                        ...v,
+                        directLaborCostPerBatch,
+                      }));
+                    }}
+                    action={
+                      <CalculatorActionButton
+                        icon={<UsersRound />}
+                        label="Tính nhân công"
+                        onClick={() => setDirectLaborModalOpen(true)}
+                      />
+                    }
+                  />
+                  <CostInput
+                    label="Chi phí chung phân bổ cho cả mẻ"
+                    helper={
+                      <>
+                        Điện, nước, gas, khấu hao máy, mặt bằng và bảo trì.
+                        {overheadSettings.productiveHoursPerMonth > 0 && (
+                          <>
+                            {" "}
+                            Suất đang lưu:{" "}
+                            <strong className="text-neutral-700">
+                              {formatMoney(
+                                calculateManufacturingOverheadRate(
+                                  overheadSettings,
+                                ),
+                              )}
+                              /giờ
+                            </strong>
+                            .
+                          </>
+                        )}
+                      </>
+                    }
+                    value={recipeForm.overheadCostPerBatch}
+                    onChange={(overheadCostPerBatch) =>
+                      setRecipeForm((v) => ({
+                        ...v,
+                        overheadCostPerBatch,
+                      }))
+                    }
+                    action={
+                      <CalculatorActionButton
+                        icon={<Settings2 />}
+                        label="Tính chi phí chung"
+                        onClick={() => setOverheadModalOpen(true)}
+                      />
+                    }
+                  />
+                  <CostInput
+                    label="Hao hụt dự kiến của mẻ"
+                    helper="Tỷ lệ nguyên liệu hoặc thành phẩm mất trong sản xuất."
+                    value={recipeForm.wastePercent}
+                    onChange={(wastePercent) => {
+                      setWasteCalculation(undefined);
+                      setRecipeForm((v) => ({
+                        ...v,
+                        wastePercent,
+                      }));
+                    }}
+                    suffix="%"
+                    max={100}
+                    maximumFractionDigits={2}
+                    action={
+                      <CalculatorActionButton
+                        icon={<Gauge />}
+                        label="Tính hao hụt"
+                        onClick={() => setWasteModalOpen(true)}
+                      />
+                    }
+                  />
+                </div>
+              </section>
+              <div className="grid gap-3 rounded-xl bg-navy p-4 text-white sm:grid-cols-3">
                 <Preview
                   label="Nguyên liệu/mẻ"
                   value={formatMoney(preview.ingredientCost)}
@@ -507,7 +689,7 @@ export default function CostingPage() {
                 />
                 <button
                   disabled={saving || !recipeForm.productId}
-                  className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-brand-500 text-sm font-black"
+                  className="inline-flex h-11 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-brand-500 text-sm font-black text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 active:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-[0.55]"
                 >
                   <Plus className="h-4 w-4" /> Lưu BOM nháp
                 </button>
@@ -528,7 +710,7 @@ export default function CostingPage() {
                 onClick={() =>
                   setFilterVersionsByProduct((current) => !current)
                 }
-                className="rounded-lg px-2.5 py-1.5 text-xs font-bold text-neutral-600 hover:bg-neutral-100"
+                className="min-h-11 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold text-neutral-600 hover:bg-neutral-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 active:bg-neutral-200"
               >
                 {filterVersionsByProduct ? "Hiện tất cả" : "Theo SP đang chọn"}
               </button>
@@ -549,7 +731,7 @@ export default function CostingPage() {
                       <p className="text-sm font-black text-neutral-900">
                         {product?.name ?? recipe.productId} · v{recipe.version}
                       </p>
-                      <p className="text-xs text-neutral-500">
+                      <p className="text-xs tabular-nums text-neutral-500">
                         {recipe.ingredients.length} nguyên liệu · yield{" "}
                         {recipe.yieldQuantity} · hiệu lực{" "}
                         {new Date(recipe.effectiveFrom).toLocaleDateString(
@@ -569,7 +751,7 @@ export default function CostingPage() {
                             `Đã tải BOM v${recipe.version} vào form. Chỉnh sửa rồi lưu nháp mới.`,
                           );
                         }}
-                        className={`rounded-lg px-3 py-2 text-xs font-bold ${
+                        className={`min-h-11 whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 disabled:cursor-not-allowed disabled:opacity-[0.55] ${
                           isLoaded
                             ? "bg-emerald-100 text-emerald-800"
                             : "bg-neutral-100 text-neutral-800 hover:bg-neutral-200"
@@ -581,7 +763,7 @@ export default function CostingPage() {
                         <button
                           disabled={saving}
                           onClick={() => void activateRecipe(recipe.id)}
-                          className="rounded-lg bg-neutral-950 px-3 py-2 text-xs font-bold text-white"
+                          className="min-h-11 whitespace-nowrap rounded-lg bg-navy px-3 py-2 text-xs font-bold text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 active:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-[0.55]"
                         >
                           Kích hoạt
                         </button>
@@ -603,6 +785,69 @@ export default function CostingPage() {
           </Panel>
         </section>
       </div>
+      {overheadModalOpen && (
+        <OverheadSettingsModal
+          initialSettings={overheadSettings}
+          defaultBatchMinutes={selectedProduct?.manufacturingLeadMinutes ?? 0}
+          currentBatchOverhead={recipeForm.overheadCostPerBatch}
+          onClose={() => setOverheadModalOpen(false)}
+          onSaved={(settings, overheadCostPerBatch) => {
+            setOverheadSettings(settings);
+            setRecipeForm((current) => ({
+              ...current,
+              overheadCostPerBatch,
+            }));
+            setOverheadModalOpen(false);
+          }}
+        />
+      )}
+      {directLaborModalOpen && (
+        <DirectLaborCalculatorModal
+          batchCycleMinutes={selectedProduct?.manufacturingLeadMinutes ?? 0}
+          currentDirectLaborCost={recipeForm.directLaborCostPerBatch}
+          initialLines={directLaborCostLines}
+          onClose={() => setDirectLaborModalOpen(false)}
+          onApply={(directLaborCostPerBatch, lines) => {
+            setDirectLaborCostLines(lines);
+            setRecipeForm((current) => ({
+              ...current,
+              directLaborCostPerBatch,
+            }));
+            setDirectLaborModalOpen(false);
+          }}
+        />
+      )}
+      {packagingModalOpen && (
+        <PackagingCostCalculatorModal
+          currentPackagingCost={recipeForm.packagingCostPerBatch}
+          initialLines={packagingCostLines}
+          onClose={() => setPackagingModalOpen(false)}
+          onApply={(packagingCostPerBatch, lines) => {
+            setPackagingCostLines(lines);
+            setRecipeForm((current) => ({
+              ...current,
+              packagingCostPerBatch,
+            }));
+            setPackagingModalOpen(false);
+          }}
+        />
+      )}
+      {wasteModalOpen && (
+        <WasteCalculatorModal
+          currentWastePercent={recipeForm.wastePercent}
+          defaultGoodQuantity={recipeForm.yieldQuantity}
+          initialCalculation={wasteCalculation}
+          onClose={() => setWasteModalOpen(false)}
+          onApply={(wastePercent, calculation) => {
+            setWasteCalculation(calculation);
+            setRecipeForm((current) => ({
+              ...current,
+              wastePercent,
+            }));
+            setWasteModalOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -621,13 +866,13 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-neutral-200 bg-white p-5 shadow-sm">
-      <div className="mb-4 flex items-start justify-between">
-        <div className="flex gap-3">
+    <section className="min-w-0 rounded-xl border border-neutral-200 bg-white p-4 sm:p-5">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-50 text-brand-700 [&>svg]:h-5 [&>svg]:w-5">
             {icon}
           </span>
-          <div>
+          <div className="min-w-0">
             <h2 className="font-black text-neutral-950">{title}</h2>
             <p className="text-xs text-neutral-500">{subtitle}</p>
           </div>
@@ -682,6 +927,84 @@ function Input({
   );
 }
 
+function CostInput({
+  label,
+  helper,
+  value,
+  onChange,
+  suffix = "₫",
+  max,
+  maximumFractionDigits = 0,
+  action,
+}: {
+  label: string;
+  helper: React.ReactNode;
+  value: number;
+  onChange: (value: number) => void;
+  suffix?: string;
+  max?: number;
+  maximumFractionDigits?: number;
+  action?: React.ReactNode;
+}) {
+  const inputId = useId();
+  return (
+    <div>
+      <div className="mb-1 flex min-h-7 flex-col items-start gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+        <label
+          htmlFor={inputId}
+          className="block text-xs font-bold text-neutral-700"
+        >
+          {label}
+        </label>
+        {action && <div className="shrink-0">{action}</div>}
+      </div>
+      <span className="relative block">
+        <FormattedNumberInput
+          id={inputId}
+          min={0}
+          max={max}
+          value={value}
+          maximumFractionDigits={maximumFractionDigits}
+          onValueChange={(nextValue) => onChange(nextValue ?? 0)}
+          className="h-11 w-full rounded-xl border border-neutral-300 bg-white px-3 pr-12 text-sm tabular-nums outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+        />
+        <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-xs font-bold text-neutral-400">
+          {suffix}
+        </span>
+      </span>
+      <span className="mt-1 block text-xs leading-5 text-neutral-500">
+        {helper}
+      </span>
+    </div>
+  );
+}
+
+function CalculatorActionButton({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-bold text-brand-700 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700 active:bg-brand-100"
+    >
+      <span
+        aria-hidden="true"
+        className="[&>svg]:h-3.5 [&>svg]:w-3.5"
+      >
+        {icon}
+      </span>
+      {label}
+    </button>
+  );
+}
+
 function Select({
   label,
   value,
@@ -701,7 +1024,7 @@ function Select({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-xl border border-neutral-200 bg-white px-3 text-sm"
+        className="h-10 w-full min-w-0 rounded-xl border border-neutral-200 bg-white px-3 text-sm"
       >
         {options.map(([id, name]) => (
           <option key={id} value={id}>
@@ -719,7 +1042,7 @@ function Preview({ label, value }: { label: string; value: string }) {
       <p className="text-[10px] font-bold uppercase tracking-wider text-white/50">
         {label}
       </p>
-      <p className="mt-1 text-lg font-black">{value}</p>
+      <p className="mt-1 text-lg font-black tabular-nums">{value}</p>
     </div>
   );
 }

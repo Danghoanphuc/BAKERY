@@ -26,6 +26,7 @@ export async function POST(
     ) {
       const inventorySale = await recordProductSaleInventory({
         orderId: order.id,
+        locationId: order.inventoryLocationId,
         items: order.items.map((item) => ({
           ...item,
           unitStandardCost: order.itemFinancialSnapshots?.find(

@@ -1,7 +1,10 @@
 import type {
   CartItem, FinanceIngredient, OrderItemFinancialSnapshot, Product, RecipeVersion,
 } from "@/types";
-import { calculateLegacyStandardUnitCost, calculateRecipeStandardUnitCost } from "./standard-costing";
+import {
+  calculateLegacyStandardUnitCost,
+  calculateRecipeStandardUnitCostGraph,
+} from "./standard-costing";
 import { allocateIntegerByWeight } from "./proportional-allocation";
 
 export function allocateDiscountByLargestRemainder(
@@ -36,9 +39,16 @@ export function buildItemFinancialSnapshots(input: {
   return input.items.map((item, index) => {
     const recipe = recipesByProductId.get(item.productId);
     const cost = recipe
-      ? calculateRecipeStandardUnitCost(recipe, ingredientsById)
+      ? calculateRecipeStandardUnitCostGraph(
+          recipe,
+          ingredientsById,
+          recipesByProductId,
+        )
       : calculateLegacyStandardUnitCost(productsById.get(item.productId));
-    const totalCost = cost.totalCost * item.quantity;
+    const inventoryQuantityPerUnit = item.inventoryQuantityPerUnit ?? 1;
+    const inventoryQuantity = item.quantity * inventoryQuantityPerUnit;
+    const sellUnitCost = cost.totalCost * inventoryQuantityPerUnit;
+    const totalCost = sellUnitCost * item.quantity;
     const netRevenue = grossAmounts[index] - discounts[index];
     return {
       orderItemId: "cartItemId" in item && item.cartItemId
@@ -49,12 +59,12 @@ export function buildItemFinancialSnapshots(input: {
       variantSku: item.selectedVariantSku,
       variantBarcode: item.selectedVariantBarcode,
       grossRevenue: grossAmounts[index], allocatedDiscount: discounts[index], netRevenue,
-      ingredientCost: cost.ingredientCost * item.quantity,
-      packagingCost: cost.packagingCost * item.quantity,
-      directLaborCost: cost.directLaborCost * item.quantity,
-      overheadCost: cost.overheadCost * item.quantity,
-      wasteCost: cost.wasteCost * item.quantity,
-      unitCost: cost.totalCost, totalCost, grossProfit: netRevenue - totalCost,
+      ingredientCost: cost.ingredientCost * inventoryQuantity,
+      packagingCost: cost.packagingCost * inventoryQuantity,
+      directLaborCost: cost.directLaborCost * inventoryQuantity,
+      overheadCost: cost.overheadCost * inventoryQuantity,
+      wasteCost: cost.wasteCost * inventoryQuantity,
+      unitCost: sellUnitCost, totalCost, grossProfit: netRevenue - totalCost,
       costingSource: cost.source, recipeVersionId: cost.recipeVersionId,
       costingVersion: cost.costingVersion,
     };

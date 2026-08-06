@@ -14,7 +14,12 @@ import {
   Tags,
 } from "lucide-react";
 import { toast } from "sonner";
-import type { Category, Product } from "@/types";
+import type {
+  Category,
+  InventoryBalance,
+  Product,
+  WholesaleProduct,
+} from "@/types";
 import type { ProductCostSummary } from "@/features/wholesale-finance";
 import { InventoryItemTypeDialog } from "@/features/inventory/components/InventoryItemTypeDialog";
 import { DeleteInventoryItemDialog } from "@/features/inventory/components/DeleteInventoryItemDialog";
@@ -26,9 +31,11 @@ import {
 import { InventoryStats } from "./_components/InventoryStats";
 import { InventoryTable } from "./_components/InventoryTable";
 import {
+  applyInventoryLedger,
   filterProducts,
-  getInventoryStats,
+  getInventoryStatsFromLedger,
   resolveInventoryCategoryName,
+  summarizeInventoryBalances,
 } from "./_lib/inventory-utils";
 import { ProductFilter } from "./_lib/product-form";
 
@@ -73,6 +80,10 @@ export default function InventoryPage() {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [wholesaleOffers, setWholesaleOffers] = useState<WholesaleProduct[]>([]);
+  const [inventoryBalances, setInventoryBalances] = useState<
+    Array<InventoryBalance & { id: string }>
+  >([]);
   const [costingByProductId, setCostingByProductId] = useState<
     Record<string, ProductCostSummary>
   >({});
@@ -131,17 +142,28 @@ export default function InventoryPage() {
         "/api/wholesale/finance/costing-summary",
         { cache: "no-store" },
       );
-      const [productsRes, categoriesRes] = await Promise.all([
+      const [productsRes, categoriesRes, balancesRes, offersRes] = await Promise.all([
         fetch("/api/wholesale/products", { cache: "no-store" }),
         fetch("/api/wholesale/categories", { cache: "no-store" }),
+        fetch("/api/wholesale/finance/inventory/balances", { cache: "no-store" }),
+        fetch("/api/wholesale/catalog/offers", { cache: "no-store" }),
       ]);
 
-      if (!productsRes.ok || !categoriesRes.ok) {
+      if (
+        !productsRes.ok ||
+        !categoriesRes.ok ||
+        !balancesRes.ok ||
+        !offersRes.ok
+      ) {
         throw new Error("Cannot load inventory data");
       }
 
       setProducts((await productsRes.json()) as Product[]);
       setCategories((await categoriesRes.json()) as Category[]);
+      setWholesaleOffers((await offersRes.json()) as WholesaleProduct[]);
+      setInventoryBalances(
+        (await balancesRes.json()) as Array<InventoryBalance & { id: string }>,
+      );
 
       void costingRequest
         .then(async (costingRes) => {
@@ -172,10 +194,36 @@ export default function InventoryPage() {
     }
   }
 
-  const stats = useMemo(() => getInventoryStats(products), [products]);
+  const ledgerByItemId = useMemo(
+    () => summarizeInventoryBalances(inventoryBalances),
+    [inventoryBalances],
+  );
+  const wholesaleOffersByProductId = useMemo(
+    () =>
+      wholesaleOffers.reduce<Record<string, WholesaleProduct[]>>(
+        (byProductId, offer) => {
+          (byProductId[offer.productId] ??= []).push(offer);
+          return byProductId;
+        },
+        {},
+      ),
+    [wholesaleOffers],
+  );
+  const inventoryProducts = useMemo(
+    () => applyInventoryLedger(products, ledgerByItemId),
+    [ledgerByItemId, products],
+  );
+  const stats = useMemo(
+    () => getInventoryStatsFromLedger(
+      inventoryProducts,
+      ledgerByItemId,
+      costingByProductId,
+    ),
+    [costingByProductId, inventoryProducts, ledgerByItemId],
+  );
   const filteredProducts = useMemo(
-    () => filterProducts(products, categories, searchTerm, filter),
-    [categories, filter, products, searchTerm],
+    () => filterProducts(inventoryProducts, categories, searchTerm, filter),
+    [categories, filter, inventoryProducts, searchTerm],
   );
 
   const deleteProduct = async (product: Product) => {
@@ -415,10 +463,11 @@ export default function InventoryPage() {
       )}
 
       <InventoryStats
-        totalProducts={products.length}
+        totalProducts={inventoryProducts.length}
         sellingProducts={stats.selling}
         lowStockProducts={stats.lowStock}
         inventoryValue={stats.inventoryValue}
+        inventoryValueHint={`Sổ kho ${stats.ledgerItems} mã · fallback ${stats.legacyItems} mã`}
         bomCoverage={costingCoverage}
       />
 
@@ -426,6 +475,8 @@ export default function InventoryPage() {
         products={filteredProducts}
         categories={categories}
         costingByProductId={costingByProductId}
+        wholesaleOffersByProductId={wholesaleOffersByProductId}
+        ledgerByProductId={ledgerByItemId}
         isLoading={isLoading}
         searchTerm={searchTerm}
         filter={filter}

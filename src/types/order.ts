@@ -52,6 +52,8 @@ export interface Order {
   payosTransactionDateTime?: string;
   payosStockDeducted?: boolean;
   salesChannel?: SalesChannel;
+  /** Inventory location used when fulfilling a wholesale order. */
+  inventoryLocationId?: string;
   posServiceType?: PosServiceType;
   tableId?: string;
   tableName?: string;
@@ -61,6 +63,11 @@ export interface Order {
   internalNotes?: string;
   cancelReason?: string;
   assignedTo?: string;
+  dealerId?: string;
+  salesRepId?: string;
+  routeRunId?: string;
+  routeStopId?: string;
+  paymentTerms?: import("./finance").PaymentTerms;
   deliveryFee?: number;
   discountAmount?: number;
   productSubtotal?: number;

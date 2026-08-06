@@ -1,5 +1,45 @@
 [
   {
+    "date": "2026-08-02",
+    "scope": "page",
+    "macrostructure": "Workbench (today-first routes)",
+    "theme": "SweetTime warm editorial",
+    "enrichment": "none",
+    "brief": "Mobile-first wholesale route planning with compact daily overview and explicit stop ordering"
+  },
+  {
+    "date": "2026-08-02",
+    "scope": "page",
+    "macrostructure": "Split Studio (daily production planner)",
+    "theme": "SweetTime warm editorial",
+    "enrichment": "none",
+    "brief": "Wholesale daily stock entry with batch, output mix and material suggestions"
+  },
+  {
+    "date": "2026-07-31",
+    "scope": "page",
+    "macrostructure": "Workbench (single-surface detail)",
+    "theme": "SweetTime warm editorial",
+    "enrichment": "none",
+    "brief": "Wholesale finished-product detail joining offer, active BOM cost and inventory ledger"
+  },
+  {
+    "date": "2026-07-31",
+    "scope": "page",
+    "macrostructure": "Workbench (single-surface composer)",
+    "theme": "SweetTime warm editorial",
+    "enrichment": "none",
+    "brief": "Minimal wholesale finished-product creation with inline BOM and derived standard cost"
+  },
+  {
+    "date": "2026-07-29",
+    "scope": "app",
+    "macrostructure": "Workbench (field-operations variant)",
+    "theme": "SweetTime warm editorial",
+    "enrichment": "none",
+    "brief": "Wholesale field-route planning, mobile visit execution and route-originated ordering"
+  },
+  {
     "date": "2026-07-25",
     "scope": "page",
     "macrostructure": "Workbench",

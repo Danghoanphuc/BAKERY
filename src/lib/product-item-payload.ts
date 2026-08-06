@@ -190,6 +190,7 @@ export function getProductItemValidationError(
     return null;
   }
 
+  if (input.catalogScope === "wholesale") return null;
   if (!input.displayName) return "Vui lòng nhập tên hiển thị.";
   if (!input.categoryId) return "Vui lòng chọn danh mục bán hàng.";
   if (!input.imageUrl) return "Vui lòng tải lên ít nhất một ảnh sản phẩm.";
